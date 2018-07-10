@@ -8,7 +8,7 @@ namespace NewLife.RocketMQ.Client
 {
     public abstract class MQAdmin
     {
-        public abstract void CreateTopic(String key, String newTopic, Int32 queueNum, Int32 topicSysFla);
+        public abstract void CreateTopic(String key, String newTopic, Int32 queueNum, Int32 topicSysFlag = 0);
 
         public abstract Int64 SearchOffset(MessageQueue mq, Int64 timestamp);
 
@@ -18,9 +18,9 @@ namespace NewLife.RocketMQ.Client
 
         public abstract Int64 EarliestMsgStoreTime(MessageQueue mq);
 
-        public abstract MessageExt ViewMessage(String offsetMsgId);
-
         public abstract QueryResult QueryMessage(String topic, String key, Int32 maxNum, Int64 begin, Int64 end);
+
+        public abstract MessageExt ViewMessage(String offsetMsgId);
 
         public abstract MessageExt ViewMessage(String topic, String msgId);
     }

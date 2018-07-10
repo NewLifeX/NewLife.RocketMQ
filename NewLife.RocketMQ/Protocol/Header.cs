@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NewLife.RocketMQ
+namespace NewLife.RocketMQ.Protocol
 {
     public class Header
     {
