@@ -55,6 +55,9 @@ namespace NewLife.RocketMQ
         }
 
         private Int32 g_id;
+        /// <summary>发送命令</summary>
+        /// <param name="cmd"></param>
+        /// <returns></returns>
         public Command Send(Command cmd)
         {
             if (cmd.Header.Opaque == 0) cmd.Header.Opaque = g_id++;
@@ -70,12 +73,20 @@ namespace NewLife.RocketMQ
             return rs;
         }
 
+        /// <summary>发送指定类型的命令</summary>
+        /// <param name="request"></param>
+        /// <param name="extFields"></param>
+        /// <returns></returns>
         public Command Send(RequestCode request, Object extFields = null)
         {
             var header = new Header
             {
                 Code = (Int32)request,
             };
+
+            // 阿里云支持 CSharp
+            var cfg = Config;
+            if (!cfg.AccessKey.IsNullOrEmpty()) header.Language = "CSharp";
 
             var cmd = new Command
             {
