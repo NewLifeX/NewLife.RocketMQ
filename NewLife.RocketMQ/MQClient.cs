@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using NewLife.Net;
 using NewLife.RocketMQ.Client;
+using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ
 {
@@ -13,6 +17,7 @@ namespace NewLife.RocketMQ
         public MQAdmin Config { get; }
 
         private TcpClient _Client;
+        private Stream _Stream;
         #endregion
 
         #region 构造
@@ -43,6 +48,58 @@ namespace NewLife.RocketMQ
             }
 
             _Client = client;
+
+            _Stream = new BufferedStream(client.GetStream());
+        }
+
+        private Int32 g_id;
+        public Command Send(Command cmd)
+        {
+            if (cmd.Header.Opaque == 0) cmd.Header.Opaque = g_id++;
+
+            cmd.Write(_Stream);
+            //var ms = new MemoryStream();
+            //cmd.Write(ms);
+            //XTrace.WriteLine(ms.ToArray().ToHex());
+
+            var rs = new Command();
+            rs.Read(_Stream);
+
+            return rs;
+        }
+
+        public Command Send(RequestCode request, Object extFields = null)
+        {
+            var header = new Header
+            {
+                Code = (Int32)request,
+            };
+
+            var cmd = new Command
+            {
+                Header = header,
+            };
+
+            if (extFields != null) header.ExtFields = extFields.ToDictionary().ToDictionary(e => e.Key, e => e.Value + "");
+
+            return Send(cmd);
+        }
+        #endregion
+
+        #region 命令
+        public Command GetRouteInfo(String topic)
+        {
+            //var header = new Header
+            //{
+            //    Code = (Int32)RequestCode.GET_ROUTEINTO_BY_TOPIC,
+            //};
+
+            //var cmd = new Command
+            //{
+            //    Header = header,
+            //};
+
+            return Send(RequestCode.GET_ROUTEINTO_BY_TOPIC, new { topic });
         }
         #endregion
     }

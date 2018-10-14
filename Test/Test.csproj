@@ -32,8 +32,8 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="NewLife.Core, Version=7.3.6763.36550, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\NewLife.Core.7.3.6763.36550\lib\net45\NewLife.Core.dll</HintPath>
+    <Reference Include="NewLife.Core, Version=7.3.6839.35284, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NewLife.Core.7.3.6839.35284\lib\net45\NewLife.Core.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

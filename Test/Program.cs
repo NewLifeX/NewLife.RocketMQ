@@ -26,7 +26,8 @@ namespace Test
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
                 ProducerGroup = "PID_Stone_001",
-                NameServerAddress = "127.0.0.1:9876",
+                //NameServerAddress = "127.0.0.1:9876",
+                NameServerAddress = "192.168.0.4:9876",
                 InstanceName = "Producer",
             };
 

@@ -43,6 +43,8 @@ namespace NewLife.RocketMQ.Producer
                     var client = new MQClient(ClientId, this);
                     client.Start();
 
+                    client.GetRouteInfo(CreateTopicKey);
+
                     _Client = client;
 
                     State = ServiceState.Running;
