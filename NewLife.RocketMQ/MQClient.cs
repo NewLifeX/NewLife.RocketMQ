@@ -80,26 +80,41 @@ namespace NewLife.RocketMQ
                 Header = header,
             };
 
-            if (extFields != null) header.ExtFields = extFields.ToDictionary().ToDictionary(e => e.Key, e => e.Value + "");
+            if (extFields != null)
+            {
+                if (extFields is IDictionary<String, String> dic)
+                    header.ExtFields = dic;
+                else
+                    header.ExtFields = extFields.ToDictionary().ToDictionary(e => e.Key, e => e.Value + "");
+            }
 
-            return Send(cmd);
+            var rs = Send(cmd);
+
+            // 判断异常响应
+            if (rs.Header.Code != 0) throw new ResponseException((ResponseCode)rs.Header.Code, rs.Header.Remark);
+
+            return rs;
         }
         #endregion
 
         #region 命令
         public Command GetRouteInfo(String topic)
         {
-            //var header = new Header
-            //{
-            //    Code = (Int32)RequestCode.GET_ROUTEINTO_BY_TOPIC,
-            //};
+            var cfg = Config;
+            var dic = new Dictionary<String, String>
+            {
+                ["topic"] = topic
+            };
+            // 阿里云密钥
+            if (!cfg.AccessKey.IsNullOrEmpty())
+            {
+                dic["AccessKey"] = cfg.AccessKey;
+                dic["SecretKey"] = cfg.SecretKey;
+            }
 
-            //var cmd = new Command
-            //{
-            //    Header = header,
-            //};
+            var rs = Send(RequestCode.GET_ROUTEINTO_BY_TOPIC, dic);
 
-            return Send(RequestCode.GET_ROUTEINTO_BY_TOPIC, new { topic });
+            return rs;
         }
         #endregion
     }

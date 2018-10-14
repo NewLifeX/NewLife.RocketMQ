@@ -15,7 +15,7 @@ namespace NewLife.RocketMQ.Protocol
 
         /// <summary>由于要支持多语言，所以这一字段可以给通信双方知道对方通信层锁使用的开发语言</summary>
         /// <remarks>这里必须是JAVA，不能是CSharp，甚至Java都不行</remarks>
-        public String Language { get; set; } = "JAVA";
+        public String Language { get; set; } = "CSharp";
 
         /// <summary>标识</summary>
         /// <remarks>
