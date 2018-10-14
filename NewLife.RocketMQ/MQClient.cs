@@ -110,6 +110,8 @@ namespace NewLife.RocketMQ
             {
                 dic["AccessKey"] = cfg.AccessKey;
                 dic["SecretKey"] = cfg.SecretKey;
+
+                if (!cfg.OnsChannel.IsNullOrEmpty()) dic["OnsChannel"] = cfg.OnsChannel;
             }
 
             var rs = Send(RequestCode.GET_ROUTEINTO_BY_TOPIC, dic);

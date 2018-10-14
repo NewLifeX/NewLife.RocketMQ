@@ -7,12 +7,6 @@ namespace NewLife.RocketMQ.Client
     public abstract class MQAdmin : DisposeBase
     {
         #region 属性
-        public String Server { get; set; }
-
-        public String AccessKey { get; set; }
-
-        public String SecretKey { get; set; }
-
         /// <summary>名称服务器地址</summary>
         public String NameServerAddress { get; set; }
 
@@ -42,6 +36,20 @@ namespace NewLife.RocketMQ.Client
         public Boolean UnitMode { get; set; }
 
         public Boolean VipChannelEnabled { get; set; } = true;
+        #endregion
+
+        #region 阿里云属性
+        /// <summary>获取名称服务器地址的http地址</summary>
+        public String Server { get; set; }
+
+        /// <summary>访问令牌</summary>
+        public String AccessKey { get; set; }
+
+        /// <summary>访问密钥</summary>
+        public String SecretKey { get; set; }
+
+        /// <summary>阿里云MQ通道</summary>
+        public String OnsChannel { get; set; } = "ALIYUN";
         #endregion
 
         #region 扩展属性
