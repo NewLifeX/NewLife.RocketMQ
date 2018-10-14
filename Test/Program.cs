@@ -23,10 +23,10 @@ namespace Test
             var mq = new MQProducer
             {
                 Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
-                AccessKey = "",
-                SecretKey = "",
+                AccessKey = "LTAINsp1qKfO61c5",
+                SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                ProducerGroup = "测试组",
+                ProducerGroup = "PID_Stone_001",
                 NameServerAddress = "192.168.1.15:9876",
             };
 
@@ -34,7 +34,7 @@ namespace Test
 
             var msg = new Message
             {
-                Topic = "主题",
+                Topic = "nx_test",
                 Body = "学无先后达者为师".GetBytes(),
             };
 
