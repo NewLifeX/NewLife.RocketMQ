@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Xml.Serialization;
 
 namespace NewLife.RocketMQ.Protocol
 {
+    /// <summary>发送消息请求头</summary>
     public class SendMessageRequestHeader
     {
         #region 属性

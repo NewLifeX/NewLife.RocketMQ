@@ -8,6 +8,14 @@ namespace NewLife.RocketMQ.Client
 {
     public abstract class MQAdmin
     {
+        #region 属性
+        public String Server { get; set; }
+
+        public String AccessKey { get; set; }
+
+        public String SecretKey { get; set; }
+        #endregion
+
         public abstract void CreateTopic(String key, String newTopic, Int32 queueNum, Int32 topicSysFlag = 0);
 
         public abstract Int64 SearchOffset(MessageQueue mq, Int64 timestamp);

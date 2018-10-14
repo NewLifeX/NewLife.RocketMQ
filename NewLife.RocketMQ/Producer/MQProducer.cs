@@ -1,9 +1,5 @@
-﻿using NewLife.RocketMQ.Client;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System;
+using NewLife.RocketMQ.Client;
 
 namespace NewLife.RocketMQ.Producer
 {

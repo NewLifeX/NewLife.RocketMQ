@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NewLife.RocketMQ.Protocol
 {
+    /// <summary>头部</summary>
     public class Header
     {
         #region 属性
