@@ -16,6 +16,8 @@ namespace NewLife.RocketMQ
 
         public MQAdmin Config { get; }
 
+        public IDictionary<String, String> Brokers { get; } = new Dictionary<String, String>();
+
         private TcpClient _Client;
         private Stream _Stream;
         #endregion
@@ -98,6 +100,9 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 命令
+        /// <summary>获取主题的路由信息，含登录验证</summary>
+        /// <param name="topic"></param>
+        /// <returns></returns>
         public Command GetRouteInfo(String topic)
         {
             var cfg = Config;
@@ -114,7 +119,19 @@ namespace NewLife.RocketMQ
                 if (!cfg.OnsChannel.IsNullOrEmpty()) dic["OnsChannel"] = cfg.OnsChannel;
             }
 
+            // 发送命令
             var rs = Send(RequestCode.GET_ROUTEINTO_BY_TOPIC, dic);
+
+            // 解析broker集群地址
+            if (rs.Data["brokerDatas"] is IList<Object> bs)
+            {
+                foreach (IDictionary<String, Object> item in bs)
+                {
+                    var name = item["brokerName"] + "";
+                    if (item["brokerAddrs"] is IDictionary<String, Object> addrs)
+                        Brokers[name] = addrs.Join(";", e => e.Value);
+                }
+            }
 
             return rs;
         }
