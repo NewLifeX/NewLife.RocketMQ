@@ -25,6 +25,7 @@ namespace Test
                 AccessKey = "LTAINsp1qKfO61c5",
                 SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
+                CreateTopicKey = "nx_test",
                 ProducerGroup = "PID_Stone_001",
                 //NameServerAddress = "127.0.0.1:9876",
                 //NameServerAddress = "sh02.newlifex.com:9876",
