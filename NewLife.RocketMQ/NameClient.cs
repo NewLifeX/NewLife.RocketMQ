@@ -43,7 +43,7 @@ namespace NewLife.RocketMQ
         public IDictionary<String, String> GetRouteInfo(String topic)
         {
             // 发送命令
-            var rs = Send(RequestCode.GET_ROUTEINTO_BY_TOPIC, new { topic });
+            var rs = Send(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
 
             // 解析broker集群地址
             if (rs.Data["brokerDatas"] is IList<Object> bs)

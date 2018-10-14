@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using NewLife.Net;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
+using NewLife.Serialization;
 
 namespace NewLife.RocketMQ
 {
@@ -76,7 +77,7 @@ namespace NewLife.RocketMQ
         /// <param name="request"></param>
         /// <param name="extFields"></param>
         /// <returns></returns>
-        public Command Send(RequestCode request, Object extFields = null)
+        public Command Send(RequestCode request, Object body, Object extFields = null)
         {
             var header = new Header
             {
@@ -87,6 +88,12 @@ namespace NewLife.RocketMQ
             {
                 Header = header,
             };
+
+            // 主体
+            if (body is Byte[] buf)
+                cmd.Body = buf;
+            else if (body != null)
+                cmd.Body = body.ToJson().GetBytes();
 
             if (extFields != null)
             {

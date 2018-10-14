@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using NewLife.Log;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
@@ -63,10 +64,33 @@ namespace NewLife.RocketMQ.Producer
         #endregion
 
         #region 发送消息
+        private BrokerClient _Broker;
+        protected BrokerClient GetBroker()
+        {
+            if (_Broker != null) return _Broker;
+
+            var bk = _Client.Brokers?.FirstOrDefault();
+            if (bk == null) return null;
+
+            var addr = bk.Value.Value?.Split(";").FirstOrDefault();
+            if (addr.IsNullOrEmpty()) return null;
+
+            var client = new BrokerClient(addr);
+            client.Config = this;
+            client.Start();
+
+            return _Broker = client;
+        }
+
         public virtual SendResult Send(Message msg, Int32 timeout = -1)
         {
+            var bk = GetBroker();
+
             return null;
         }
+        #endregion
+
+        #region 连接池
         #endregion
 
         #region 业务方法
