@@ -39,7 +39,7 @@ namespace NewLife.RocketMQ.Protocol
         /// 在Java的每个RemotingCammand中，其实都带有一个CommandCustomHeader的属性成员，可以认为他是一个强类型的extFields，
         /// 再最后传输的时候，这个CommandCustomHeader会被忽略，而传输前会把其中的所有字段全部都原封不动塞到extFields中，以作传输。
         /// </remarks>
-        public IDictionary<String, String> ExtFields { get; set; } = new Dictionary<String, String>();
+        public IDictionary<String, Object> ExtFields { get; set; } = new Dictionary<String, Object>();
         #endregion
     }
 }

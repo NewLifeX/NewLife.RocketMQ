@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using NewLife.Net;
 using NewLife.RocketMQ.Client;
@@ -9,38 +8,36 @@ using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ
 {
-    class MQClient : DisposeBase
+    public abstract class MQClient : DisposeBase
     {
         #region 属性
-        public String Id { get; }
+        /// <summary>超时。默认3000ms</summary>
+        public Int32 Timeout { get; set; } = 3_000;
 
-        public MQAdmin Config { get; }
-
-        public IDictionary<String, String> Brokers { get; } = new Dictionary<String, String>();
+        public MQAdmin Config { get; set; }
 
         private TcpClient _Client;
         private Stream _Stream;
         #endregion
 
         #region 构造
-        public MQClient(String id, MQAdmin config)
+        protected override void OnDispose(Boolean disposing)
         {
-            Id = id;
-            Config = config;
+            base.OnDispose(disposing);
+
+            _Client.TryDispose();
         }
         #endregion
 
         #region 方法
-        public void Start()
+        /// <summary>开始</summary>
+        public virtual void Start()
         {
-            var cfg = Config;
-            var ss = cfg.NameServerAddress.Split(";");
-            var uri = new NetUri(ss[0]);
+            var uri = GetServer();
 
             var client = new TcpClient();
-            //client.Connect(uri.EndPoint);
 
-            var timeout = 3_000;
+            var timeout = Timeout;
             // 采用异步来解决连接超时设置问题
             var ar = client.BeginConnect(uri.Address, uri.Port, null, null);
             if (!ar.AsyncWaitHandle.WaitOne(timeout, false))
@@ -53,6 +50,8 @@ namespace NewLife.RocketMQ
 
             _Stream = new BufferedStream(client.GetStream());
         }
+
+        protected abstract NetUri GetServer();
 
         private Int32 g_id;
         /// <summary>发送命令</summary>
@@ -84,10 +83,6 @@ namespace NewLife.RocketMQ
                 Code = (Int32)request,
             };
 
-            // 阿里云支持 CSharp
-            var cfg = Config;
-            if (!cfg.AccessKey.IsNullOrEmpty()) header.Language = "CSharp";
-
             var cmd = new Command
             {
                 Header = header,
@@ -95,11 +90,10 @@ namespace NewLife.RocketMQ
 
             if (extFields != null)
             {
-                if (extFields is IDictionary<String, String> dic)
-                    header.ExtFields = dic;
-                else
-                    header.ExtFields = extFields.ToDictionary().ToDictionary(e => e.Key, e => e.Value + "");
+                header.ExtFields.Merge(extFields);// = extFields.ToDictionary().ToDictionary(e => e.Key, e => e.Value + "");
             }
+
+            OnBuild(header);
 
             var rs = Send(cmd);
 
@@ -108,43 +102,25 @@ namespace NewLife.RocketMQ
 
             return rs;
         }
-        #endregion
 
-        #region 命令
-        /// <summary>获取主题的路由信息，含登录验证</summary>
-        /// <param name="topic"></param>
-        /// <returns></returns>
-        public Command GetRouteInfo(String topic)
+        /// <summary>建立命令时，处理头部</summary>
+        /// <param name="header"></param>
+        protected virtual void OnBuild(Header header)
         {
+            // 阿里云支持 CSharp
             var cfg = Config;
-            var dic = new Dictionary<String, String>
-            {
-                ["topic"] = topic
-            };
+            if (!cfg.AccessKey.IsNullOrEmpty()) header.Language = "CSharp";
+
             // 阿里云密钥
             if (!cfg.AccessKey.IsNullOrEmpty())
             {
+                var dic = header.ExtFields;
+
                 dic["AccessKey"] = cfg.AccessKey;
                 dic["SecretKey"] = cfg.SecretKey;
 
                 if (!cfg.OnsChannel.IsNullOrEmpty()) dic["OnsChannel"] = cfg.OnsChannel;
             }
-
-            // 发送命令
-            var rs = Send(RequestCode.GET_ROUTEINTO_BY_TOPIC, dic);
-
-            // 解析broker集群地址
-            if (rs.Data["brokerDatas"] is IList<Object> bs)
-            {
-                foreach (IDictionary<String, Object> item in bs)
-                {
-                    var name = item["brokerName"] + "";
-                    if (item["brokerAddrs"] is IDictionary<String, Object> addrs)
-                        Brokers[name] = addrs.Join(";", e => e.Value);
-                }
-            }
-
-            return rs;
         }
         #endregion
     }

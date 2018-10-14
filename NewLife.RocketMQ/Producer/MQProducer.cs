@@ -1,4 +1,5 @@
 ﻿using System;
+using NewLife.Log;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 
@@ -27,7 +28,7 @@ namespace NewLife.RocketMQ.Producer
 
         private ServiceState State { get; set; } = ServiceState.CreateJust;
 
-        private MQClient _Client;
+        private NameClient _Client;
         #endregion
 
         #region 基础方法
@@ -40,10 +41,14 @@ namespace NewLife.RocketMQ.Producer
                 case ServiceState.CreateJust:
                     State = ServiceState.CreateJust;
 
-                    var client = new MQClient(ClientId, this);
+                    var client = new NameClient(ClientId, this);
                     client.Start();
 
-                    client.GetRouteInfo(CreateTopicKey);
+                    var rs = client.GetRouteInfo(CreateTopicKey);
+                    foreach (var item in rs)
+                    {
+                        XTrace.WriteLine("发现Broker[{0}]: {1}", item.Key, item.Value);
+                    }
 
                     _Client = client;
 
