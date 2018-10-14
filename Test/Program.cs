@@ -1,10 +1,8 @@
-﻿using NewLife.Log;
+﻿using System;
+using NewLife.Log;
+using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Producer;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using NewLife.RocketMQ.Protocol;
 
 namespace Test
 {
@@ -24,10 +22,19 @@ namespace Test
         {
             var mq = new MQProducer
             {
-                Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
-                AccessKey = "",
-                SecretKey = ""
+                ProducerGroup = "测试组",
+                NameServerAddress = "192.168.1.15:9876",
             };
+
+            mq.Start();
+            var msg = new Message
+            {
+                Topic = "主题",
+                Body = "学无先后达者为师".GetBytes(),
+            };
+
+            mq.Send(msg);
+            mq.Dispose();
         }
     }
 }

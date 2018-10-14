@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ.Client
 {
-    public abstract class MQAdmin
+    public abstract class MQAdmin : DisposeBase
     {
         #region 属性
         public String Server { get; set; }
@@ -14,6 +11,48 @@ namespace NewLife.RocketMQ.Client
         public String AccessKey { get; set; }
 
         public String SecretKey { get; set; }
+
+        /// <summary>名称服务器地址</summary>
+        public String NameServerAddress { get; set; }
+
+        /// <summary>本地IP地址</summary>
+        public String ClientIP { get; set; } = NetHelper.MyIP() + "";
+
+        /// <summary>本地端口</summary>
+        public Int32 ClientPort { get; set; }
+
+        /// <summary>实例名</summary>
+        public String InstanceName { get; set; } = "DEFAULT";
+
+        /// <summary>客户端回调执行线程数。默认CPU数</summary>
+        public Int32 ClientCallbackExecutorThreads { get; set; } = Environment.ProcessorCount;
+
+        /// <summary>拉取名称服务器间隔。默认30_000ms</summary>
+        public Int32 PollNameServerInterval { get; set; } = 30_000;
+
+        /// <summary>Broker心跳间隔。默认30_000ms</summary>
+        public Int32 HeartbeatBrokerInterval { get; set; } = 30_000;
+
+        /// <summary>持久化消费偏移间隔。默认5_000ms</summary>
+        public Int32 PersistConsumerOffsetInterval { get; set; } = 5_000;
+
+        public String UnitName { get; set; }
+
+        public Boolean UnitMode { get; set; }
+
+        public Boolean VipChannelEnabled { get; set; } = true;
+        #endregion
+
+        #region 扩展属性
+        public String ClientId
+        {
+            get
+            {
+                var str = $"{ClientIP}@{InstanceName}";
+                if (!UnitName.IsNullOrEmpty()) str += "@" + UnitName;
+                return str;
+            }
+        }
         #endregion
 
         public abstract void CreateTopic(String key, String newTopic, Int32 queueNum, Int32 topicSysFlag = 0);

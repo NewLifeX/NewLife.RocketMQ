@@ -1,8 +1,9 @@
 ﻿using System;
 
-namespace NewLife.RocketMQ.Client
+namespace NewLife.RocketMQ.Protocol
 {
-    public class MessageExt
+    /// <summary>消息扩展</summary>
+    public class MessageExt : Message
     {
         #region 属性
         public Int32 QueueId { get; set; }

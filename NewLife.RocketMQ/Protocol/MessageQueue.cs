@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NewLife.RocketMQ.Client
+namespace NewLife.RocketMQ.Protocol
 {
     /// <summary>消息队列</summary>
     public class MessageQueue

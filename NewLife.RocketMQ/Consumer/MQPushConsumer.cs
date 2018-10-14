@@ -1,5 +1,6 @@
 ﻿using System;
 using NewLife.RocketMQ.Client;
+using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ.Consumer
 {

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace NewLife.RocketMQ.Client
+namespace NewLife.RocketMQ.Protocol
 {
     public class QueryResult
     {
