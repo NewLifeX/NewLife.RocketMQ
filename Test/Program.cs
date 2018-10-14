@@ -1,6 +1,5 @@
 ﻿using System;
 using NewLife.Log;
-using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Producer;
 using NewLife.RocketMQ.Protocol;
 
@@ -22,23 +21,31 @@ namespace Test
         {
             var mq = new MQProducer
             {
-                Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
-                AccessKey = "LTAINsp1qKfO61c5",
-                SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
+                //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
+                //AccessKey = "LTAINsp1qKfO61c5",
+                //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
                 ProducerGroup = "PID_Stone_001",
-                NameServerAddress = "192.168.1.15:9876",
+                NameServerAddress = "127.0.0.1:9876",
+                InstanceName = "Producer",
             };
 
             mq.Start();
 
-            var msg = new Message
+            for (var i = 0; i < 10; i++)
             {
-                Topic = "nx_test",
-                Body = "学无先后达者为师".GetBytes(),
-            };
+                var str = "学无先后达者为师" + i;
+                var msg = new Message
+                {
+                    Topic = "nx_test",
+                    Body = str.GetBytes(),
+                    Tags = "TagA",
+                    Keys = "OrderID001",
+                };
 
-            mq.Send(msg);
+                mq.Send(msg);
+            }
+
             mq.Dispose();
         }
     }

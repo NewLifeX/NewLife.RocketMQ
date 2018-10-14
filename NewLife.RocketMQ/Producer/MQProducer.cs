@@ -24,12 +24,34 @@ namespace NewLife.RocketMQ.Producer
         public Boolean RetryAnotherBrokerWhenNotStoreOK { get; set; }
 
         public Int32 MaxMessageSize { get; set; } = 4 * 1024 * 1024;
+
+        private ServiceState State { get; set; } = ServiceState.CreateJust;
+
+        private MQClient _Client;
         #endregion
 
         #region 基础方法
         public override void Start()
         {
             base.Start();
+
+            switch (State)
+            {
+                case ServiceState.CreateJust:
+                    State = ServiceState.CreateJust;
+
+                    var client = new MQClient(ClientId, this);
+                    client.Start();
+
+                    _Client = client;
+
+                    State = ServiceState.Running;
+                    break;
+                case ServiceState.Running:
+                case ServiceState.ShutdownAlready:
+                case ServiceState.StartFailed:
+                    throw new Exception("已启动！");
+            }
         }
         #endregion
 
