@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using NewLife.Net;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
@@ -61,6 +62,23 @@ namespace NewLife.RocketMQ
         public Command Send(Command cmd)
         {
             if (cmd.Header.Opaque == 0) cmd.Header.Opaque = g_id++;
+
+            //// 签名。阿里云ONS需要反射消息具体字段，把值转字符串后拼起来，再加上body后，取HmacSHA1
+            //var cfg = Config;
+            //if (!cfg.AccessKey.IsNullOrEmpty())
+            //{
+            //    var sha = new HMACSHA1(cfg.SecretKey.GetBytes());
+
+            //    var ms = new MemoryStream();
+            //    cmd.Write(ms);
+            //    if (cmd.Body != null && cmd.Body.Length > 0) ms.Write(cmd.Body);
+
+            //    var sign = sha.ComputeHash(ms.ToArray());
+
+            //    var dic = cmd.Header.ExtFields;
+
+            //    dic["Signature"] = sign.ToBase64();
+            //}
 
             cmd.Write(_Stream);
             //var ms = new MemoryStream();
