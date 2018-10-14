@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.Http;
 using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ.Client
@@ -51,6 +52,20 @@ namespace NewLife.RocketMQ.Client
                 var str = $"{ClientIP}@{InstanceName}";
                 if (!UnitName.IsNullOrEmpty()) str += "@" + UnitName;
                 return str;
+            }
+        }
+        #endregion
+
+        #region 基础方法
+        public virtual void Start()
+        {
+            // 获取阿里云ONS的名称服务器地址
+            var addr = Server;
+            if (!addr.IsNullOrEmpty() && addr.StartsWithIgnoreCase("http"))
+            {
+                var http = new HttpClient();
+                var rs = http.GetStringAsync(addr).Result;
+                if (!rs.IsNullOrWhiteSpace()) NameServerAddress = rs.Trim();
             }
         }
         #endregion

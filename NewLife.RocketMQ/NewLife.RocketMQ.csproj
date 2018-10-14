@@ -8,4 +8,10 @@
     <PackageReference Include="NewLife.Core" Version="7.3.6763.36550" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="System.Net.Http">
+      <HintPath>C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.6.1\System.Net.Http.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

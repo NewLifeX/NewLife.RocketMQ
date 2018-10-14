@@ -22,11 +22,16 @@ namespace Test
         {
             var mq = new MQProducer
             {
+                Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
+                AccessKey = "",
+                SecretKey = "",
+
                 ProducerGroup = "测试组",
                 NameServerAddress = "192.168.1.15:9876",
             };
 
             mq.Start();
+
             var msg = new Message
             {
                 Topic = "主题",

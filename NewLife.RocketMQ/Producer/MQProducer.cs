@@ -27,7 +27,10 @@ namespace NewLife.RocketMQ.Producer
         #endregion
 
         #region 基础方法
-        public virtual void Start() { }
+        public override void Start()
+        {
+            base.Start();
+        }
         #endregion
 
         #region 发送消息
