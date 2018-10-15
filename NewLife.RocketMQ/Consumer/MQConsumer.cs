@@ -32,6 +32,19 @@ namespace NewLife.RocketMQ.Consumer
 
             return pr;
         }
+
+        public Int64 QueryOffset(MessageQueue mq)
+        {
+            var bk = GetBroker(mq.BrokerName);
+            var rs = bk.Send(RequestCode.QUERY_CONSUMER_OFFSET, null, new
+            {
+                consumerGroup = Group,
+                topic = Topic,
+                queueId = mq.QueueId,
+            });
+
+            return 0;
+        }
         #endregion
     }
 }

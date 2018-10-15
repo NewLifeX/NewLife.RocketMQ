@@ -33,11 +33,11 @@ namespace NewLife.RocketMQ.Protocol
         #endregion
 
         #region 方法
-        public void Read(IDictionary<String, Object> dic)
+        public void Read(IDictionary<String, String> dic)
         {
-            if (dic.TryGetValue(nameof(MinOffset), out var obj)) MinOffset = obj.ToLong();
-            if (dic.TryGetValue(nameof(MaxOffset), out obj)) MaxOffset = obj.ToLong();
-            if (dic.TryGetValue(nameof(NextBeginOffset), out obj)) NextBeginOffset = obj.ToLong();
+            if (dic.TryGetValue(nameof(MinOffset), out var str)) MinOffset = str.ToLong();
+            if (dic.TryGetValue(nameof(MaxOffset), out str)) MaxOffset = str.ToLong();
+            if (dic.TryGetValue(nameof(NextBeginOffset), out str)) NextBeginOffset = str.ToLong();
         }
         #endregion
     }

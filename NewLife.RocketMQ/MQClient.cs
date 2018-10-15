@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
-using System.Security.Cryptography;
 using NewLife.Net;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
@@ -118,7 +117,12 @@ namespace NewLife.RocketMQ
 
             if (extFields != null)
             {
-                header.ExtFields.Merge(extFields);// = extFields.ToDictionary().ToDictionary(e => e.Key, e => e.Value + "");
+                //header.ExtFields.Merge(extFields);// = extFields.ToDictionary().ToDictionary(e => e.Key, e => e.Value + "");
+                var dic = header.ExtFields;
+                foreach (var item in extFields.ToDictionary())
+                {
+                    dic[item.Key] = item.Value + "";
+                }
             }
 
             OnBuild(header);

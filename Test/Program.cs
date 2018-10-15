@@ -66,10 +66,12 @@ namespace Test
             };
 
             consumer.Start();
+            var mq = new MessageQueue { QueueId = 1 };
 
-            foreach (var mq in consumer.Queues)
+            //foreach (var mq in consumer.Queues)
             {
-                var pr = consumer.Pull(mq, 0, 32);
+                var offset = consumer.QueryOffset(mq);
+                var pr = consumer.Pull(mq, offset, 32);
 
                 Console.WriteLine(pr);
             }

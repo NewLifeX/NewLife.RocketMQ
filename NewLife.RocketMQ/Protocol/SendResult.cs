@@ -32,12 +32,12 @@ namespace NewLife.RocketMQ.Protocol
         #endregion
 
         #region 方法
-        public void Read(IDictionary<String, Object> dic)
+        public void Read(IDictionary<String, String> dic)
         {
-            if (dic.TryGetValue(nameof(MsgId), out var obj)) MsgId = obj + "";
-            if (dic.TryGetValue(nameof(QueueOffset), out obj)) QueueOffset = obj.ToLong();
-            if (dic.TryGetValue(nameof(RegionId), out obj)) RegionId = obj + "";
-            if (dic.TryGetValue("MSG_REGION", out obj)) RegionId = obj + "";
+            if (dic.TryGetValue(nameof(MsgId), out var str)) MsgId = str;
+            if (dic.TryGetValue(nameof(QueueOffset), out str)) QueueOffset = str.ToLong();
+            if (dic.TryGetValue(nameof(RegionId), out str)) RegionId = str;
+            if (dic.TryGetValue("MSG_REGION", out str)) RegionId = str;
         }
         #endregion
     }
