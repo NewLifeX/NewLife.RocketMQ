@@ -1,5 +1,6 @@
 ﻿using System;
 using NewLife.Log;
+using NewLife.RocketMQ.Consumer;
 using NewLife.RocketMQ.Producer;
 using NewLife.RocketMQ.Protocol;
 
@@ -11,7 +12,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test1();
+            Test2();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -21,14 +22,13 @@ namespace Test
         {
             var mq = new MQProducer
             {
-                Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
-                AccessKey = "LTAINsp1qKfO61c5",
-                SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
+                //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
+                //AccessKey = "LTAINsp1qKfO61c5",
+                //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                CreateTopicKey = "nx_test",
-                ProducerGroup = "PID_Stone_001",
-                //NameServerAddress = "127.0.0.1:9876",
-                //NameServerAddress = "sh02.newlifex.com:9876",
+                //CreateTopicKey = "nx_test",
+                Group = "PID_Stone_001",
+                NameServerAddress = "10.9.30.35:9876",
                 InstanceName = "Producer",
             };
 
@@ -49,6 +49,23 @@ namespace Test
             }
 
             mq.Dispose();
+        }
+
+        static void Test2()
+        {
+            var mq = new MQPullConsumer
+            {
+                //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
+                //AccessKey = "LTAINsp1qKfO61c5",
+                //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
+
+                Topic = "defaulttopic1",
+                //ProducerGroup = "PID_Stone_001",
+                NameServerAddress = "10.9.30.35:9876",
+                InstanceName = "Consumer",
+            };
+
+            mq.Start();
         }
     }
 }

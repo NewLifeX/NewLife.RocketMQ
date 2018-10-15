@@ -11,9 +11,14 @@ namespace NewLife.RocketMQ
     public class NameClient : MQClient
     {
         #region 属性
+        /// <summary>编号</summary>
         public String Id { get; }
 
+        /// <summary>Broker集合</summary>
         public IDictionary<String, String> Brokers { get; } = new Dictionary<String, String>();
+
+        /// <summary>队列集合</summary>
+        public IList<MessageQueue> Queues { get; } = new List<MessageQueue>();
         #endregion
 
         #region 构造
@@ -48,11 +53,42 @@ namespace NewLife.RocketMQ
             // 解析broker集群地址
             if (rs.Data["brokerDatas"] is IList<Object> bs)
             {
+                Brokers.Clear();
+
                 foreach (IDictionary<String, Object> item in bs)
                 {
                     var name = item["brokerName"] + "";
                     if (item["brokerAddrs"] is IDictionary<String, Object> addrs)
                         Brokers[name] = addrs.Join(";", e => e.Value);
+                }
+            }
+            // 解析队列集合
+            if (rs.Data["queueDatas"] is IList<Object> bs2)
+            {
+                Queues.Clear();
+
+                foreach (IDictionary<String, Object> item in bs2)
+                {
+                    var name = item["brokerName"] + "";
+                    var perm = item["perm"].ToInt();
+                    var readQueueNums = item["readQueueNums"].ToInt();
+                    var writeQueueNums = item["writeQueueNums"].ToInt();
+                    var topicSynFlag = item["topicSynFlag"].ToInt();
+
+                    if ((perm & 4) == 4)
+                    {
+                        for (var i = 0; i < readQueueNums; i++)
+                        {
+                            var mq = new MessageQueue
+                            {
+                                Topic = topic,
+                                BrokerName = name,
+                                QueueId = i,
+                            };
+
+                            Queues.Add(mq);
+                        }
+                    }
                 }
             }
 

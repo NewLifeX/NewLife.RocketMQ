@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq;
 using System.Net.Http;
+using NewLife.Log;
 using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ.Client
@@ -9,6 +11,12 @@ namespace NewLife.RocketMQ.Client
         #region 属性
         /// <summary>名称服务器地址</summary>
         public String NameServerAddress { get; set; }
+
+        /// <summary>消费组</summary>
+        public String Group { get; set; } = "DEFAULT_PRODUCER";
+
+        /// <summary>主题</summary>
+        public String Topic { get; set; } = "TBW102";
 
         /// <summary>本地IP地址</summary>
         public String ClientIP { get; set; } = NetHelper.MyIP() + "";
@@ -36,6 +44,10 @@ namespace NewLife.RocketMQ.Client
         public Boolean UnitMode { get; set; }
 
         public Boolean VipChannelEnabled { get; set; } = true;
+
+        private ServiceState State { get; set; } = ServiceState.CreateJust;
+
+        private NameClient _Client;
         #endregion
 
         #region 阿里云属性
@@ -75,7 +87,54 @@ namespace NewLife.RocketMQ.Client
                 var rs = http.GetStringAsync(addr).Result;
                 if (!rs.IsNullOrWhiteSpace()) NameServerAddress = rs.Trim();
             }
+
+            switch (State)
+            {
+                case ServiceState.CreateJust:
+                    State = ServiceState.CreateJust;
+
+                    var client = new NameClient(ClientId, this);
+                    client.Start();
+
+                    var rs = client.GetRouteInfo(Topic);
+                    foreach (var item in rs)
+                    {
+                        XTrace.WriteLine("发现Broker[{0}]: {1}", item.Key, item.Value);
+                    }
+
+                    _Client = client;
+
+                    State = ServiceState.Running;
+                    break;
+                case ServiceState.Running:
+                case ServiceState.ShutdownAlready:
+                case ServiceState.StartFailed:
+                    throw new Exception("已启动！");
+            }
         }
+        #endregion
+
+        #region 收发信息
+        private BrokerClient _Broker;
+        protected BrokerClient GetBroker()
+        {
+            if (_Broker != null) return _Broker;
+
+            var bk = _Client.Brokers?.FirstOrDefault();
+            if (bk == null) return null;
+
+            var addr = bk.Value.Value?.Split(";").FirstOrDefault();
+            if (addr.IsNullOrEmpty()) return null;
+
+            var client = new BrokerClient(addr)
+            {
+                Config = this
+            };
+            client.Start();
+
+            return _Broker = client;
+        }
+
         #endregion
 
         public abstract void CreateTopic(String key, String newTopic, Int32 queueNum, Int32 topicSysFlag = 0);
