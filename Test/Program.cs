@@ -30,7 +30,7 @@ namespace Test
                 Topic = "defaulttopic1",
                 Group = "PID_Stone_001",
                 NameServerAddress = "10.9.30.35:9876",
-                InstanceName = "Producer",
+                //InstanceName = "Producer",
             };
 
             mq.Start();
@@ -62,9 +62,9 @@ namespace Test
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
                 Topic = "defaulttopic1",
-                //ProducerGroup = "PID_Stone_001",
+                Group = "PID_Stone_001",
                 NameServerAddress = "10.9.30.35:9876",
-                InstanceName = "Consumer",
+                //InstanceName = "Consumer",
             };
 
             mq.Start();

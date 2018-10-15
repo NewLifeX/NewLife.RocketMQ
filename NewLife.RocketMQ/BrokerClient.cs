@@ -43,11 +43,13 @@ namespace NewLife.RocketMQ
 
         private void OnPing(Object state)
         {
+            var cfg = Config;
+
             Send(RequestCode.HEART_BEAT, new
             {
-                ClientId = "",
+                ClientId = Id,
                 ProducerDataSet = new[] {
-                   new{ GroupName="DEFAULT_PRODUCER" },
+                   new{ GroupName=cfg.Group },
                 },
             });
         }

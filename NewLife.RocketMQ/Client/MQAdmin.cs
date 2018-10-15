@@ -142,6 +142,7 @@ namespace NewLife.RocketMQ.Client
             var client = new BrokerClient(addr)
             {
                 Config = this,
+                Id = ClientId,
             };
             client.Start();
 

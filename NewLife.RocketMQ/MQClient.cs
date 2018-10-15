@@ -13,6 +13,9 @@ namespace NewLife.RocketMQ
     public abstract class MQClient : DisposeBase
     {
         #region 属性
+        /// <summary>编号</summary>
+        public String Id { get; set; }
+
         /// <summary>超时。默认3000ms</summary>
         public Int32 Timeout { get; set; } = 3_000;
 

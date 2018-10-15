@@ -11,9 +11,6 @@ namespace NewLife.RocketMQ
     public class NameClient : MQClient
     {
         #region 属性
-        /// <summary>编号</summary>
-        public String Id { get; }
-
         /// <summary>Broker集合</summary>
         public IDictionary<String, String> Brokers { get; } = new Dictionary<String, String>();
 
