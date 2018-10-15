@@ -47,7 +47,7 @@ namespace Test
                 };
 
                 var sr = mq.Send(msg);
-                Console.WriteLine("{0} {1}", sr.MsgId, sr.QueueOffset);
+                Console.WriteLine("{0} {1} {2}", sr.MsgId, sr.Queue.QueueId, sr.QueueOffset);
             }
 
             mq.Dispose();

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
@@ -47,6 +48,9 @@ namespace NewLife.RocketMQ.Client
         public Boolean VipChannelEnabled { get; set; } = true;
 
         private ServiceState State { get; set; } = ServiceState.CreateJust;
+
+        /// <summary>队列集合</summary>
+        public IList<MessageQueue> Queues { get; private set; }
 
         private NameClient _Client;
         #endregion
@@ -111,6 +115,7 @@ namespace NewLife.RocketMQ.Client
                     }
 
                     _Client = client;
+                    Queues = client.Queues;
 
                     State = ServiceState.Running;
                     break;
@@ -136,13 +141,12 @@ namespace NewLife.RocketMQ.Client
 
             var client = new BrokerClient(addr)
             {
-                Config = this
+                Config = this,
             };
             client.Start();
 
             return _Broker = client;
         }
-
         #endregion
 
         public abstract void CreateTopic(String key, String newTopic, Int32 queueNum, Int32 topicSysFlag = 0);

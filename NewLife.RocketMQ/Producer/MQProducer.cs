@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Linq;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 
@@ -63,16 +65,42 @@ namespace NewLife.RocketMQ.Producer
                 ReconsumeTimes = 0,
                 UnitMode = UnitMode,
             };
+
+            var mq = SelectQueue(smrh.Topic);
+            if (mq != null) smrh.QueueId = mq.QueueId;
+
             var dic = smrh.GetProperties();
 
             var bk = GetBroker();
 
             var rs = bk.Send(RequestCode.SEND_MESSAGE_V2, msg.Body, dic);
 
-            var sr = new SendResult { Status = SendStatus.SendOK };
+            var sr = new SendResult
+            {
+                Status = SendStatus.SendOK,
+                Queue = mq
+            };
             sr.Read(rs.Header.ExtFields);
 
             return sr;
+        }
+
+        private readonly ConcurrentDictionary<String, Int32> _qs = new ConcurrentDictionary<String, Int32>();
+        /// <summary>根据topic选择队列</summary>
+        /// <param name="topic"></param>
+        /// <returns></returns>
+        private MessageQueue SelectQueue(String topic)
+        {
+            var list = Queues.Where(e => e.Topic.EqualIgnoreCase(topic)).ToList();
+            if (list.Count == 0) return null;
+
+            // 轮询使用
+            var idx = _qs.GetOrAdd(topic, -1);
+            var old = idx++;
+            if (idx >= list.Count) idx = 0;
+            _qs.TryUpdate(topic, idx, old);
+
+            return list[idx];
         }
         #endregion
 
