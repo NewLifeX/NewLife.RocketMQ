@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
 using System.Xml.Serialization;
+using NewLife.Reflection;
 
 namespace NewLife.RocketMQ.Protocol
 {
@@ -39,6 +42,27 @@ namespace NewLife.RocketMQ.Protocol
 
         [XmlElement("k")]
         public Boolean UnitMode { get; set; }
+        #endregion
+
+        #region 方法
+        public IDictionary<String, Object> GetProperties()
+        {
+            var dic = new Dictionary<String, Object>();
+
+            foreach (var pi in GetType().GetProperties())
+            {
+                if (pi.GetIndexParameters().Length > 0) continue;
+                if (pi.GetCustomAttribute<XmlIgnoreAttribute>() != null) continue;
+
+                var name = pi.Name;
+                var att = pi.GetCustomAttribute<XmlElementAttribute>();
+                if (att != null && !att.ElementName.IsNullOrEmpty()) name = att.ElementName;
+
+                dic[name] = this.GetValue(pi);
+            }
+
+            return dic;
+        }
         #endregion
     }
 }

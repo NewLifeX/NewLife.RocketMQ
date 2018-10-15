@@ -1,4 +1,5 @@
 ﻿using System;
+using NewLife.Collections;
 
 namespace NewLife.RocketMQ.Protocol
 {
@@ -23,9 +24,26 @@ namespace NewLife.RocketMQ.Protocol
 
         /// <summary>等待存储消息</summary>
         public Boolean WaitStoreMsgOK { get; set; } = true;
+
+        /// <summary>延迟时间等级</summary>
+        public Int32 DelayTimeLevel { get; set; }
         #endregion
 
         #region 构造
+        #endregion
+
+        #region 方法
+        public String GetProperties()
+        {
+            var sb = Pool.StringBuilder.Get();
+
+            if (!Tags.IsNullOrEmpty()) sb.AppendFormat("{0}\u0001{1}\u0002", nameof(Tags), Tags);
+            if (!Keys.IsNullOrEmpty()) sb.AppendFormat("{0}\u0001{1}\u0002", nameof(Keys), Keys);
+            if (DelayTimeLevel > 0) sb.AppendFormat("{0}\u0001{1}\u0002", "DELAY", DelayTimeLevel);
+            sb.AppendFormat("{0}\u0001{1}\u0002", "WAIT", WaitStoreMsgOK);
+
+            return sb.Put(true);
+        }
         #endregion
     }
 }

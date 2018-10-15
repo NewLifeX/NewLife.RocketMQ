@@ -27,12 +27,43 @@ namespace NewLife.RocketMQ.Producer
         //{
         //    base.Start();
         //}
+
+        public virtual void UnRegisterClient(String group)
+        {
+            var bk = GetBroker();
+
+            if (group.IsNullOrEmpty()) group = "CLIENT_INNER_PRODUCER";
+
+            var rs = bk.Send(RequestCode.UNREGISTER_CLIENT, new
+            {
+                ClientId,
+                ProducerGroup = group,
+            });
+        }
         #endregion
 
         #region 发送消息
+        private static readonly DateTime _dt1970 = new DateTime(1970, 1, 1);
         public virtual SendResult Send(Message msg, Int32 timeout = -1)
         {
+            var ts = DateTime.Now - _dt1970;
+            var smrh = new SendMessageRequestHeader
+            {
+                ProducerGroup = Group,
+                Topic = msg.Topic.IsNullOrEmpty() ? Topic : msg.Topic,
+                QueueId = 0,
+                SysFlag = 0,
+                BornTimestamp = (Int64)ts.TotalMilliseconds,
+                Flag = msg.Flag,
+                Properties = msg.GetProperties(),
+                ReconsumeTimes = 0,
+                UnitMode = UnitMode,
+            };
+            var dic = smrh.GetProperties();
+
             var bk = GetBroker();
+
+            var rs = bk.Send(RequestCode.SEND_MESSAGE_V2, msg.Body, dic);
 
             return null;
         }

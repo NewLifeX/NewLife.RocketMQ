@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using NewLife.Log;
@@ -73,6 +74,13 @@ namespace NewLife.RocketMQ.Client
                 if (!UnitName.IsNullOrEmpty()) str += "@" + UnitName;
                 return str;
             }
+        }
+        #endregion
+
+        #region 扩展
+        public MQAdmin()
+        {
+            InstanceName = Process.GetCurrentProcess().Id + "";
         }
         #endregion
 

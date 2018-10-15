@@ -12,7 +12,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test2();
+            Test1();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -27,6 +27,7 @@ namespace Test
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
                 //CreateTopicKey = "nx_test",
+                Topic = "defaulttopic1",
                 Group = "PID_Stone_001",
                 NameServerAddress = "10.9.30.35:9876",
                 InstanceName = "Producer",
@@ -39,7 +40,7 @@ namespace Test
                 var str = "学无先后达者为师" + i;
                 var msg = new Message
                 {
-                    Topic = "nx_test",
+                    //Topic = "nx_test",
                     Body = str.GetBytes(),
                     Tags = "TagA",
                     Keys = "OrderID001",
