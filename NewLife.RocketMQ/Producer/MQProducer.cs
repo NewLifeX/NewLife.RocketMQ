@@ -44,6 +44,10 @@ namespace NewLife.RocketMQ.Producer
 
         #region 发送消息
         private static readonly DateTime _dt1970 = new DateTime(1970, 1, 1);
+        /// <summary>发送消息</summary>
+        /// <param name="msg"></param>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
         public virtual SendResult Send(Message msg, Int32 timeout = -1)
         {
             var ts = DateTime.Now - _dt1970;
@@ -65,7 +69,10 @@ namespace NewLife.RocketMQ.Producer
 
             var rs = bk.Send(RequestCode.SEND_MESSAGE_V2, msg.Body, dic);
 
-            return null;
+            var sr = new SendResult { Status = SendStatus.SendOK };
+            sr.Read(rs.Header.ExtFields);
+
+            return sr;
         }
         #endregion
 

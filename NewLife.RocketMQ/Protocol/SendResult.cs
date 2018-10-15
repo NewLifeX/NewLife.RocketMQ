@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Xml.Serialization;
 
 namespace NewLife.RocketMQ.Protocol
 {
@@ -19,6 +21,16 @@ namespace NewLife.RocketMQ.Protocol
         public String OffsetMsgId { get; set; }
 
         public String RegionId { get; set; }
+        #endregion
+
+        #region 方法
+        public void Read(IDictionary<String, Object> dic)
+        {
+            if (dic.TryGetValue(nameof(MsgId), out var obj)) MsgId = obj + "";
+            if (dic.TryGetValue(nameof(QueueOffset), out obj)) QueueOffset = obj.ToLong();
+            if (dic.TryGetValue(nameof(RegionId), out obj)) RegionId = obj + "";
+            if (dic.TryGetValue("MSG_REGION", out obj)) RegionId = obj + "";
+        }
         #endregion
     }
 }

@@ -46,7 +46,8 @@ namespace Test
                     Keys = "OrderID001",
                 };
 
-                mq.Send(msg);
+                var sr = mq.Send(msg);
+                Console.WriteLine("{0} {1}", sr.MsgId, sr.QueueOffset);
             }
 
             mq.Dispose();
