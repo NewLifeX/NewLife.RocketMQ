@@ -129,11 +129,11 @@ namespace NewLife.RocketMQ.Client
 
         #region 收发信息
         private BrokerClient _Broker;
-        protected BrokerClient GetBroker()
+        protected BrokerClient GetBroker(String name = null)
         {
             if (_Broker != null) return _Broker;
 
-            var bk = _Client.Brokers?.FirstOrDefault();
+            var bk = _Client.Brokers?.FirstOrDefault(e => name == null || e.Key == name);
             if (bk == null) return null;
 
             var addr = bk.Value.Value?.Split(";").FirstOrDefault();

@@ -3,6 +3,15 @@ using System.Collections.Generic;
 
 namespace NewLife.RocketMQ.Protocol
 {
+    /// <summary>发送状态</summary>
+    public enum SendStatus
+    {
+        SendOK = 0,
+        FlushDiskTimeout = 1,
+        FlushSlaveTimeout = 2,
+        SlaveNotAvailable = 3,
+    }
+
     /// <summary>发送结果</summary>
     public class SendResult
     {
