@@ -15,8 +15,8 @@ namespace NewLife.RocketMQ.Protocol
         /// <summary>主体</summary>
         public Byte[] Body { get; set; }
 
-        /// <summary>响应数据。自动解码Json</summary>
-        public IDictionary<String, Object> Data { get; private set; }
+        ///// <summary>响应数据。自动解码Json</summary>
+        //public IDictionary<String, Object> Data { get; private set; }
         #endregion
 
         #region 读写
@@ -39,12 +39,17 @@ namespace NewLife.RocketMQ.Protocol
             {
                 Body = bn.ReadBytes(len - 4 - hlen);
 
-                // 自动解码Json
-                if (Header.SerializeTypeCurrentRPC.EqualIgnoreCase("json"))
-                    Data = new JsonParser(Body.ToStr()).Decode() as IDictionary<String, Object>;
+                //// 自动解码Json
+                //if (Header.SerializeTypeCurrentRPC.EqualIgnoreCase("json"))
+                //    Data = new JsonParser(Body.ToStr()).Decode() as IDictionary<String, Object>;
             }
 
             return true;
+        }
+
+        public IDictionary<String, Object> ReadBodyAsJson()
+        {
+            return new JsonParser(Body.ToStr()).Decode() as IDictionary<String, Object>;
         }
 
         public Boolean Write(Stream stream, Object context = null)

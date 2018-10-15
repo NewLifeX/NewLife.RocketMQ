@@ -19,7 +19,7 @@ namespace NewLife.RocketMQ.Protocol
 
         public String Subscription { get; set; } = "*";
 
-        public Int32 SuspendTimeoutMillIs { get; set; } = 20_000;
+        public Int32 SuspendTimeoutMillis { get; set; } = 20_000;
 
         public Int32 SubVersion { get; set; }
 

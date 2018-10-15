@@ -46,9 +46,10 @@ namespace NewLife.RocketMQ
         {
             // 发送命令
             var rs = Send(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
+            var js = rs.ReadBodyAsJson();
 
             // 解析broker集群地址
-            if (rs.Data["brokerDatas"] is IList<Object> bs)
+            if (js["brokerDatas"] is IList<Object> bs)
             {
                 Brokers.Clear();
 
@@ -60,7 +61,7 @@ namespace NewLife.RocketMQ
                 }
             }
             // 解析队列集合
-            if (rs.Data["queueDatas"] is IList<Object> bs2)
+            if (js["queueDatas"] is IList<Object> bs2)
             {
                 Queues.Clear();
 

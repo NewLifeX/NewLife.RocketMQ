@@ -43,7 +43,7 @@ namespace NewLife.RocketMQ.Consumer
                 queueId = mq.QueueId,
             });
 
-            return 0;
+            return rs.Header.ExtFields["offset"].ToLong();
         }
         #endregion
     }
