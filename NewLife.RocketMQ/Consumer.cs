@@ -28,7 +28,7 @@ namespace NewLife.RocketMQ
             var dic = header.GetProperties();
             var bk = GetBroker(mq.BrokerName);
 
-            var rs = bk.Send(RequestCode.PULL_MESSAGE, null, dic);
+            var rs = bk.Invoke(RequestCode.PULL_MESSAGE, null, dic);
 
             var pr = new PullResult
             {
@@ -47,7 +47,7 @@ namespace NewLife.RocketMQ
         public Int64 QueryOffset(MessageQueue mq)
         {
             var bk = GetBroker(mq.BrokerName);
-            var rs = bk.Send(RequestCode.QUERY_CONSUMER_OFFSET, null, new
+            var rs = bk.Invoke(RequestCode.QUERY_CONSUMER_OFFSET, null, new
             {
                 consumerGroup = Group,
                 topic = Topic,

@@ -8,7 +8,7 @@ using NewLife.RocketMQ.Protocol;
 namespace NewLife.RocketMQ
 {
     /// <summary>连接名称服务器的客户端</summary>
-    public class NameClient : MQClient
+    public class NameClient : ClusterClient
     {
         #region 属性
         /// <summary>Broker集合</summary>
@@ -27,14 +27,15 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 方法
-        /// <summary>获取服务端地址</summary>
-        /// <returns></returns>
-        protected override NetUri[] GetServers()
+        /// <summary>启动</summary>
+        public override void Start()
         {
             var cfg = Config;
             var ss = cfg.NameServerAddress.Split(";");
 
-            return ss.Select(e => new NetUri(e)).ToArray();
+            Servers = ss.Select(e => new NetUri(e)).ToArray();
+
+            base.Start();
         }
         #endregion
 
@@ -45,7 +46,7 @@ namespace NewLife.RocketMQ
         public IList<BrokerInfo> GetRouteInfo(String topic)
         {
             // 发送命令
-            var rs = Send(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
+            var rs = Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
             var js = rs.ReadBodyAsJson();
 
             var list = new List<BrokerInfo>();

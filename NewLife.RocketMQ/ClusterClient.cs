@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net.Sockets;
+using System.Threading;
+using NewLife.Collections;
 using NewLife.Log;
 using NewLife.Net;
 using NewLife.RocketMQ.Client;
@@ -10,8 +11,11 @@ using NewLife.Serialization;
 
 namespace NewLife.RocketMQ
 {
-    /// <summary>客户端</summary>
-    public abstract class MQClient : DisposeBase
+    /// <summary>集群客户端</summary>
+    /// <remarks>
+    /// 维护到一个集群的客户端连接，内部采用负载均衡调度算法。
+    /// </remarks>
+    public abstract class ClusterClient : DisposeBase
     {
         #region 属性
         /// <summary>编号</summary>
@@ -20,21 +24,30 @@ namespace NewLife.RocketMQ
         /// <summary>超时。默认3000ms</summary>
         public Int32 Timeout { get; set; } = 3_000;
 
+        /// <summary>服务器地址集合</summary>
+        public NetUri[] Servers { get; set; }
+
         /// <summary>配置</summary>
         public MqBase Config { get; set; }
 
-        private TcpClient _Client;
-        private Stream _Stream;
+        //private TcpClient _Client;
+        //private Stream _Stream;
         #endregion
 
         #region 构造
+        /// <summary>实例化</summary>
+        public ClusterClient()
+        {
+            _Pool = new MyPool { Client = this };
+        }
+
         /// <summary>销毁</summary>
         /// <param name="disposing"></param>
         protected override void OnDispose(Boolean disposing)
         {
             base.OnDispose(disposing);
 
-            _Client.TryDispose();
+            _Pool.TryDispose();
         }
         #endregion
 
@@ -42,50 +55,14 @@ namespace NewLife.RocketMQ
         /// <summary>开始</summary>
         public virtual void Start()
         {
-            var uris = GetServers();
-
-            Exception last = null;
-            _Client = null;
-            foreach (var uri in uris)
-            {
-                WriteLog("正在连接[{0}:{1}]", uri.Host, uri.Port);
-
-                try
-                {
-                    var client = new TcpClient();
-
-                    var timeout = Timeout;
-
-                    // 采用异步来解决连接超时设置问题
-                    var ar = client.BeginConnect(uri.Address, uri.Port, null, null);
-                    if (!ar.AsyncWaitHandle.WaitOne(timeout, false))
-                    {
-                        client.Close();
-                        throw new TimeoutException($"连接[{uri}][{timeout}ms]超时！");
-                    }
-
-                    _Client = client;
-                }
-                catch (Exception ex)
-                {
-                    last = ex;
-                }
-            }
-
-            if (_Client == null) throw last;
-
-            _Stream = new BufferedStream(_Client.GetStream());
+            WriteLog("[{0}]集群地址：{1}", Id, Servers.Join(";", e => $"{e.Host}:{e.Port}"));
         }
-
-        /// <summary>获取服务器地址</summary>
-        /// <returns></returns>
-        protected abstract NetUri[] GetServers();
 
         private Int32 g_id;
         /// <summary>发送命令</summary>
         /// <param name="cmd"></param>
         /// <returns></returns>
-        public Command Send(Command cmd)
+        protected virtual Command Send(Command cmd)
         {
             if (cmd.Header.Opaque == 0) cmd.Header.Opaque = g_id++;
 
@@ -106,15 +83,30 @@ namespace NewLife.RocketMQ
             //    dic["Signature"] = sign.ToBase64();
             //}
 
-            cmd.Write(_Stream);
-            //var ms = new MemoryStream();
-            //cmd.Write(ms);
-            //XTrace.WriteLine(ms.ToArray().ToHex());
+            // 轮询调用
+            Exception last = null;
+            for (var i = 0; i < Servers.Length; i++)
+            {
+                var client = _Pool.Get();
+                try
+                {
+                    var ns = client.GetStream();
 
-            var rs = new Command();
-            rs.Read(_Stream);
+                    cmd.Write(ns);
 
-            return rs;
+                    var rs = new Command();
+                    rs.Read(ns);
+
+                    return rs;
+                }
+                catch (Exception ex) { last = ex; }
+                finally
+                {
+                    _Pool.Put(client);
+                }
+            }
+
+            throw last;
         }
 
         /// <summary>发送指定类型的命令</summary>
@@ -122,7 +114,7 @@ namespace NewLife.RocketMQ
         /// <param name="body"></param>
         /// <param name="extFields"></param>
         /// <returns></returns>
-        internal Command Send(RequestCode request, Object body, Object extFields = null)
+        internal virtual Command Invoke(RequestCode request, Object body, Object extFields = null)
         {
             var header = new Header
             {
@@ -178,6 +170,43 @@ namespace NewLife.RocketMQ
 
                 if (!cfg.OnsChannel.IsNullOrEmpty()) dic["OnsChannel"] = cfg.OnsChannel;
             }
+        }
+        #endregion
+
+        #region 连接池
+        private readonly MyPool _Pool;
+
+        class MyPool : ObjectPool<TcpClient>
+        {
+            public ClusterClient Client { get; set; }
+
+            protected override TcpClient OnCreate() => Client.OnCreate();
+        }
+
+        private Int32 _ServerIndex;
+        /// <summary>创建网络连接。轮询使用地址</summary>
+        /// <returns></returns>
+        protected virtual TcpClient OnCreate()
+        {
+            var idx = Interlocked.Increment(ref _ServerIndex);
+            idx = (idx - 1) % Servers.Length;
+
+            var uri = Servers[idx];
+            //WriteLog("正在连接[{0}:{1}]", uri.Host, uri.Port);
+
+            var client = new TcpClient();
+
+            var timeout = Timeout;
+
+            // 采用异步来解决连接超时设置问题
+            var ar = client.BeginConnect(uri.Address, uri.Port, null, null);
+            if (!ar.AsyncWaitHandle.WaitOne(timeout, false))
+            {
+                client.Close();
+                throw new TimeoutException($"连接[{uri}][{timeout}ms]超时！");
+            }
+
+            return client;
         }
         #endregion
 

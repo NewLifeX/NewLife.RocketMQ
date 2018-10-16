@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
@@ -28,6 +29,8 @@ namespace Test
                 Topic = "nx_test",
                 Group = "test",
                 NameServerAddress = "10.9.30.35:9876",
+
+                Log = XTrace.Log,
             };
 
             mq.Start();
@@ -61,10 +64,13 @@ namespace Test
                 Topic = "defaulttopic1",
                 Group = "test",
                 NameServerAddress = "10.9.30.35:9876",
+
+                Log = XTrace.Log,
             };
 
             consumer.Start();
-            var mq = new MessageQueue { QueueId = 1 };
+            var br = consumer.Brokers.FirstOrDefault();
+            var ms = new MessageQueue { BrokerName = br.Name, QueueId = 1 };
 
             //foreach (var mq in consumer.Queues)
             {

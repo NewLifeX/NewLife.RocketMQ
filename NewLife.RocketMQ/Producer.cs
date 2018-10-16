@@ -62,7 +62,7 @@ namespace NewLife.RocketMQ
 
             var bk = GetBroker(mq.BrokerName);
 
-            var rs = bk.Send(RequestCode.SEND_MESSAGE_V2, msg.Body, dic);
+            var rs = bk.Invoke(RequestCode.SEND_MESSAGE_V2, msg.Body, dic);
 
             var sr = new SendResult
             {

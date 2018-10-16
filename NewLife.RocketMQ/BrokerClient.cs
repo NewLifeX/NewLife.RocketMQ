@@ -7,32 +7,30 @@ using NewLife.Threading;
 namespace NewLife.RocketMQ
 {
     /// <summary>代理客户端</summary>
-    public class BrokerClient : MQClient
+    public class BrokerClient : ClusterClient
     {
         #region 属性
         /// <summary>服务器地址</summary>
-        public String[] Servers { get; }
+        private readonly String[] _Servers;
         #endregion
 
         #region 构造
         /// <summary>实例化代理客户端</summary>
         /// <param name="servers"></param>
-        public BrokerClient(String[] servers) => Servers = servers;
+        public BrokerClient(String[] servers) => _Servers = servers;
         #endregion
 
         #region 方法
         /// <summary>启动</summary>
         public override void Start()
         {
+            Servers = _Servers.Select(e => new NetUri(e)).ToArray();
+
             base.Start();
 
             // 心跳
             StartPing();
         }
-
-        /// <summary>获取服务器地址</summary>
-        /// <returns></returns>
-        protected override NetUri[] GetServers() => Servers.Select(e => new NetUri(e)).ToArray();
         #endregion
 
         #region 注销
@@ -43,7 +41,7 @@ namespace NewLife.RocketMQ
         {
             if (group.IsNullOrEmpty()) group = "CLIENT_INNER_PRODUCER";
 
-            var rs = Send(RequestCode.UNREGISTER_CLIENT, new
+            var rs = Invoke(RequestCode.UNREGISTER_CLIENT, new
             {
                 ClientId = id,
                 ProducerGroup = group,
@@ -69,7 +67,7 @@ namespace NewLife.RocketMQ
         {
             var cfg = Config;
 
-            Send(RequestCode.HEART_BEAT, new
+            Invoke(RequestCode.HEART_BEAT, new
             {
                 ClientId = Id,
                 ProducerDataSet = new[] {
