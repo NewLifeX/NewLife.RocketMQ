@@ -1,7 +1,7 @@
 ﻿namespace NewLife.RocketMQ.Protocol
 {
     /// <summary>响应码</summary>
-    public enum ResponseCode
+    enum ResponseCode
     {
         SUCCESS = 0,
 

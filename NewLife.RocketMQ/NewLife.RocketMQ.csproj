@@ -2,6 +2,24 @@
 
   <PropertyGroup>
     <TargetFrameworks>net45;netstandard2.0</TargetFrameworks>
+    <AssemblyName>NewLife.RocketMQ</AssemblyName>
+    <AssemblyTitle>RocketMQ客户端</AssemblyTitle>
+    <Description>纯托管RocketMQ客户端</Description>
+    <Copyright>版权所有(C) 新生命开发团队 2002~2018</Copyright>
+    <Company>新生命开发团队</Company>
+    <Deterministic>false</Deterministic>
+    <AssemblyVersion>1.0.*</AssemblyVersion>
+    <FileVersion>1.0.2018.1016</FileVersion>
+    <RootNamespace>NewLife.RocketMQ</RootNamespace>
+    <OutputPath>..\Bin</OutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net45|AnyCPU'">
+    <DocumentationFile>..\Bin\NewLife.RocketMQ.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net45|AnyCPU'">
+    <DocumentationFile>..\Bin\NewLife.RocketMQ.xml</DocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

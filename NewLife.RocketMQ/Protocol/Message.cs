@@ -33,6 +33,8 @@ namespace NewLife.RocketMQ.Protocol
         #endregion
 
         #region 方法
+        /// <summary>获取属性</summary>
+        /// <returns></returns>
         public String GetProperties()
         {
             var sb = Pool.StringBuilder.Get();

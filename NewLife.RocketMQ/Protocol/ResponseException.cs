@@ -6,8 +6,8 @@ namespace NewLife.RocketMQ.Protocol
     public class ResponseException : Exception
     {
         /// <summary>响应代码</summary>
-        public ResponseCode Code { get; set; }
+        public Int32 Code { get; set; }
 
-        public ResponseException(ResponseCode code, String message) : base(code + ": " + message) => Code = code;
+        public ResponseException(Int32 code, String message) : base(code + ": " + message) => Code = code;
     }
 }

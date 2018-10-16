@@ -9,6 +9,7 @@ using NewLife.Serialization;
 
 namespace NewLife.RocketMQ
 {
+    /// <summary>客户端</summary>
     public abstract class MQClient : DisposeBase
     {
         #region 属性
@@ -97,7 +98,7 @@ namespace NewLife.RocketMQ
         /// <param name="request"></param>
         /// <param name="extFields"></param>
         /// <returns></returns>
-        public Command Send(RequestCode request, Object body, Object extFields = null)
+        internal Command Send(RequestCode request, Object body, Object extFields = null)
         {
             var header = new Header
             {
@@ -130,7 +131,7 @@ namespace NewLife.RocketMQ
             var rs = Send(cmd);
 
             // 判断异常响应
-            if (rs.Header.Code != 0) throw new ResponseException((ResponseCode)rs.Header.Code, rs.Header.Remark);
+            if (rs.Header.Code != 0) throw new ResponseException(rs.Header.Code, rs.Header.Remark);
 
             return rs;
         }

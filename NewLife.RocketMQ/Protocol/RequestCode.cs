@@ -1,7 +1,7 @@
 ﻿namespace NewLife.RocketMQ.Protocol
 {
     /// <summary>请求代码</summary>
-    public enum RequestCode
+    enum RequestCode
     {
         /// <summary>发消息</summary>
         SEND_MESSAGE = 10,
