@@ -149,21 +149,5 @@ namespace NewLife.RocketMQ.Client
             return _Broker = client;
         }
         #endregion
-
-        public abstract void CreateTopic(String key, String newTopic, Int32 queueNum, Int32 topicSysFlag = 0);
-
-        public abstract Int64 SearchOffset(MessageQueue mq, Int64 timestamp);
-
-        public abstract Int64 MaxOffset(MessageQueue mq);
-
-        public abstract Int64 MinOffset(MessageQueue mq);
-
-        public abstract Int64 EarliestMsgStoreTime(MessageQueue mq);
-
-        public abstract QueryResult QueryMessage(String topic, String key, Int32 maxNum, Int64 begin, Int64 end);
-
-        public abstract MessageExt ViewMessage(String offsetMsgId);
-
-        public abstract MessageExt ViewMessage(String topic, String msgId);
     }
 }

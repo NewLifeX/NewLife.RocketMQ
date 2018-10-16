@@ -1,7 +1,6 @@
 ﻿using System;
 using NewLife.Log;
-using NewLife.RocketMQ.Consumer;
-using NewLife.RocketMQ.Producer;
+using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 
 namespace Test
@@ -20,13 +19,12 @@ namespace Test
 
         static void Test1()
         {
-            var mq = new MQProducer
+            var mq = new Producer
             {
                 //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                //CreateTopicKey = "nx_test",
                 Topic = "nx_test",
                 Group = "test",
                 NameServerAddress = "10.9.30.35:9876",
@@ -54,7 +52,7 @@ namespace Test
 
         static void Test2()
         {
-            var consumer = new MQPullConsumer
+            var consumer = new Consumer
             {
                 //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
                 //AccessKey = "LTAINsp1qKfO61c5",

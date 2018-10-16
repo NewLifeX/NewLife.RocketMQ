@@ -2,9 +2,10 @@
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 
-namespace NewLife.RocketMQ.Consumer
+namespace NewLife.RocketMQ
 {
-    public abstract class MQConsumer : MQAdmin
+    /// <summary>消费者</summary>
+    public class Consumer : MQAdmin
     {
         #region 拉取消息
         public PullResult Pull(MessageQueue mq, Int64 offset, Int32 maxNums)
@@ -32,7 +33,9 @@ namespace NewLife.RocketMQ.Consumer
 
             return pr;
         }
+        #endregion
 
+        #region 业务方法
         public Int64 QueryOffset(MessageQueue mq)
         {
             var bk = GetBroker(mq.BrokerName);
@@ -44,6 +47,11 @@ namespace NewLife.RocketMQ.Consumer
             });
 
             return rs.Header.ExtFields["offset"].ToLong();
+        }
+
+        public Int64 SearchOffset(MessageQueue mq, Int64 timestamp)
+        {
+            throw new NotImplementedException();
         }
         #endregion
     }
