@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
+using NewLife.Log;
 using NewLife.Net;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
@@ -41,27 +42,44 @@ namespace NewLife.RocketMQ
         /// <summary>开始</summary>
         public virtual void Start()
         {
-            var uri = GetServer();
+            var uris = GetServers();
 
-            var client = new TcpClient();
-
-            var timeout = Timeout;
-            // 采用异步来解决连接超时设置问题
-            var ar = client.BeginConnect(uri.Address, uri.Port, null, null);
-            if (!ar.AsyncWaitHandle.WaitOne(timeout, false))
+            Exception last = null;
+            _Client = null;
+            foreach (var uri in uris)
             {
-                client.Close();
-                throw new TimeoutException($"连接[{uri}][{timeout}ms]超时！");
+                WriteLog("正在连接[{0}:{1}]", uri.Host, uri.Port);
+
+                try
+                {
+                    var client = new TcpClient();
+
+                    var timeout = Timeout;
+
+                    // 采用异步来解决连接超时设置问题
+                    var ar = client.BeginConnect(uri.Address, uri.Port, null, null);
+                    if (!ar.AsyncWaitHandle.WaitOne(timeout, false))
+                    {
+                        client.Close();
+                        throw new TimeoutException($"连接[{uri}][{timeout}ms]超时！");
+                    }
+
+                    _Client = client;
+                }
+                catch (Exception ex)
+                {
+                    last = ex;
+                }
             }
 
-            _Client = client;
+            if (_Client == null) throw last;
 
-            _Stream = new BufferedStream(client.GetStream());
+            _Stream = new BufferedStream(_Client.GetStream());
         }
 
         /// <summary>获取服务器地址</summary>
         /// <returns></returns>
-        protected abstract NetUri GetServer();
+        protected abstract NetUri[] GetServers();
 
         private Int32 g_id;
         /// <summary>发送命令</summary>
@@ -161,6 +179,16 @@ namespace NewLife.RocketMQ
                 if (!cfg.OnsChannel.IsNullOrEmpty()) dic["OnsChannel"] = cfg.OnsChannel;
             }
         }
+        #endregion
+
+        #region 日志
+        /// <summary>日志</summary>
+        public ILog Log { get; set; } = Logger.Null;
+
+        /// <summary>写日志</summary>
+        /// <param name="format"></param>
+        /// <param name="args"></param>
+        public void WriteLog(String format, params Object[] args) => Log?.Info(format, args);
         #endregion
     }
 }

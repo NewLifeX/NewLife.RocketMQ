@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using NewLife.Log;
 using NewLife.Net;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
@@ -13,10 +12,7 @@ namespace NewLife.RocketMQ
     {
         #region 属性
         /// <summary>Broker集合</summary>
-        public IDictionary<String, String> Brokers { get; } = new Dictionary<String, String>();
-
-        /// <summary>队列集合</summary>
-        public IList<MessageQueue> Queues { get; } = new List<MessageQueue>();
+        public IList<BrokerInfo> Brokers { get; } = new List<BrokerInfo>();
         #endregion
 
         #region 构造
@@ -33,14 +29,12 @@ namespace NewLife.RocketMQ
         #region 方法
         /// <summary>获取服务端地址</summary>
         /// <returns></returns>
-        protected override NetUri GetServer()
+        protected override NetUri[] GetServers()
         {
             var cfg = Config;
             var ss = cfg.NameServerAddress.Split(";");
 
-            XTrace.WriteLine("连接NameServer[{0}]", ss[0]);
-
-            return new NetUri(ss[0]);
+            return ss.Select(e => new NetUri(e)).ToArray();
         }
         #endregion
 
@@ -48,55 +42,44 @@ namespace NewLife.RocketMQ
         /// <summary>获取主题的路由信息，含登录验证</summary>
         /// <param name="topic"></param>
         /// <returns></returns>
-        public IDictionary<String, String> GetRouteInfo(String topic)
+        public IList<BrokerInfo> GetRouteInfo(String topic)
         {
             // 发送命令
             var rs = Send(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
             var js = rs.ReadBodyAsJson();
 
+            var list = new List<BrokerInfo>();
             // 解析broker集群地址
             if (js["brokerDatas"] is IList<Object> bs)
             {
-                Brokers.Clear();
-
                 foreach (IDictionary<String, Object> item in bs)
                 {
                     var name = item["brokerName"] + "";
                     if (item["brokerAddrs"] is IDictionary<String, Object> addrs)
-                        Brokers[name] = addrs.Join(";", e => e.Value);
+                        list.Add(new BrokerInfo { Name = name, Addresses = addrs.Select(e => e.Value + "").ToArray() });
                 }
             }
             // 解析队列集合
             if (js["queueDatas"] is IList<Object> bs2)
             {
-                Queues.Clear();
-
                 foreach (IDictionary<String, Object> item in bs2)
                 {
                     var name = item["brokerName"] + "";
-                    var perm = item["perm"].ToInt();
-                    var readQueueNums = item["readQueueNums"].ToInt();
-                    var writeQueueNums = item["writeQueueNums"].ToInt();
-                    var topicSynFlag = item["topicSynFlag"].ToInt();
 
-                    if ((perm & 4) == 4)
-                    {
-                        for (var i = 0; i < readQueueNums; i++)
-                        {
-                            var mq = new MessageQueue
-                            {
-                                Topic = topic,
-                                BrokerName = name,
-                                QueueId = i,
-                            };
+                    var bk = list.FirstOrDefault(e => e.Name == name);
+                    if (bk == null) list.Add(bk = new BrokerInfo { Name = name });
 
-                            Queues.Add(mq);
-                        }
-                    }
+                    bk.Permission = (Permissions)item["perm"].ToInt();
+                    bk.ReadQueueNums = item["readQueueNums"].ToInt();
+                    bk.WriteQueueNums = item["writeQueueNums"].ToInt();
+                    bk.TopicSynFlag = item["topicSynFlag"].ToInt();
                 }
             }
 
-            return Brokers;
+            Brokers.Clear();
+            if (Brokers is List<BrokerInfo> bks) bks.AddRange(list);
+
+            return list;
         }
         #endregion
     }

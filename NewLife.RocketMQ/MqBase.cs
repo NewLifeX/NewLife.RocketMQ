@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using NewLife.Log;
-using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ.Client
 {
@@ -53,10 +53,10 @@ namespace NewLife.RocketMQ.Client
         /// <summary>是否可用</summary>
         public Boolean Active { get; private set; }
 
-        /// <summary>队列集合</summary>
-        public IList<MessageQueue> Queues { get; private set; }
+        /// <summary>代理集合</summary>
+        public IList<BrokerInfo> Brokers => _NameServer?.Brokers;
 
-        private NameClient _Client;
+        private NameClient _NameServer;
         #endregion
 
         #region 阿里云属性
@@ -86,11 +86,20 @@ namespace NewLife.RocketMQ.Client
         }
         #endregion
 
-        #region 扩展
+        #region 构造
         /// <summary>实例化</summary>
         public MqBase()
         {
             InstanceName = Process.GetCurrentProcess().Id + "";
+        }
+
+        /// <summary>销毁</summary>
+        /// <param name="disposing"></param>
+        protected override void OnDispose(Boolean disposing)
+        {
+            base.OnDispose(disposing);
+
+            _NameServer.TryDispose();
         }
         #endregion
 
@@ -116,39 +125,41 @@ namespace NewLife.RocketMQ.Client
             var rs = client.GetRouteInfo(Topic);
             foreach (var item in rs)
             {
-                XTrace.WriteLine("发现Broker[{0}]: {1}", item.Key, item.Value);
+                XTrace.WriteLine("发现Broker[{0}]: {1}", item.Name, item.Addresses.Join());
             }
 
-            _Client = client;
-            Queues = client.Queues;
+            _NameServer = client;
 
             return Active = true;
         }
         #endregion
 
         #region 收发信息
-        private BrokerClient _Broker;
+        private readonly ConcurrentDictionary<String, BrokerClient> _Brokers = new ConcurrentDictionary<String, BrokerClient>();
         /// <summary>获取代理客户端</summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        protected BrokerClient GetBroker(String name = null)
+        protected BrokerClient GetBroker(String name)
         {
-            if (_Broker != null) return _Broker;
+            if (_Brokers.TryGetValue(name, out var client)) return client;
 
-            var bk = _Client.Brokers?.FirstOrDefault(e => name == null || e.Key == name);
+            var bk = Brokers?.FirstOrDefault(e => name == null || e.Name == name);
             if (bk == null) return null;
 
-            var addr = bk.Value.Value?.Split(";").FirstOrDefault();
-            if (addr.IsNullOrEmpty()) return null;
-
-            var client = new BrokerClient(addr)
+            // 实例化客户端
+            client = new BrokerClient(bk.Addresses)
             {
-                Config = this,
                 Id = ClientId,
+                Config = this,
             };
+
+            // 尝试添加
+            var client2 = _Brokers.GetOrAdd(name, client);
+            if (client2 != client) return client2;
+
             client.Start();
 
-            return _Broker = client;
+            return client;
         }
         #endregion
     }

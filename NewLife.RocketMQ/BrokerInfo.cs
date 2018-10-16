@@ -1,0 +1,39 @@
+﻿using System;
+
+namespace NewLife.RocketMQ
+{
+    /// <summary>权限</summary>
+    [Flags]
+    public enum Permissions
+    {
+        /// <summary>写入</summary>
+        Write = 2,
+
+        /// <summary>读取</summary>
+        Read = 4,
+    }
+
+    /// <summary>代理信息</summary>
+    public class BrokerInfo
+    {
+        #region 属性
+        /// <summary>名称</summary>
+        public String Name { get; set; }
+
+        /// <summary>地址集合</summary>
+        public String[] Addresses { get; set; }
+
+        /// <summary>权限</summary>
+        public Permissions Permission { get; set; }
+
+        /// <summary>读队列数</summary>
+        public Int32 ReadQueueNums { get; set; }
+
+        /// <summary>写队列数</summary>
+        public Int32 WriteQueueNums { get; set; }
+
+        /// <summary>主题同步标记</summary>
+        public Int32 TopicSynFlag { get; set; }
+        #endregion
+    }
+}

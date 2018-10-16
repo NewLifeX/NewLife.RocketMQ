@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Linq;
+using System.Threading;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 
@@ -31,20 +31,6 @@ namespace NewLife.RocketMQ
         //    base.Start();
         //}
 
-        /// <summary>注销客户端</summary>
-        /// <param name="group"></param>
-        public virtual void UnRegisterClient(String group)
-        {
-            var bk = GetBroker();
-
-            if (group.IsNullOrEmpty()) group = "CLIENT_INNER_PRODUCER";
-
-            var rs = bk.Send(RequestCode.UNREGISTER_CLIENT, new
-            {
-                ClientId,
-                ProducerGroup = group,
-            });
-        }
         #endregion
 
         #region 发送消息
@@ -74,7 +60,7 @@ namespace NewLife.RocketMQ
 
             var dic = smrh.GetProperties();
 
-            var bk = GetBroker();
+            var bk = GetBroker(mq.BrokerName);
 
             var rs = bk.Send(RequestCode.SEND_MESSAGE_V2, msg.Body, dic);
 
@@ -88,22 +74,40 @@ namespace NewLife.RocketMQ
             return sr;
         }
 
-        private readonly ConcurrentDictionary<String, Int32> _qs = new ConcurrentDictionary<String, Int32>();
-        /// <summary>根据topic选择队列</summary>
+        //private readonly ConcurrentDictionary<String, Int32> _qs = new ConcurrentDictionary<String, Int32>();
+        private Int32 _QueueIndex;
+        /// <summary>选择队列</summary>
         /// <param name="topic"></param>
         /// <returns></returns>
         private MessageQueue SelectQueue(String topic)
         {
-            var list = Queues.Where(e => e.Topic.EqualIgnoreCase(topic)).ToList();
+            var list = Brokers.Where(e => e.Permission.HasFlag(Permissions.Write) && e.WriteQueueNums > 0).ToList();
             if (list.Count == 0) return null;
 
-            // 轮询使用
-            var idx = _qs.GetOrAdd(topic, -1);
-            var old = idx++;
-            if (idx >= list.Count) idx = 0;
-            _qs.TryUpdate(topic, idx, old);
+            var total = list.Sum(e => e.WriteQueueNums);
+            if (total <= 0) return null;
 
-            return list[idx];
+            // 轮询使用
+            //var idx = _qs.GetOrAdd(topic, -1);
+            //var old = idx++;
+            //if (idx >= list.Count) idx = 0;
+            //_qs.TryUpdate(topic, idx, old);
+
+            //return list[idx];
+
+            var idx = Interlocked.Increment(ref _QueueIndex);
+            idx = (idx - 1) % total;
+
+            // 轮询使用
+            foreach (var item in list)
+            {
+                if (idx < item.WriteQueueNums)
+                    return new MessageQueue { Topic = Topic, BrokerName = item.Name, QueueId = idx };
+
+                idx -= item.WriteQueueNums;
+            }
+
+            return null;
         }
         #endregion
 

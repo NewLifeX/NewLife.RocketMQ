@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using NewLife.Net;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Threading;
@@ -10,13 +11,13 @@ namespace NewLife.RocketMQ
     {
         #region 属性
         /// <summary>服务器地址</summary>
-        public String Server { get; }
+        public String[] Servers { get; }
         #endregion
 
         #region 构造
         /// <summary>实例化代理客户端</summary>
-        /// <param name="server"></param>
-        public BrokerClient(String server) => Server = server;
+        /// <param name="servers"></param>
+        public BrokerClient(String[] servers) => Servers = servers;
         #endregion
 
         #region 方法
@@ -31,7 +32,24 @@ namespace NewLife.RocketMQ
 
         /// <summary>获取服务器地址</summary>
         /// <returns></returns>
-        protected override NetUri GetServer() => new NetUri(Server);
+        protected override NetUri[] GetServers() => Servers.Select(e => new NetUri(e)).ToArray();
+        #endregion
+
+        #region 注销
+        /// <summary>注销客户端</summary>
+        /// <param name="id"></param>
+        /// <param name="group"></param>
+        public virtual void UnRegisterClient(String id, String group)
+        {
+            if (group.IsNullOrEmpty()) group = "CLIENT_INNER_PRODUCER";
+
+            var rs = Send(RequestCode.UNREGISTER_CLIENT, new
+            {
+                ClientId = id,
+                ProducerGroup = group,
+                ConsumerGroup = group,
+            });
+        }
         #endregion
 
         #region 心跳
