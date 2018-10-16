@@ -8,7 +8,8 @@ using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ.Client
 {
-    public abstract class MQAdmin : DisposeBase
+    /// <summary>业务基类</summary>
+    public abstract class MqBase : DisposeBase
     {
         #region 属性
         /// <summary>名称服务器地址</summary>
@@ -41,13 +42,16 @@ namespace NewLife.RocketMQ.Client
         /// <summary>持久化消费偏移间隔。默认5_000ms</summary>
         public Int32 PersistConsumerOffsetInterval { get; set; } = 5_000;
 
+        /// <summary>单元名称</summary>
         public String UnitName { get; set; }
 
+        /// <summary>单元模式</summary>
         public Boolean UnitMode { get; set; }
 
-        public Boolean VipChannelEnabled { get; set; } = true;
+        //public Boolean VipChannelEnabled { get; set; } = true;
 
-        private ServiceState State { get; set; } = ServiceState.CreateJust;
+        /// <summary>是否可用</summary>
+        public Boolean Active { get; private set; }
 
         /// <summary>队列集合</summary>
         public IList<MessageQueue> Queues { get; private set; }
@@ -70,6 +74,7 @@ namespace NewLife.RocketMQ.Client
         #endregion
 
         #region 扩展属性
+        /// <summary>客户端标识</summary>
         public String ClientId
         {
             get
@@ -82,53 +87,50 @@ namespace NewLife.RocketMQ.Client
         #endregion
 
         #region 扩展
-        public MQAdmin()
+        /// <summary>实例化</summary>
+        public MqBase()
         {
             InstanceName = Process.GetCurrentProcess().Id + "";
         }
         #endregion
 
         #region 基础方法
-        public virtual void Start()
+        /// <summary>开始</summary>
+        /// <returns></returns>
+        public virtual Boolean Start()
         {
+            if (Active) return true;
+
             // 获取阿里云ONS的名称服务器地址
             var addr = Server;
             if (!addr.IsNullOrEmpty() && addr.StartsWithIgnoreCase("http"))
             {
                 var http = new HttpClient();
-                var rs = http.GetStringAsync(addr).Result;
-                if (!rs.IsNullOrWhiteSpace()) NameServerAddress = rs.Trim();
+                var html = http.GetStringAsync(addr).Result;
+                if (!html.IsNullOrWhiteSpace()) NameServerAddress = html.Trim();
             }
 
-            switch (State)
+            var client = new NameClient(ClientId, this);
+            client.Start();
+
+            var rs = client.GetRouteInfo(Topic);
+            foreach (var item in rs)
             {
-                case ServiceState.CreateJust:
-                    State = ServiceState.CreateJust;
-
-                    var client = new NameClient(ClientId, this);
-                    client.Start();
-
-                    var rs = client.GetRouteInfo(Topic);
-                    foreach (var item in rs)
-                    {
-                        XTrace.WriteLine("发现Broker[{0}]: {1}", item.Key, item.Value);
-                    }
-
-                    _Client = client;
-                    Queues = client.Queues;
-
-                    State = ServiceState.Running;
-                    break;
-                case ServiceState.Running:
-                case ServiceState.ShutdownAlready:
-                case ServiceState.StartFailed:
-                    throw new Exception("已启动！");
+                XTrace.WriteLine("发现Broker[{0}]: {1}", item.Key, item.Value);
             }
+
+            _Client = client;
+            Queues = client.Queues;
+
+            return Active = true;
         }
         #endregion
 
         #region 收发信息
         private BrokerClient _Broker;
+        /// <summary>获取代理客户端</summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
         protected BrokerClient GetBroker(String name = null)
         {
             if (_Broker != null) return _Broker;

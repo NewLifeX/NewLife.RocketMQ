@@ -19,13 +19,16 @@ namespace NewLife.RocketMQ
         /// <summary>超时。默认3000ms</summary>
         public Int32 Timeout { get; set; } = 3_000;
 
-        public MQAdmin Config { get; set; }
+        /// <summary>配置</summary>
+        public MqBase Config { get; set; }
 
         private TcpClient _Client;
         private Stream _Stream;
         #endregion
 
         #region 构造
+        /// <summary>销毁</summary>
+        /// <param name="disposing"></param>
         protected override void OnDispose(Boolean disposing)
         {
             base.OnDispose(disposing);
@@ -56,6 +59,8 @@ namespace NewLife.RocketMQ
             _Stream = new BufferedStream(client.GetStream());
         }
 
+        /// <summary>获取服务器地址</summary>
+        /// <returns></returns>
         protected abstract NetUri GetServer();
 
         private Int32 g_id;
@@ -96,6 +101,7 @@ namespace NewLife.RocketMQ
 
         /// <summary>发送指定类型的命令</summary>
         /// <param name="request"></param>
+        /// <param name="body"></param>
         /// <param name="extFields"></param>
         /// <returns></returns>
         internal Command Send(RequestCode request, Object body, Object extFields = null)

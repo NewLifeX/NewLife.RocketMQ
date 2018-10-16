@@ -20,6 +20,10 @@ namespace NewLife.RocketMQ.Protocol
         #endregion
 
         #region 读写
+        /// <summary>从数据流中读取</summary>
+        /// <param name="stream"></param>
+        /// <param name="context"></param>
+        /// <returns></returns>
         public Boolean Read(Stream stream, Object context = null)
         {
             var bn = new Binary
@@ -47,11 +51,17 @@ namespace NewLife.RocketMQ.Protocol
             return true;
         }
 
+        /// <summary>读取Body作为Json返回</summary>
+        /// <returns></returns>
         public IDictionary<String, Object> ReadBodyAsJson()
         {
             return new JsonParser(Body.ToStr()).Decode() as IDictionary<String, Object>;
         }
 
+        /// <summary>写入命令到数据流</summary>
+        /// <param name="stream"></param>
+        /// <param name="context"></param>
+        /// <returns></returns>
         public Boolean Write(Stream stream, Object context = null)
         {
             // 计算头部

@@ -8,6 +8,7 @@ using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ
 {
+    /// <summary>连接名称服务器的客户端</summary>
     public class NameClient : MQClient
     {
         #region 属性
@@ -19,7 +20,10 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 构造
-        public NameClient(String id, MQAdmin config)
+        /// <summary>实例化</summary>
+        /// <param name="id"></param>
+        /// <param name="config"></param>
+        public NameClient(String id, MqBase config)
         {
             Id = id;
             Config = config;
@@ -27,6 +31,8 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 方法
+        /// <summary>获取服务端地址</summary>
+        /// <returns></returns>
         protected override NetUri GetServer()
         {
             var cfg = Config;

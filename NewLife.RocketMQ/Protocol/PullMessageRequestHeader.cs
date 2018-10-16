@@ -17,10 +17,13 @@ namespace NewLife.RocketMQ.Protocol
         /// <summary>表达式类型</summary>
         public String ExpressionType { get; set; } = "TAG";
 
+        /// <summary>订阅表达式</summary>
         public String Subscription { get; set; } = "*";
 
+        /// <summary>挂起超时时间。默认20_000ms</summary>
         public Int32 SuspendTimeoutMillis { get; set; } = 20_000;
 
+        /// <summary>子版本</summary>
         public Int32 SubVersion { get; set; }
 
         /// <summary>队列</summary>
@@ -35,10 +38,13 @@ namespace NewLife.RocketMQ.Protocol
         /// <summary>提交偏移</summary>
         public Int32 CommitOffset { get; set; }
 
+        /// <summary>系统标记</summary>
         public Int32 SysFlag { get; set; }
         #endregion
 
         #region 方法
+        /// <summary>获取属性字典</summary>
+        /// <returns></returns>
         public IDictionary<String, Object> GetProperties()
         {
             var dic = new Dictionary<String, Object>();

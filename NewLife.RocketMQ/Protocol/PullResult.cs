@@ -6,9 +6,16 @@ namespace NewLife.RocketMQ.Protocol
     /// <summary>拉取状态</summary>
     public enum PullStatus
     {
+        /// <summary>已发现</summary>
         Found = 0,
+
+        /// <summary>没有新的消息</summary>
         NoNewMessage = 1,
+
+        /// <summary>没有批评消息</summary>
         NoMatchedMessage = 2,
+
+        /// <summary>偏移量非法</summary>
         OffsetIllegal = 3
     }
 
@@ -33,6 +40,8 @@ namespace NewLife.RocketMQ.Protocol
         #endregion
 
         #region 方法
+        /// <summary>读取数据</summary>
+        /// <param name="dic"></param>
         public void Read(IDictionary<String, String> dic)
         {
             if (dic.TryGetValue(nameof(MinOffset), out var str)) MinOffset = str.ToLong();

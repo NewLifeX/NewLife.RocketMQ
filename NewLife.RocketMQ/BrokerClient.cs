@@ -5,6 +5,7 @@ using NewLife.Threading;
 
 namespace NewLife.RocketMQ
 {
+    /// <summary>代理客户端</summary>
     public class BrokerClient : MQClient
     {
         #region 属性
@@ -13,10 +14,13 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 构造
+        /// <summary>实例化代理客户端</summary>
+        /// <param name="server"></param>
         public BrokerClient(String server) => Server = server;
         #endregion
 
         #region 方法
+        /// <summary>启动</summary>
         public override void Start()
         {
             base.Start();
@@ -25,6 +29,8 @@ namespace NewLife.RocketMQ
             StartPing();
         }
 
+        /// <summary>获取服务器地址</summary>
+        /// <returns></returns>
         protected override NetUri GetServer() => new NetUri(Server);
         #endregion
 

@@ -6,22 +6,23 @@ using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ
 {
-    public class Producer : MQAdmin
+    /// <summary>生产者</summary>
+    public class Producer : MqBase
     {
         #region 属性
-        public Int32 DefaultTopicQueueNums { get; set; } = 4;
+        //public Int32 DefaultTopicQueueNums { get; set; } = 4;
 
-        public Int32 SendMsgTimeout { get; set; } = 3_000;
+        //public Int32 SendMsgTimeout { get; set; } = 3_000;
 
-        public Int32 CompressMsgBodyOverHowmuch { get; set; } = 4096;
+        //public Int32 CompressMsgBodyOverHowmuch { get; set; } = 4096;
 
-        public Int32 RetryTimesWhenSendFailed { get; set; } = 2;
+        //public Int32 RetryTimesWhenSendFailed { get; set; } = 2;
 
-        public Int32 RetryTimesWhenSendAsyncFailed { get; set; } = 2;
+        //public Int32 RetryTimesWhenSendAsyncFailed { get; set; } = 2;
 
-        public Boolean RetryAnotherBrokerWhenNotStoreOK { get; set; }
+        //public Boolean RetryAnotherBrokerWhenNotStoreOK { get; set; }
 
-        public Int32 MaxMessageSize { get; set; } = 4 * 1024 * 1024;
+        //public Int32 MaxMessageSize { get; set; } = 4 * 1024 * 1024;
         #endregion
 
         #region 基础方法
@@ -30,6 +31,8 @@ namespace NewLife.RocketMQ
         //    base.Start();
         //}
 
+        /// <summary>注销客户端</summary>
+        /// <param name="group"></param>
         public virtual void UnRegisterClient(String group)
         {
             var bk = GetBroker();
@@ -108,6 +111,11 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 业务方法
+        /// <summary>创建主题</summary>
+        /// <param name="key"></param>
+        /// <param name="newTopic"></param>
+        /// <param name="queueNum"></param>
+        /// <param name="topicSysFlag"></param>
         public void CreateTopic(String key, String newTopic, Int32 queueNum, Int32 topicSysFlag = 0)
         {
             throw new NotImplementedException();
