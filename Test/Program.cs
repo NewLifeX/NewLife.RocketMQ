@@ -22,12 +22,12 @@ namespace Test
         {
             var mq = new Producer
             {
-                //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
-                //AccessKey = "LTAINsp1qKfO61c5",
-                //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
+                Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
+                AccessKey = "LTAINsp1qKfO61c5",
+                SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
                 Topic = "nx_test",
-                Group = "test",
+                Group = "PID_Stone_001",
                 NameServerAddress = "10.9.30.35:9876",
 
                 Log = XTrace.Log,
@@ -57,12 +57,13 @@ namespace Test
         {
             var consumer = new Consumer
             {
-                //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
-                //AccessKey = "LTAINsp1qKfO61c5",
-                //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
+                Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
+                AccessKey = "LTAINsp1qKfO61c5",
+                SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "defaulttopic1",
-                Group = "test",
+                Topic = "nx_test",
+                //Topic = "defaulttopic1",
+                Group = "CID_Stone_001",
                 NameServerAddress = "10.9.30.35:9876",
 
                 Log = XTrace.Log,
@@ -70,11 +71,12 @@ namespace Test
 
             consumer.Start();
             var br = consumer.Brokers.FirstOrDefault();
-            var ms = new MessageQueue { BrokerName = br.Name, QueueId = 1 };
+            var mq = new MessageQueue { BrokerName = br.Name, QueueId = 1 };
 
             //foreach (var mq in consumer.Queues)
             {
-                var offset = consumer.QueryOffset(mq);
+                var offset = 0;
+                //var offset = consumer.QueryOffset(mq);
                 var pr = consumer.Pull(mq, offset, 32);
 
                 Console.WriteLine(pr);
