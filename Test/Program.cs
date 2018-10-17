@@ -15,7 +15,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test2();
+            Test1();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -25,11 +25,11 @@ namespace Test
         {
             var mq = new Producer
             {
-                Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
-                AccessKey = "LTAINsp1qKfO61c5",
-                SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
+                //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
+                //AccessKey = "LTAINsp1qKfO61c5",
+                //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "nx_test",
+                //Topic = "nx_test",
                 Group = "PID_Stone_001",
                 NameServerAddress = "10.9.30.35:9876",
 
@@ -38,6 +38,8 @@ namespace Test
             // 105命令的数字签名是 NyRea4g3OHmd7RxEUoVJUz58lXc=
 
             mq.Start();
+
+            mq.CreateTopic("", "nx_test", 13);
 
             for (var i = 0; i < 16; i++)
             {
@@ -56,9 +58,9 @@ namespace Test
         {
             var consumer = new Consumer
             {
-                Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
-                AccessKey = "LTAINsp1qKfO61c5",
-                SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
+                //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
+                //AccessKey = "LTAINsp1qKfO61c5",
+                //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
                 Topic = "nx_test",
                 //Topic = "defaulttopic1",

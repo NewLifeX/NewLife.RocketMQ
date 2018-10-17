@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
@@ -103,7 +104,22 @@ namespace NewLife.RocketMQ
         /// <param name="topicSysFlag"></param>
         public void CreateTopic(String key, String newTopic, Int32 queueNum, Int32 topicSysFlag = 0)
         {
-            throw new NotImplementedException();
+            var header = new
+            {
+                topic = newTopic,
+                defaultTopic = Topic,
+                readQueueNums = queueNum,
+                writeQueueNums = queueNum,
+                perm = 8,
+                topicFilterType = "SINGLE_TAG",
+                topicSysFlag,
+                order = false,
+            };
+
+            var bk = GetBroker(Brokers.FirstOrDefault().Name);
+            var rs = bk.Invoke(RequestCode.UPDATE_AND_CREATE_TOPIC, null, header);
+
+            Console.WriteLine(rs);
         }
         #endregion
     }
