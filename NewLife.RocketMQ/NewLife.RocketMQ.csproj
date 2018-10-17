@@ -27,10 +27,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="7.3.6839.35284" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <Reference Include="NewLife.Core">
+      <HintPath>..\DLL\NewLife.Core.dll</HintPath>
+    </Reference>
     <Reference Include="System.Net.Http">
       <HintPath>C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.6.1\System.Net.Http.dll</HintPath>
     </Reference>

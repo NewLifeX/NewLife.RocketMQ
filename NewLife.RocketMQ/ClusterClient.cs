@@ -147,7 +147,17 @@ namespace NewLife.RocketMQ
             var rs = Send(cmd);
 
             // 判断异常响应
-            if (rs.Header.Code != 0) throw new ResponseException(rs.Header.Code, rs.Header.Remark);
+            if (rs.Header.Code != 0)
+            {
+                // 优化异常输出
+                var err = rs.Header.Remark;
+                var p = err.IndexOf("Exception: ");
+                if (p >= 0) err = err.Substring(p + "Exception: ".Length);
+                p = err.IndexOf(", ");
+                if (p > 0) err = err.Substring(0, p);
+
+                throw new ResponseException(rs.Header.Code, err);
+            }
 
             return rs;
         }
