@@ -150,6 +150,7 @@ namespace NewLife.RocketMQ.Client
             client = new BrokerClient(bk.Addresses)
             {
                 Id = ClientId,
+                Name = bk.Name,
                 Config = this,
                 Log = Log,
             };

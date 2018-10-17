@@ -37,7 +37,7 @@ namespace Test
 
             mq.Start();
 
-            for (var i = 0; i < 10; i++)
+            for (var i = 0; i < 16; i++)
             {
                 var str = "学无先后达者为师" + i;
                 var msg = new Message
@@ -49,9 +49,10 @@ namespace Test
                 };
 
                 var sr = mq.Send(msg);
-                Console.WriteLine("{0} {1} {2}", sr.MsgId, sr.Queue.QueueId, sr.QueueOffset);
+                Console.WriteLine("[{0}] {1} {2} {2}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
 
-                Thread.Sleep(500);
+                // 阿里云发送消息不能过快，否则报错“服务不可用”
+                Thread.Sleep(10);
             }
 
             mq.Dispose();

@@ -23,6 +23,9 @@ namespace NewLife.RocketMQ
         /// <summary>编号</summary>
         public String Id { get; set; }
 
+        /// <summary>名称</summary>
+        public String Name { get; set; }
+
         /// <summary>超时。默认3000ms</summary>
         public Int32 Timeout { get; set; } = 3_000;
 
@@ -57,7 +60,7 @@ namespace NewLife.RocketMQ
         /// <summary>开始</summary>
         public virtual void Start()
         {
-            WriteLog("[{0}]集群地址：{1}", Id, Servers.Join(";", e => $"{e.Host}:{e.Port}"));
+            WriteLog("[{0}]集群地址：{1}", Name, Servers.Join(";", e => $"{e.Host}:{e.Port}"));
         }
 
         private Int32 g_id;

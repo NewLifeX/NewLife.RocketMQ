@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
-using System.Threading;
 using NewLife.RocketMQ.Client;
+using NewLife.RocketMQ.Common;
 using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ
@@ -74,40 +74,41 @@ namespace NewLife.RocketMQ
             return sr;
         }
 
-        //private readonly ConcurrentDictionary<String, Int32> _qs = new ConcurrentDictionary<String, Int32>();
-        private Int32 _QueueIndex;
+        private WeightRoundRobin<BrokerInfo> _robin;
+        //private Int32 _QueueIndex;
         /// <summary>选择队列</summary>
         /// <param name="topic"></param>
         /// <returns></returns>
         private MessageQueue SelectQueue(String topic)
         {
-            var list = Brokers.Where(e => e.Permission.HasFlag(Permissions.Write) && e.WriteQueueNums > 0).ToList();
-            if (list.Count == 0) return null;
-
-            var total = list.Sum(e => e.WriteQueueNums);
-            if (total <= 0) return null;
-
-            // 轮询使用
-            //var idx = _qs.GetOrAdd(topic, -1);
-            //var old = idx++;
-            //if (idx >= list.Count) idx = 0;
-            //_qs.TryUpdate(topic, idx, old);
-
-            //return list[idx];
-
-            var idx = Interlocked.Increment(ref _QueueIndex);
-            idx = (idx - 1) % total;
-
-            // 轮询使用
-            foreach (var item in list)
+            if (_robin == null)
             {
-                if (idx < item.WriteQueueNums)
-                    return new MessageQueue { Topic = Topic, BrokerName = item.Name, QueueId = idx };
+                var list = Brokers.Where(e => e.Permission.HasFlag(Permissions.Write) && e.WriteQueueNums > 0).ToList();
+                if (list.Count == 0) return null;
 
-                idx -= item.WriteQueueNums;
+                var total = list.Sum(e => e.WriteQueueNums);
+                if (total <= 0) return null;
+
+                _robin = new WeightRoundRobin<BrokerInfo>(list, e => e.WriteQueueNums);
             }
 
-            return null;
+            // 构造排序列表。希望能够均摊到各Broker
+            var bk = _robin.Get(out var times);
+            return new MessageQueue { Topic = Topic, BrokerName = bk.Name, QueueId = (times - 1) % bk.WriteQueueNums };
+
+            //var idx = Interlocked.Increment(ref _QueueIndex);
+            //idx = (idx - 1) % total;
+
+            //// 轮询使用
+            //foreach (var item in list)
+            //{
+            //    if (idx < item.WriteQueueNums)
+            //        return new MessageQueue { Topic = Topic, BrokerName = item.Name, QueueId = idx };
+
+            //    idx -= item.WriteQueueNums;
+            //}
+
+            //return null;
         }
         #endregion
 
