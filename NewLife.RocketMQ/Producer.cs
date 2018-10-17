@@ -4,6 +4,7 @@ using System.Linq;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Common;
 using NewLife.RocketMQ.Protocol;
+using NewLife.Serialization;
 
 namespace NewLife.RocketMQ
 {
@@ -46,7 +47,7 @@ namespace NewLife.RocketMQ
             var smrh = new SendMessageRequestHeader
             {
                 ProducerGroup = Group,
-                Topic = msg.Topic.IsNullOrEmpty() ? Topic : msg.Topic,
+                Topic = Topic,
                 QueueId = 0,
                 SysFlag = 0,
                 BornTimestamp = (Int64)ts.TotalMilliseconds,
@@ -73,6 +74,23 @@ namespace NewLife.RocketMQ
             sr.Read(rs.Header.ExtFields);
 
             return sr;
+        }
+
+        /// <summary>发布消息</summary>
+        /// <param name="body"></param>
+        /// <param name="tags"></param>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        public virtual SendResult Send(Object body, String tags = null, Int32 timeout = -1)
+        {
+            if (!(body is Byte[] buf))
+            {
+                if (!(body is String str)) str = body.ToJson();
+
+                buf = str.GetBytes();
+            }
+
+            return Send(new Message { Body = buf, Tags = tags }, timeout);
         }
 
         private IList<BrokerInfo> _brokers;

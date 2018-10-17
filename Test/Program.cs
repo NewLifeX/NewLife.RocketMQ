@@ -15,7 +15,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test3();
+            Test1();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -41,20 +41,12 @@ namespace Test
 
             for (var i = 0; i < 16; i++)
             {
-                var str = "学无先后达者为师" + i;
-                var msg = new Message
-                {
-                    //Topic = "nx_test",
-                    Body = str.GetBytes(),
-                    Tags = "TagA",
-                    Keys = "OrderID001",
-                };
+                var sr = mq.Send("学无先后达者为师" + i, "TagA");
 
-                var sr = mq.Send(msg);
-                Console.WriteLine("[{0}] {1} {2} {2}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
+                Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
 
                 // 阿里云发送消息不能过快，否则报错“服务不可用”
-                Thread.Sleep(10);
+                Thread.Sleep(100);
             }
 
             mq.Dispose();
