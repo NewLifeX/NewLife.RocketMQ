@@ -15,7 +15,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test3();
+            Test2();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
