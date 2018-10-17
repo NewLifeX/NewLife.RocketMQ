@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using NewLife.Log;
 using NewLife.RocketMQ;
+using NewLife.RocketMQ.Common;
 using NewLife.RocketMQ.Protocol;
 
 namespace Test
@@ -13,7 +15,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test1();
+            Test3();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -85,6 +87,25 @@ namespace Test
                 var pr = consumer.Pull(mq, offset, 32);
 
                 Console.WriteLine(pr);
+            }
+        }
+
+        static void Test3()
+        {
+            var list = new List<BrokerInfo>
+            {
+                new BrokerInfo { Name = "A", WriteQueueNums = 5 },
+                new BrokerInfo { Name = "B", WriteQueueNums = 7 },
+                new BrokerInfo { Name = "C", WriteQueueNums = 9 }
+            };
+
+            var robin = new WeightRoundRobin(list.Select(e => e.WriteQueueNums).ToArray());
+            var count = list.Sum(e => e.WriteQueueNums);
+            for (var i = 0; i < count; i++)
+            {
+                var idx = robin.Get(out var times);
+                var bk = list[idx];
+                Console.WriteLine("{0} {1} {2}", i, bk.Name, times - 1);
             }
         }
     }

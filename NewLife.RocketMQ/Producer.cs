@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Common;
@@ -55,7 +56,7 @@ namespace NewLife.RocketMQ
                 UnitMode = UnitMode,
             };
 
-            var mq = SelectQueue(smrh.Topic);
+            var mq = SelectQueue();
             if (mq != null) smrh.QueueId = mq.QueueId;
 
             var dic = smrh.GetProperties();
@@ -74,12 +75,11 @@ namespace NewLife.RocketMQ
             return sr;
         }
 
-        private WeightRoundRobin<BrokerInfo> _robin;
-        //private Int32 _QueueIndex;
+        private IList<BrokerInfo> _brokers;
+        private WeightRoundRobin _robin;
         /// <summary>选择队列</summary>
-        /// <param name="topic"></param>
         /// <returns></returns>
-        private MessageQueue SelectQueue(String topic)
+        private MessageQueue SelectQueue()
         {
             if (_robin == null)
             {
@@ -89,26 +89,14 @@ namespace NewLife.RocketMQ
                 var total = list.Sum(e => e.WriteQueueNums);
                 if (total <= 0) return null;
 
-                _robin = new WeightRoundRobin<BrokerInfo>(list, e => e.WriteQueueNums);
+                _brokers = list;
+                _robin = new WeightRoundRobin(list.Select(e => e.WriteQueueNums).ToArray());
             }
 
             // 构造排序列表。希望能够均摊到各Broker
-            var bk = _robin.Get(out var times);
+            var idx = _robin.Get(out var times);
+            var bk = _brokers[idx];
             return new MessageQueue { Topic = Topic, BrokerName = bk.Name, QueueId = (times - 1) % bk.WriteQueueNums };
-
-            //var idx = Interlocked.Increment(ref _QueueIndex);
-            //idx = (idx - 1) % total;
-
-            //// 轮询使用
-            //foreach (var item in list)
-            //{
-            //    if (idx < item.WriteQueueNums)
-            //        return new MessageQueue { Topic = Topic, BrokerName = item.Name, QueueId = idx };
-
-            //    idx -= item.WriteQueueNums;
-            //}
-
-            //return null;
         }
         #endregion
 
