@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
@@ -12,7 +13,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test2();
+            Test1();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -32,6 +33,7 @@ namespace Test
 
                 Log = XTrace.Log,
             };
+            // 105命令的数字签名是 NyRea4g3OHmd7RxEUoVJUz58lXc=
 
             mq.Start();
 
@@ -48,6 +50,8 @@ namespace Test
 
                 var sr = mq.Send(msg);
                 Console.WriteLine("{0} {1} {2}", sr.MsgId, sr.Queue.QueueId, sr.QueueOffset);
+
+                Thread.Sleep(500);
             }
 
             mq.Dispose();

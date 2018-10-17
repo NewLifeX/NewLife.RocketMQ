@@ -69,11 +69,12 @@ namespace NewLife.RocketMQ
 
             Invoke(RequestCode.HEART_BEAT, new
             {
-                ClientId = Id,
+                ClientID = Id,
                 ProducerDataSet = new[] {
+                   new{ GroupName="DEFAULT_PRODUCER" },
                    new{ GroupName=cfg.Group },
                 },
-            });
+            }, null);
         }
         #endregion
     }

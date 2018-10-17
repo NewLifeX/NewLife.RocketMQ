@@ -50,10 +50,12 @@ namespace NewLife.RocketMQ.Protocol
         /// <param name="dic"></param>
         public void Read(IDictionary<String, String> dic)
         {
-            if (dic.TryGetValue(nameof(MsgId), out var str)) MsgId = str;
-            if (dic.TryGetValue(nameof(QueueOffset), out str)) QueueOffset = str.ToLong();
-            if (dic.TryGetValue(nameof(RegionId), out str)) RegionId = str;
-            if (dic.TryGetValue("MSG_REGION", out str)) RegionId = str;
+            var dic2 = dic.ToNullable(StringComparer.OrdinalIgnoreCase);
+
+            if (dic2.TryGetValue(nameof(MsgId), out var str)) MsgId = str;
+            if (dic2.TryGetValue(nameof(QueueOffset), out str)) QueueOffset = str.ToLong();
+            if (dic2.TryGetValue(nameof(RegionId), out str)) RegionId = str;
+            if (dic2.TryGetValue("MSG_REGION", out str)) RegionId = str;
         }
         #endregion
     }

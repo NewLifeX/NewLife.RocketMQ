@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Threading;
 using NewLife.Collections;
 using NewLife.Log;
@@ -66,22 +68,32 @@ namespace NewLife.RocketMQ
         {
             if (cmd.Header.Opaque == 0) cmd.Header.Opaque = g_id++;
 
-            //// 签名。阿里云ONS需要反射消息具体字段，把值转字符串后拼起来，再加上body后，取HmacSHA1
-            //var cfg = Config;
-            //if (!cfg.AccessKey.IsNullOrEmpty())
-            //{
-            //    var sha = new HMACSHA1(cfg.SecretKey.GetBytes());
+            // 签名。阿里云ONS需要反射消息具体字段，把值转字符串后拼起来，再加上body后，取HmacSHA1
+            var cfg = Config;
+            if (!cfg.AccessKey.IsNullOrEmpty())
+            {
+                var sha = new HMACSHA1(cfg.SecretKey.GetBytes());
 
-            //    var ms = new MemoryStream();
-            //    cmd.Write(ms);
-            //    if (cmd.Body != null && cmd.Body.Length > 0) ms.Write(cmd.Body);
+                var ms = new MemoryStream();
+                // AccessKey + OnsChannel
+                ms.Write(cfg.AccessKey.GetBytes());
+                ms.Write(cfg.OnsChannel.GetBytes());
+                // ExtFields
+                foreach (var item in cmd.Header.ExtFields)
+                {
+                    if (item.Value != null) ms.Write(item.Value.GetBytes());
+                }
+                // Body
+                if (cmd.Body != null && cmd.Body.Length > 0) ms.Write(cmd.Body);
 
-            //    var sign = sha.ComputeHash(ms.ToArray());
+                var sign = sha.ComputeHash(ms.ToArray());
 
-            //    var dic = cmd.Header.ExtFields;
+                var dic = cmd.Header.ExtFields;
 
-            //    dic["Signature"] = sign.ToBase64();
-            //}
+                dic["Signature"] = sign.ToBase64();
+                dic["AccessKey"] = cfg.AccessKey;
+                dic["OnsChannel"] = cfg.OnsChannel;
+            }
 
             // 轮询调用
             Exception last = null;
@@ -170,16 +182,16 @@ namespace NewLife.RocketMQ
             var cfg = Config;
             if (!cfg.AccessKey.IsNullOrEmpty()) header.Language = "CSharp";
 
-            // 阿里云密钥
-            if (!cfg.AccessKey.IsNullOrEmpty())
-            {
-                var dic = header.ExtFields;
+            //// 阿里云密钥
+            //if (!cfg.AccessKey.IsNullOrEmpty())
+            //{
+            //    var dic = header.ExtFields;
 
-                dic["AccessKey"] = cfg.AccessKey;
-                dic["SecretKey"] = cfg.SecretKey;
+            //    dic["AccessKey"] = cfg.AccessKey;
+            //    dic["SecretKey"] = cfg.SecretKey;
 
-                if (!cfg.OnsChannel.IsNullOrEmpty()) dic["OnsChannel"] = cfg.OnsChannel;
-            }
+            //    if (!cfg.OnsChannel.IsNullOrEmpty()) dic["OnsChannel"] = cfg.OnsChannel;
+            //}
         }
         #endregion
 

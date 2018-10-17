@@ -44,9 +44,11 @@ namespace NewLife.RocketMQ.Protocol
         /// <param name="dic"></param>
         public void Read(IDictionary<String, String> dic)
         {
-            if (dic.TryGetValue(nameof(MinOffset), out var str)) MinOffset = str.ToLong();
-            if (dic.TryGetValue(nameof(MaxOffset), out str)) MaxOffset = str.ToLong();
-            if (dic.TryGetValue(nameof(NextBeginOffset), out str)) NextBeginOffset = str.ToLong();
+            var dic2 = dic.ToNullable(StringComparer.OrdinalIgnoreCase);
+
+            if (dic2.TryGetValue(nameof(MinOffset), out var str)) MinOffset = str.ToLong();
+            if (dic2.TryGetValue(nameof(MaxOffset), out str)) MaxOffset = str.ToLong();
+            if (dic2.TryGetValue(nameof(NextBeginOffset), out str)) NextBeginOffset = str.ToLong();
         }
         #endregion
     }
