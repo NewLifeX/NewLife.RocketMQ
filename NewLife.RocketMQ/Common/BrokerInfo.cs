@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 
 namespace NewLife.RocketMQ
 {
@@ -14,7 +15,7 @@ namespace NewLife.RocketMQ
     }
 
     /// <summary>代理信息</summary>
-    public class BrokerInfo
+    public class BrokerInfo /*: IEqualityComparer<BrokerInfo>*/
     {
         #region 属性
         /// <summary>名称</summary>
@@ -35,5 +36,49 @@ namespace NewLife.RocketMQ
         /// <summary>主题同步标记</summary>
         public Int32 TopicSynFlag { get; set; }
         #endregion
+
+        /// <summary>相等比较</summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public override Boolean Equals(Object obj)
+        {
+            var x = this;
+            if (!(obj is BrokerInfo y)) return false;
+
+            return x.Name == y.Name && (x.Addresses == y.Addresses || x.Addresses != null && y.Addresses != null && x.Addresses.SequenceEqual(y.Addresses))
+                && x.Permission == y.Permission && x.TopicSynFlag == y.TopicSynFlag
+                && x.ReadQueueNums == y.ReadQueueNums && x.WriteQueueNums == y.WriteQueueNums;
+        }
+
+        /// <summary>计算哈希</summary>
+        /// <returns></returns>
+        public override Int32 GetHashCode()
+        {
+            var obj = this;
+            return obj.Name.GetHashCode() ^ obj.Addresses.GetHashCode()
+                ^ obj.Permission.GetHashCode() ^ obj.TopicSynFlag
+                ^ obj.ReadQueueNums ^ obj.WriteQueueNums;
+        }
+
+        ///// <summary>相等比较</summary>
+        ///// <param name="x"></param>
+        ///// <param name="y"></param>
+        ///// <returns></returns>
+        //public Boolean Equals(BrokerInfo x, BrokerInfo y)
+        //{
+        //    return x.Name == y.Name && x.Addresses.SequenceEqual(y.Addresses)
+        //        && x.Permission == y.Permission && x.TopicSynFlag == y.TopicSynFlag
+        //        && x.ReadQueueNums == y.ReadQueueNums && x.WriteQueueNums == y.WriteQueueNums;
+        //}
+
+        ///// <summary>计算哈希</summary>
+        ///// <param name="obj"></param>
+        ///// <returns></returns>
+        //public Int32 GetHashCode(BrokerInfo obj)
+        //{
+        //    return obj.Name.GetHashCode() ^ obj.Addresses.GetHashCode()
+        //        ^ obj.Permission.GetHashCode() ^ obj.TopicSynFlag
+        //        ^ obj.ReadQueueNums ^ obj.WriteQueueNums;
+        //}
     }
 }

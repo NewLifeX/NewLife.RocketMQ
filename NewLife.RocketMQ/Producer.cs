@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using NewLife.RocketMQ.Client;
-using NewLife.RocketMQ.Common;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
 
@@ -43,12 +40,17 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         public virtual SendResult Send(Message msg, Int32 timeout = -1)
         {
+            // 选择队列分片
+            var mq = _NameServer.SelectQueue();
+            mq.Topic = Topic;
+
+            // 构造请求头
             var ts = DateTime.Now - _dt1970;
             var smrh = new SendMessageRequestHeader
             {
                 ProducerGroup = Group,
                 Topic = Topic,
-                QueueId = 0,
+                QueueId = mq.QueueId,
                 SysFlag = 0,
                 BornTimestamp = (Int64)ts.TotalMilliseconds,
                 Flag = msg.Flag,
@@ -57,15 +59,11 @@ namespace NewLife.RocketMQ
                 UnitMode = UnitMode,
             };
 
-            var mq = SelectQueue();
-            if (mq != null) smrh.QueueId = mq.QueueId;
-
-            var dic = smrh.GetProperties();
-
+            // 根据队列获取Broker客户端
             var bk = GetBroker(mq.BrokerName);
+            var rs = bk.Invoke(RequestCode.SEND_MESSAGE_V2, msg.Body, smrh.GetProperties());
 
-            var rs = bk.Invoke(RequestCode.SEND_MESSAGE_V2, msg.Body, dic);
-
+            // 包装结果
             var sr = new SendResult
             {
                 Status = SendStatus.SendOK,
@@ -91,30 +89,6 @@ namespace NewLife.RocketMQ
             }
 
             return Send(new Message { Body = buf, Tags = tags }, timeout);
-        }
-
-        private IList<BrokerInfo> _brokers;
-        private WeightRoundRobin _robin;
-        /// <summary>选择队列</summary>
-        /// <returns></returns>
-        private MessageQueue SelectQueue()
-        {
-            if (_robin == null)
-            {
-                var list = Brokers.Where(e => e.Permission.HasFlag(Permissions.Write) && e.WriteQueueNums > 0).ToList();
-                if (list.Count == 0) return null;
-
-                var total = list.Sum(e => e.WriteQueueNums);
-                if (total <= 0) return null;
-
-                _brokers = list;
-                _robin = new WeightRoundRobin(list.Select(e => e.WriteQueueNums).ToArray());
-            }
-
-            // 构造排序列表。希望能够均摊到各Broker
-            var idx = _robin.Get(out var times);
-            var bk = _brokers[idx];
-            return new MessageQueue { Topic = Topic, BrokerName = bk.Name, QueueId = (times - 1) % bk.WriteQueueNums };
         }
         #endregion
 

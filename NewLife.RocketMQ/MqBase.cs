@@ -56,7 +56,8 @@ namespace NewLife.RocketMQ.Client
         /// <summary>代理集合</summary>
         public IList<BrokerInfo> Brokers => _NameServer?.Brokers;
 
-        private NameClient _NameServer;
+        /// <summary>名称服务器</summary>
+        protected NameClient _NameServer;
         #endregion
 
         #region 阿里云属性

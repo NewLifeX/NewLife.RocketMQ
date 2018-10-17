@@ -15,7 +15,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test1();
+            Test3();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -87,9 +87,18 @@ namespace Test
             var list = new List<BrokerInfo>
             {
                 new BrokerInfo { Name = "A", WriteQueueNums = 5 },
-                new BrokerInfo { Name = "B", WriteQueueNums = 7 },
-                new BrokerInfo { Name = "C", WriteQueueNums = 9 }
+                new BrokerInfo { Name = "B", WriteQueueNums = 7,Addresses=new[]{ "111","222"} },
+                new BrokerInfo { Name = "C", WriteQueueNums = 9 },
             };
+            var list2 = new List<BrokerInfo>
+            {
+                new BrokerInfo { Name = "A", WriteQueueNums = 5 },
+                new BrokerInfo { Name = "B", WriteQueueNums = 7 ,Addresses=new[]{ "111","222"}},
+                new BrokerInfo { Name = "C", WriteQueueNums = 9 },
+            };
+
+            Console.WriteLine(list[1].Equals(list2[1]));
+            Console.WriteLine(list2.SequenceEqual(list));
 
             var robin = new WeightRoundRobin(list.Select(e => e.WriteQueueNums).ToArray());
             var count = list.Sum(e => e.WriteQueueNums);
