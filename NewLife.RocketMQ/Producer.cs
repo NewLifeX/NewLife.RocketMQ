@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using NewLife.Log;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
@@ -98,28 +99,37 @@ namespace NewLife.RocketMQ
 
         #region 业务方法
         /// <summary>创建主题</summary>
-        /// <param name="key"></param>
-        /// <param name="newTopic"></param>
+        /// <param name="topic"></param>
         /// <param name="queueNum"></param>
         /// <param name="topicSysFlag"></param>
-        public void CreateTopic(String key, String newTopic, Int32 queueNum, Int32 topicSysFlag = 0)
+        public void CreateTopic(String topic, Int32 queueNum, Int32 topicSysFlag = 0)
         {
             var header = new
             {
-                topic = newTopic,
+                topic,
                 defaultTopic = Topic,
                 readQueueNums = queueNum,
                 writeQueueNums = queueNum,
-                perm = 8,
+                perm = 7,
                 topicFilterType = "SINGLE_TAG",
                 topicSysFlag,
                 order = false,
             };
 
-            var bk = GetBroker(Brokers.FirstOrDefault().Name);
-            var rs = bk.Invoke(RequestCode.UPDATE_AND_CREATE_TOPIC, null, header);
-
-            Console.WriteLine(rs);
+            // 在所有Broker上创建Topic
+            foreach (var item in Brokers)
+            {
+                WriteLog("在Broker[{0}]上创建主题：{1}", item.Name, topic);
+                try
+                {
+                    var bk = GetBroker(item.Name);
+                    var rs = bk.Invoke(RequestCode.UPDATE_AND_CREATE_TOPIC, null, header);
+                }
+                catch (Exception ex)
+                {
+                    XTrace.WriteException(ex);
+                }
+            }
         }
         #endregion
     }

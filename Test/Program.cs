@@ -29,7 +29,7 @@ namespace Test
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                //Topic = "nx_test",
+                Topic = "nx_test",
                 Group = "PID_Stone_001",
                 NameServerAddress = "10.9.30.35:9876",
 
@@ -39,7 +39,7 @@ namespace Test
 
             mq.Start();
 
-            mq.CreateTopic("", "nx_test", 13);
+            //mq.CreateTopic("nx_test", 13);
 
             for (var i = 0; i < 16; i++)
             {
@@ -48,7 +48,7 @@ namespace Test
                 Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
 
                 // 阿里云发送消息不能过快，否则报错“服务不可用”
-                Thread.Sleep(100);
+                //Thread.Sleep(100);
             }
 
             mq.Dispose();
