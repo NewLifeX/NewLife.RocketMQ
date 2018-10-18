@@ -72,14 +72,21 @@ namespace Test
 
             consumer.Start();
 
-            //Thread.Sleep(1000);
-            //for (var i = 0; i < 100; i++)
-            //{
-            //    var cs = consumer.GetConsumers();
-            //    if (cs.Count > 0) XTrace.WriteLine("发现消费者：{0}", cs.Join());
+            Thread.Sleep(1000);
+            for (var i = 0; i < 1000; i++)
+            {
+                //var cs = consumer.GetConsumers();
+                //if (cs.Count > 0) XTrace.WriteLine("发现消费者：{0}", cs.Join());
+                if (consumer.Rebalance())
+                {
+                    var qs = consumer.Queues;
+                    var dic = qs.GroupBy(e => e.BrokerName).ToDictionary(e => e.Key, e => e.Join(",", x => x.QueueId));
 
-            //    Thread.Sleep(5000);
-            //}
+                    XTrace.WriteLine("重新平衡[{0}]：\r\n{1}", qs.Length, dic.Join("\r\n", e => $"{e.Key}[{e.Value}]"));
+                }
+
+                Thread.Sleep(1000);
+            }
 
             var br = consumer.Brokers.FirstOrDefault();
             var mq = new MessageQueue { BrokerName = br.Name, QueueId = 1 };

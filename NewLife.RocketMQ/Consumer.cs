@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using NewLife.Log;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
@@ -174,6 +175,93 @@ namespace NewLife.RocketMQ
             }
 
             return cs;
+        }
+        #endregion
+
+        #region 消费端负载均衡
+        /// <summary>当前所需要消费的队列。由均衡算法产生</summary>
+        public MessageQueue[] Queues => _Queues.Select(e => e.Queue).ToArray();
+
+        private QueueStore[] _Queues;
+
+        class QueueStore
+        {
+            public MessageQueue Queue { get; set; }
+            public Int64 Offset { get; set; } = -1;
+        }
+
+        /// <summary>重新平衡消费队列</summary>
+        /// <returns></returns>
+        public Boolean Rebalance()
+        {
+            /*
+             * 1，获取消费组下所有消费组，排序
+             * 2，获取主题下所有队列，排序
+             * 3，各消费者平均分配队列，不采用环形，减少消费者到Broker连接数
+             */
+
+            var cs = GetConsumers(Group);
+            //if (cs.Count == 0)
+            //{
+            //    for (var i = 0; i < 60; i++)
+            //    {
+            //        cs = GetConsumers(Group);
+            //        if (cs.Count > 0) break;
+
+            //        Thread.Sleep(1000);
+            //    }
+            //}
+            if (cs.Count == 0) return false;
+
+            var qs = new List<MessageQueue>();
+            foreach (var br in Brokers)
+            {
+                if (br.Permission.HasFlag(Permissions.Read))
+                {
+                    for (var i = 0; i < br.ReadQueueNums; i++)
+                    {
+                        qs.Add(new MessageQueue
+                        {
+                            Topic = Topic,
+                            BrokerName = br.Name,
+                            QueueId = i,
+                        });
+                    }
+                }
+            }
+
+            // 排序，计算索引
+            var cid = ClientId;
+            var idx = 0;
+            var cs2 = cs.OrderBy(e => e).ToList();
+            for (idx = 0; idx < cs2.Count; idx++)
+            {
+                if (cs2[idx] == cid) break;
+            }
+            if (idx >= cs2.Count) return false;
+
+            // 先分糖，每人多少个
+            var ds = new Int32[cs2.Count];
+            for (Int32 i = 0, k = 0; i < qs.Count; i++)
+            {
+                ds[k++]++;
+
+                if (k >= ds.Length) k = 0;
+            }
+            // 我的前面分了多少
+            var start = ds.Take(idx).Sum();
+            // 跳过前面，取我的糖
+            qs = qs.Skip(start).Take(ds[idx]).ToList();
+
+            var rs = new List<QueueStore>();
+            foreach (var item in qs)
+            {
+                rs.Add(new QueueStore { Queue = item });
+            }
+
+            _Queues = rs.ToArray();
+
+            return true;
         }
         #endregion
     }
