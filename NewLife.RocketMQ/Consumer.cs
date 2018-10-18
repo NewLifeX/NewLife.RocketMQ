@@ -112,7 +112,7 @@ namespace NewLife.RocketMQ
 
         /// <summary>获取消费者下所有消费者</summary>
         /// <param name="group"></param>
-        public void GetConsumers(String group = null)
+        public ICollection<String> GetConsumers(String group = null)
         {
             if (group.IsNullOrEmpty()) group = Group;
 
@@ -121,21 +121,33 @@ namespace NewLife.RocketMQ
                 consumerGroup = group,
             };
 
+            var cs = new HashSet<String>();
+
             // 在所有Broker上查询
             foreach (var item in Brokers)
             {
                 try
                 {
                     var bk = GetBroker(item.Name);
-                    bk.Ping();
+                    //bk.Ping();
                     var rs = bk.Invoke(RequestCode.GET_CONSUMER_LIST_BY_GROUP, null, header);
-                    WriteLog(rs + "");
+                    //WriteLog(rs.Header.ExtFields?.ToJson());
+                    var js = rs.ReadBodyAsJson();
+                    if (js != null && js["consumerIdList"] is IList<Object> list)
+                    {
+                        foreach (String clientId in list)
+                        {
+                            if (!cs.Contains(clientId)) cs.Add(clientId);
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
                     XTrace.WriteException(ex);
                 }
             }
+
+            return cs;
         }
         #endregion
     }

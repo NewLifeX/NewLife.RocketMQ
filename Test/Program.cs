@@ -15,7 +15,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test1();
+            Test2();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -72,7 +72,14 @@ namespace Test
 
             consumer.Start();
 
-            consumer.GetConsumers();
+            Thread.Sleep(1000);
+            for (var i = 0; i < 100; i++)
+            {
+                var cs = consumer.GetConsumers();
+                if (cs.Count > 0) XTrace.WriteLine("发现消费者：{0}", cs.Join());
+
+                Thread.Sleep(5000);
+            }
 
             var br = consumer.Brokers.FirstOrDefault();
             var mq = new MessageQueue { BrokerName = br.Name, QueueId = 1 };
