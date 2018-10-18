@@ -78,8 +78,11 @@ namespace NewLife.RocketMQ
             // 生产者 和 消费者 略有不同
             if (cfg is Producer pd)
             {
-                body.ProducerDataSet = new[] { new ProducerData { GroupName = "CLIENT_INNER_PRODUCER" } };
-                body.ConsumerDataSet = new[] { new ConsumerData { GroupName = "CLIENT_INNER_COMSUMER" } };
+                body.ProducerDataSet = new[] {
+                    new ProducerData { GroupName = pd.Group },
+                    new ProducerData { GroupName = "CLIENT_INNER_PRODUCER" },
+                };
+                body.ConsumerDataSet = new ConsumerData[] { };
             }
             else if (cfg is Consumer cm)
             {
