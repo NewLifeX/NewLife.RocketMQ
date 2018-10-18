@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 
@@ -35,6 +36,9 @@ namespace NewLife.RocketMQ
                 Status = PullStatus.Found,
             };
             pr.Read(rs.Header.ExtFields);
+
+            // 读取内容
+            if (rs.Body != null && rs.Body.Length > 0) pr.Messages = MessageExt.ReadAll(rs.Body).ToArray();
 
             return pr;
         }

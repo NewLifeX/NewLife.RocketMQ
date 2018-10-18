@@ -7,8 +7,8 @@ namespace NewLife.RocketMQ.Protocol
     public class Message
     {
         #region 属性
-        ///// <summary>主题</summary>
-        //public String Topic { get; set; }
+        /// <summary>主题</summary>
+        public String Topic { get; set; }
 
         /// <summary>标签</summary>
         public String Tags { get; set; }
