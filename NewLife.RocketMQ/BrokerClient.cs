@@ -87,8 +87,8 @@ namespace NewLife.RocketMQ
                 body.ConsumerDataSet = cm.Data.ToArray();
             }
 
-            var rs = Invoke(RequestCode.HEART_BEAT, body, null);
-            WriteLog(rs + "");
+            // 心跳忽略错误。有时候报40错误
+            Invoke(RequestCode.HEART_BEAT, body, null, true);
         }
         #endregion
     }

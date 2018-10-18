@@ -129,7 +129,7 @@ namespace NewLife.RocketMQ
         /// <param name="body"></param>
         /// <param name="extFields"></param>
         /// <returns></returns>
-        internal virtual Command Invoke(RequestCode request, Object body, Object extFields = null)
+        internal virtual Command Invoke(RequestCode request, Object body, Object extFields = null, Boolean ignoreError = false)
         {
             var header = new Header
             {
@@ -163,7 +163,7 @@ namespace NewLife.RocketMQ
             var rs = Send(cmd);
 
             // 判断异常响应
-            if (rs.Header.Code != 0)
+            if (!ignoreError && rs.Header.Code != 0)
             {
                 // 优化异常输出
                 var err = rs.Header.Remark;
