@@ -54,6 +54,12 @@ namespace NewLife.RocketMQ.Protocol
         public String MsgId { get; set; }
         #endregion
 
+        #region 构造
+        /// <summary>友好字符串</summary>
+        /// <returns></returns>
+        public override String ToString() => $"[{CommitLogOffset}]{base.ToString()}";
+        #endregion
+
         #region 读写
         /// <summary>从数据流中读取</summary>
         /// <param name="stream"></param>
@@ -99,6 +105,7 @@ namespace NewLife.RocketMQ.Protocol
 
             var len2 = bn.Read<Int16>();
             Properties = bn.ReadBytes(len2).ToStr();
+            SetProperties(Properties);
 
             // MsgId
             var ms = Pool.MemoryStream.Get();
