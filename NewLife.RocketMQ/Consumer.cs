@@ -50,8 +50,9 @@ namespace NewLife.RocketMQ
         /// <param name="mq"></param>
         /// <param name="offset"></param>
         /// <param name="maxNums"></param>
+        /// <param name="msTimeout"></param>
         /// <returns></returns>
-        public PullResult Pull(MessageQueue mq, Int64 offset, Int32 maxNums)
+        public PullResult Pull(MessageQueue mq, Int64 offset, Int32 maxNums, Int32 msTimeout = -1)
         {
             var header = new PullMessageRequestHeader
             {
@@ -62,16 +63,20 @@ namespace NewLife.RocketMQ
                 MaxMsgNums = maxNums,
                 SysFlag = 6,
             };
+            if (msTimeout >= 0) header.SuspendTimeoutMillis = msTimeout;
 
             var dic = header.GetProperties();
             var bk = GetBroker(mq.BrokerName);
 
-            var rs = bk.Invoke(RequestCode.PULL_MESSAGE, null, dic);
+            var rs = bk.Invoke(RequestCode.PULL_MESSAGE, null, dic, true);
 
-            var pr = new PullResult
-            {
-                Status = PullStatus.Found,
-            };
+            var pr = new PullResult();
+
+            if (rs.Header.Code == 0)
+                pr.Status = PullStatus.Found;
+            else if (rs.Header.Code == (Int32)ResponseCode.PULL_NOT_FOUND)
+                pr.Status = PullStatus.NoNewMessage;
+
             pr.Read(rs.Header.ExtFields);
 
             // 读取内容
@@ -108,6 +113,27 @@ namespace NewLife.RocketMQ
         public Int64 SearchOffset(MessageQueue mq, Int64 timestamp)
         {
             throw new NotImplementedException();
+        }
+
+        /// <summary>更新队列的偏移</summary>
+        /// <param name="mq"></param>
+        /// <param name="commitOffset"></param>
+        /// <returns></returns>
+        public Boolean UpdateOffset(MessageQueue mq, Int64 commitOffset)
+        {
+            var bk = GetBroker(mq.BrokerName);
+            var rs = bk.Invoke(RequestCode.UPDATE_CONSUMER_OFFSET, null, new
+            {
+                consumerGroup = Group,
+                topic = Topic,
+                queueId = mq.QueueId,
+                commitOffset,
+            });
+
+            var dic = rs.Header.ExtFields;
+            if (dic == null) return false;
+
+            return true;
         }
 
         /// <summary>获取消费者下所有消费者</summary>

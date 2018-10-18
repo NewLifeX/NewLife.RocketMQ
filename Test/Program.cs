@@ -72,25 +72,27 @@ namespace Test
 
             consumer.Start();
 
-            Thread.Sleep(1000);
-            for (var i = 0; i < 100; i++)
-            {
-                var cs = consumer.GetConsumers();
-                if (cs.Count > 0) XTrace.WriteLine("发现消费者：{0}", cs.Join());
+            //Thread.Sleep(1000);
+            //for (var i = 0; i < 100; i++)
+            //{
+            //    var cs = consumer.GetConsumers();
+            //    if (cs.Count > 0) XTrace.WriteLine("发现消费者：{0}", cs.Join());
 
-                Thread.Sleep(5000);
-            }
+            //    Thread.Sleep(5000);
+            //}
 
             var br = consumer.Brokers.FirstOrDefault();
             var mq = new MessageQueue { BrokerName = br.Name, QueueId = 1 };
 
             //foreach (var mq in consumer.Queues)
             {
-                var offset = 0;
-                //var offset = consumer.QueryOffset(mq);
-                var pr = consumer.Pull(mq, offset, 32);
+                //var offset = 0;
+                var offset = consumer.QueryOffset(mq);
+                var pr = consumer.Pull(mq, offset, 32, 500);
 
-                Console.WriteLine(pr);
+                Console.WriteLine("消费：{0}", pr.Messages.Length);
+
+                consumer.UpdateOffset(mq, pr.MaxOffset);
             }
         }
 
