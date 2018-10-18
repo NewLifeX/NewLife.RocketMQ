@@ -9,6 +9,39 @@ namespace NewLife.RocketMQ
     /// <summary>消费者</summary>
     public class Consumer : MqBase
     {
+        #region 属性
+        /// <summary>数据</summary>
+        public IList<ConsumerData> Data { get; set; }
+        #endregion
+
+        #region 方法
+        /// <summary>启动</summary>
+        /// <returns></returns>
+        public override Boolean Start()
+        {
+            var list = Data;
+            if (list == null)
+            {
+                // 建立消费者数据，用于心跳
+                var sd = new SubscriptionData
+                {
+                    Topic = Topic,
+                };
+                var cd = new ConsumerData
+                {
+                    GroupName = Group,
+                    SubscriptionDataSet = new[] { sd },
+                };
+
+                list = new List<ConsumerData> { cd };
+
+                Data = list;
+            }
+
+            return base.Start();
+        }
+        #endregion
+
         #region 拉取消息
         /// <summary>从指定队列拉取消息</summary>
         /// <param name="mq"></param>

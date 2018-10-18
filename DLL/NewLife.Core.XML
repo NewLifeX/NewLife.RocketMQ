@@ -6675,21 +6675,31 @@
             <summary>Json写入器</summary>
         </member>
         <member name="P:NewLife.Serialization.JsonWriter.UseUTCDateTime">
-            <summary>使用UTC时间</summary>
+            <summary>使用UTC时间。默认false</summary>
         </member>
-        <member name="P:NewLife.Serialization.JsonWriter.LowerCaseName">
+        <member name="P:NewLife.Serialization.JsonWriter.LowerCase">
             <summary>使用小写名称</summary>
         </member>
+        <member name="P:NewLife.Serialization.JsonWriter.CamelCase">
+            <summary>使用驼峰命名</summary>
+        </member>
         <member name="P:NewLife.Serialization.JsonWriter.NullValue">
-            <summary>写入空值</summary>
+            <summary>写入空值。默认true</summary>
         </member>
         <member name="M:NewLife.Serialization.JsonWriter.#ctor">
             <summary>实例化</summary>
         </member>
-        <member name="M:NewLife.Serialization.JsonWriter.ToJson(System.Object,System.Boolean)">
+        <member name="M:NewLife.Serialization.JsonWriter.ToJson(System.Object,System.Boolean,System.Boolean,System.Boolean)">
             <summary>对象序列化为Json字符串</summary>
             <param name="obj"></param>
-            <param name="indented"></param>
+            <param name="indented">是否缩进。默认false</param>
+            <param name="nullValue">是否写控制。默认true</param>
+            <param name="camelCase">是否驼峰命名。默认false</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Serialization.JsonWriter.FormatName(System.String)">
+            <summary>根据小写和驼峰格式化名称</summary>
+            <param name="name"></param>
             <returns></returns>
         </member>
         <member name="T:NewLife.Serialization.Accessor">

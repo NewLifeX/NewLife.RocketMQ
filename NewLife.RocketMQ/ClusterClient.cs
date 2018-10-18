@@ -145,12 +145,13 @@ namespace NewLife.RocketMQ
             if (body is Byte[] buf)
                 cmd.Body = buf;
             else if (body != null)
-                cmd.Body = body.ToJson().GetBytes();
+                cmd.Body = JsonWriter.ToJson(body, false, false, true).GetBytes();
 
             if (extFields != null)
             {
                 //header.ExtFields.Merge(extFields);// = extFields.ToDictionary().ToDictionary(e => e.Key, e => e.Value + "");
                 var dic = header.ExtFields;
+                if (dic == null) dic = header.ExtFields = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
                 foreach (var item in extFields.ToDictionary())
                 {
                     dic[item.Key] = item.Value + "";
@@ -166,10 +167,13 @@ namespace NewLife.RocketMQ
             {
                 // 优化异常输出
                 var err = rs.Header.Remark;
-                var p = err.IndexOf("Exception: ");
-                if (p >= 0) err = err.Substring(p + "Exception: ".Length);
-                p = err.IndexOf(", ");
-                if (p > 0) err = err.Substring(0, p);
+                if (!err.IsNullOrEmpty())
+                {
+                    var p = err.IndexOf("Exception: ");
+                    if (p >= 0) err = err.Substring(p + "Exception: ".Length);
+                    p = err.IndexOf(", ");
+                    if (p > 0) err = err.Substring(0, p);
+                }
 
                 throw new ResponseException(rs.Header.Code, err);
             }

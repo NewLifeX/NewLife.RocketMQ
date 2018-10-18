@@ -65,9 +65,7 @@ namespace NewLife.RocketMQ.Protocol
         public Boolean Write(Stream stream, Object context = null)
         {
             // 计算头部
-            var json = Header.ToJson();
-            //var js = new JsonWriter { LowerCaseName = true };
-            //var json = js.ToJson(Header, false);
+            var json = JsonWriter.ToJson(Header, false, false, true);
             var hs = json.GetBytes();
             var buf = Body;
 

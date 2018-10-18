@@ -73,14 +73,22 @@ namespace NewLife.RocketMQ
         {
             var cfg = Config;
 
-            Invoke(RequestCode.HEART_BEAT, new
+            var body = new HeartbeatData { ClientID = Id };
+
+            // 生产者 和 消费者 略有不同
+            if (cfg is Producer pd)
             {
-                ClientID = Id,
-                ProducerDataSet = new[] {
-                   new{ GroupName="DEFAULT_PRODUCER" },
-                   new{ GroupName=cfg.Group },
-                },
-            }, null);
+                body.ProducerDataSet = new[] { new ProducerData { GroupName = "CLIENT_INNER_PRODUCER" } };
+                body.ConsumerDataSet = new[] { new ConsumerData { GroupName = "CLIENT_INNER_COMSUMER" } };
+            }
+            else if (cfg is Consumer cm)
+            {
+                body.ProducerDataSet = new[] { new ProducerData { GroupName = "CLIENT_INNER_PRODUCER" } };
+                body.ConsumerDataSet = cm.Data.ToArray();
+            }
+
+            var rs = Invoke(RequestCode.HEART_BEAT, body, null);
+            WriteLog(rs + "");
         }
         #endregion
     }
