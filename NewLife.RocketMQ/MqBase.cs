@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using NewLife.Log;
-using NewLife.Security;
 
 namespace NewLife.RocketMQ.Client
 {
@@ -25,14 +24,14 @@ namespace NewLife.RocketMQ.Client
         /// <summary>本地IP地址</summary>
         public String ClientIP { get; set; } = NetHelper.MyIP() + "";
 
-        /// <summary>本地端口</summary>
-        public Int32 ClientPort { get; set; }
+        ///// <summary>本地端口</summary>
+        //public Int32 ClientPort { get; set; }
 
         /// <summary>实例名</summary>
         public String InstanceName { get; set; } = "DEFAULT";
 
-        /// <summary>客户端回调执行线程数。默认CPU数</summary>
-        public Int32 ClientCallbackExecutorThreads { get; set; } = Environment.ProcessorCount;
+        ///// <summary>客户端回调执行线程数。默认CPU数</summary>
+        //public Int32 ClientCallbackExecutorThreads { get; set; } = Environment.ProcessorCount;
 
         /// <summary>拉取名称服务器间隔。默认30_000ms</summary>
         public Int32 PollNameServerInterval { get; set; } = 30_000;
@@ -105,6 +104,11 @@ namespace NewLife.RocketMQ.Client
             base.OnDispose(disposing);
 
             _NameServer.TryDispose();
+
+            foreach (var item in _Brokers)
+            {
+                item.Value.TryDispose();
+            }
         }
         #endregion
 

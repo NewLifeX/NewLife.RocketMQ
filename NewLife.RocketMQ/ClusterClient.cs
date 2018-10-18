@@ -34,9 +34,6 @@ namespace NewLife.RocketMQ
 
         /// <summary>配置</summary>
         public MqBase Config { get; set; }
-
-        //private TcpClient _Client;
-        //private Stream _Stream;
         #endregion
 
         #region 构造
@@ -149,7 +146,6 @@ namespace NewLife.RocketMQ
 
             if (extFields != null)
             {
-                //header.ExtFields.Merge(extFields);// = extFields.ToDictionary().ToDictionary(e => e.Key, e => e.Value + "");
                 var dic = header.GetExtFields();
                 foreach (var item in extFields.ToDictionary())
                 {

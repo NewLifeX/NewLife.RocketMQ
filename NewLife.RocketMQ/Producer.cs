@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using NewLife.Log;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
@@ -27,11 +26,6 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 基础方法
-        //public override void Start()
-        //{
-        //    base.Start();
-        //}
-
         #endregion
 
         #region 发送消息
@@ -92,9 +86,6 @@ namespace NewLife.RocketMQ
 
             return Send(new Message { Body = buf, Tags = tags }, timeout);
         }
-        #endregion
-
-        #region 连接池
         #endregion
 
         #region 业务方法
