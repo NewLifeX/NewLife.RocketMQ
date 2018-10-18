@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using NewLife.Net;
 using NewLife.RocketMQ.Client;
-using NewLife.RocketMQ.Common;
 using NewLife.RocketMQ.Protocol;
+using NewLife.Threading;
 
 namespace NewLife.RocketMQ
 {
@@ -40,10 +40,15 @@ namespace NewLife.RocketMQ
             Servers = ss.Select(e => new NetUri(e)).ToArray();
 
             base.Start();
+
+            if (_timer == null) _timer = new TimerX(DoWork, null, cfg.PollNameServerInterval, cfg.PollNameServerInterval);
         }
         #endregion
 
         #region 命令
+        private TimerX _timer;
+        private void DoWork(Object state) => GetRouteInfo(Config.Topic);
+
         /// <summary>获取主题的路由信息，含登录验证</summary>
         /// <param name="topic"></param>
         /// <returns></returns>

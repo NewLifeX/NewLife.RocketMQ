@@ -12,6 +12,9 @@ namespace NewLife.RocketMQ
         #region 属性
         /// <summary>数据</summary>
         public IList<ConsumerData> Data { get; set; }
+
+        /// <summary>持久化消费偏移间隔。默认5_000ms</summary>
+        public Int32 PersistConsumerOffsetInterval { get; set; } = 5_000;
         #endregion
 
         #region 方法

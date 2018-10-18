@@ -39,9 +39,6 @@ namespace NewLife.RocketMQ.Client
         /// <summary>Broker心跳间隔。默认30_000ms</summary>
         public Int32 HeartbeatBrokerInterval { get; set; } = 30_000;
 
-        /// <summary>持久化消费偏移间隔。默认5_000ms</summary>
-        public Int32 PersistConsumerOffsetInterval { get; set; } = 5_000;
-
         /// <summary>单元名称</summary>
         public String UnitName { get; set; }
 
