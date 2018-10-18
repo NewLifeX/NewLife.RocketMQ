@@ -41,5 +41,16 @@ namespace NewLife.RocketMQ.Protocol
         /// <summary>附带的文本信息。常见的如存放一些broker/nameserver返回的一些异常信息，方便开发人员定位问题。</summary>
         public String Remark { get; set; }
         #endregion
+
+        #region 方法
+        /// <summary>获取扩展字段。如果为空则创建</summary>
+        /// <returns></returns>
+        public IDictionary<String,String> GetExtFields()
+        {
+            if (ExtFields == null) ExtFields = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
+
+            return ExtFields;
+        }
+        #endregion
     }
 }

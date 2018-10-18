@@ -55,7 +55,10 @@ namespace NewLife.RocketMQ.Protocol
         /// <returns></returns>
         public IDictionary<String, Object> ReadBodyAsJson()
         {
-            return new JsonParser(Body.ToStr()).Decode() as IDictionary<String, Object>;
+            var buf = Body;
+            if (buf == null || buf.Length == 0) return null;
+
+            return new JsonParser(buf.ToStr()).Decode() as IDictionary<String, Object>;
         }
 
         /// <summary>写入命令到数据流</summary>
@@ -65,7 +68,8 @@ namespace NewLife.RocketMQ.Protocol
         public Boolean Write(Stream stream, Object context = null)
         {
             // 计算头部
-            var json = JsonWriter.ToJson(Header, false, false, true);
+            var json = Header.ToJson();
+            //var json = JsonWriter.ToJson(Header, false, false, true);
             var hs = json.GetBytes();
             var buf = Body;
 

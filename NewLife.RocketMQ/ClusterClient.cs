@@ -82,7 +82,9 @@ namespace NewLife.RocketMQ
                 ms.Write(cfg.AccessKey.GetBytes());
                 ms.Write(cfg.OnsChannel.GetBytes());
                 // ExtFields
-                foreach (var item in cmd.Header.ExtFields)
+                var dic = cmd.Header.GetExtFields();
+
+                foreach (var item in dic)
                 {
                     if (item.Value != null) ms.Write(item.Value.GetBytes());
                 }
@@ -90,8 +92,6 @@ namespace NewLife.RocketMQ
                 if (cmd.Body != null && cmd.Body.Length > 0) ms.Write(cmd.Body);
 
                 var sign = sha.ComputeHash(ms.ToArray());
-
-                var dic = cmd.Header.ExtFields;
 
                 dic["Signature"] = sign.ToBase64();
                 dic["AccessKey"] = cfg.AccessKey;
@@ -145,13 +145,12 @@ namespace NewLife.RocketMQ
             if (body is Byte[] buf)
                 cmd.Body = buf;
             else if (body != null)
-                cmd.Body = JsonWriter.ToJson(body, false, false, true).GetBytes();
+                cmd.Body = body.ToJson().GetBytes();
 
             if (extFields != null)
             {
                 //header.ExtFields.Merge(extFields);// = extFields.ToDictionary().ToDictionary(e => e.Key, e => e.Value + "");
-                var dic = header.ExtFields;
-                if (dic == null) dic = header.ExtFields = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
+                var dic = header.GetExtFields();
                 foreach (var item in extFields.ToDictionary())
                 {
                     dic[item.Key] = item.Value + "";
@@ -163,7 +162,7 @@ namespace NewLife.RocketMQ
             var rs = Send(cmd);
 
             // 判断异常响应
-            if (!ignoreError && rs.Header.Code != 0)
+            if (!ignoreError && rs.Header != null && rs.Header.Code != 0)
             {
                 // 优化异常输出
                 var err = rs.Header.Remark;

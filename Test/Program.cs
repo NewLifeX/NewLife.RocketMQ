@@ -48,7 +48,7 @@ namespace Test
                 Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
 
                 // 阿里云发送消息不能过快，否则报错“服务不可用”
-                //Thread.Sleep(100);
+                Thread.Sleep(100);
             }
 
             mq.Dispose();

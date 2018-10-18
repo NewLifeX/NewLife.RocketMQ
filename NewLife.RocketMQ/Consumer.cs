@@ -92,7 +92,10 @@ namespace NewLife.RocketMQ
                 queueId = mq.QueueId,
             });
 
-            return rs.Header.ExtFields["offset"].ToLong();
+            var dic = rs.Header.ExtFields;
+            if (dic == null) return -1;
+
+            return dic["offset"].ToLong();
         }
 
         /// <summary>根据时间戳查询偏移</summary>

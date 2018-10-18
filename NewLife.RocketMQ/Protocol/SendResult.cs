@@ -50,6 +50,8 @@ namespace NewLife.RocketMQ.Protocol
         /// <param name="dic"></param>
         public void Read(IDictionary<String, String> dic)
         {
+            if (dic == null) return;
+
             var dic2 = dic.ToNullable(StringComparer.OrdinalIgnoreCase);
 
             if (dic2.TryGetValue(nameof(MsgId), out var str)) MsgId = str;
