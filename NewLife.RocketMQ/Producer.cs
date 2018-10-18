@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using NewLife.Log;
 using NewLife.RocketMQ.Client;
+using NewLife.RocketMQ.Common;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
 
@@ -26,6 +29,23 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 基础方法
+        /// <summary>启动</summary>
+        /// <returns></returns>
+        public override Boolean Start()
+        {
+            if (!base.Start()) return false;
+
+            if (_NameServer != null)
+            {
+                _NameServer.OnBrokerChange += (s, e) =>
+                {
+                    _brokers = null;
+                    _robin = null;
+                };
+            }
+
+            return true;
+        }
         #endregion
 
         #region 发送消息
@@ -37,7 +57,7 @@ namespace NewLife.RocketMQ
         public virtual SendResult Send(Message msg, Int32 timeout = -1)
         {
             // 选择队列分片
-            var mq = _NameServer.SelectQueue();
+            var mq = SelectQueue();
             mq.Topic = Topic;
 
             // 构造请求头
@@ -121,6 +141,32 @@ namespace NewLife.RocketMQ
                     XTrace.WriteException(ex);
                 }
             }
+        }
+        #endregion
+
+        #region 选择Broker队列
+        private IList<BrokerInfo> _brokers;
+        private WeightRoundRobin _robin;
+        /// <summary>选择队列</summary>
+        /// <returns></returns>
+        public MessageQueue SelectQueue()
+        {
+            if (_robin == null)
+            {
+                var list = Brokers.Where(e => e.Permission.HasFlag(Permissions.Write) && e.WriteQueueNums > 0).ToList();
+                if (list.Count == 0) return null;
+
+                var total = list.Sum(e => e.WriteQueueNums);
+                if (total <= 0) return null;
+
+                _brokers = list;
+                _robin = new WeightRoundRobin(list.Select(e => e.WriteQueueNums).ToArray());
+            }
+
+            // 构造排序列表。希望能够均摊到各Broker
+            var idx = _robin.Get(out var times);
+            var bk = _brokers[idx];
+            return new MessageQueue { BrokerName = bk.Name, QueueId = (times - 1) % bk.WriteQueueNums };
         }
         #endregion
     }

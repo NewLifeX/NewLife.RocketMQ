@@ -125,6 +125,7 @@ namespace NewLife.RocketMQ
         /// <param name="request"></param>
         /// <param name="body"></param>
         /// <param name="extFields"></param>
+        /// <param name="ignoreError"></param>
         /// <returns></returns>
         internal virtual Command Invoke(RequestCode request, Object body, Object extFields = null, Boolean ignoreError = false)
         {

@@ -14,6 +14,9 @@ namespace NewLife.RocketMQ
         #region 属性
         /// <summary>Broker集合</summary>
         public IList<BrokerInfo> Brokers { get; } = new List<BrokerInfo>();
+
+        /// <summary>代理改变时触发</summary>
+        public event EventHandler OnBrokerChange;
         #endregion
 
         #region 构造
@@ -85,36 +88,11 @@ namespace NewLife.RocketMQ
             if (Brokers is List<BrokerInfo> bks) bks.AddRange(list);
 
             // 有改变，重新平衡队列
-            _brokers = null;
-            _robin = null;
+            //_brokers = null;
+            //_robin = null;
+            OnBrokerChange?.Invoke(this, EventArgs.Empty);
 
             return list;
-        }
-        #endregion
-
-        #region 选择Broker队列
-        private IList<BrokerInfo> _brokers;
-        private WeightRoundRobin _robin;
-        /// <summary>选择队列</summary>
-        /// <returns></returns>
-        public MessageQueue SelectQueue()
-        {
-            if (_robin == null)
-            {
-                var list = Brokers.Where(e => e.Permission.HasFlag(Permissions.Write) && e.WriteQueueNums > 0).ToList();
-                if (list.Count == 0) return null;
-
-                var total = list.Sum(e => e.WriteQueueNums);
-                if (total <= 0) return null;
-
-                _brokers = list;
-                _robin = new WeightRoundRobin(list.Select(e => e.WriteQueueNums).ToArray());
-            }
-
-            // 构造排序列表。希望能够均摊到各Broker
-            var idx = _robin.Get(out var times);
-            var bk = _brokers[idx];
-            return new MessageQueue { BrokerName = bk.Name, QueueId = (times - 1) % bk.WriteQueueNums };
         }
         #endregion
     }

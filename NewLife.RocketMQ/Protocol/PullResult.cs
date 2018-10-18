@@ -40,6 +40,8 @@ namespace NewLife.RocketMQ.Protocol
         #endregion
 
         #region 方法
+        /// <summary>友好字符串</summary>
+        /// <returns></returns>
         public override String ToString() => $"{Status} ({MinOffset},{MaxOffset})[{((Messages == null) ? 0 : Messages.Length)}]";
 
         /// <summary>读取数据</summary>
