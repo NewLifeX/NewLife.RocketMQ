@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using NewLife.Log;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 
@@ -68,6 +69,34 @@ namespace NewLife.RocketMQ
         public Int64 SearchOffset(MessageQueue mq, Int64 timestamp)
         {
             throw new NotImplementedException();
+        }
+
+        /// <summary>获取消费者下所有消费者</summary>
+        /// <param name="group"></param>
+        public void GetConsumers(String group = null)
+        {
+            if (group.IsNullOrEmpty()) group = Group;
+
+            var header = new
+            {
+                consumerGroup = group,
+            };
+
+            // 在所有Broker上查询
+            foreach (var item in Brokers)
+            {
+                try
+                {
+                    var bk = GetBroker(item.Name);
+                    bk.Ping();
+                    var rs = bk.Invoke(RequestCode.GET_CONSUMER_LIST_BY_GROUP, null, header);
+                    WriteLog(rs + "");
+                }
+                catch (Exception ex)
+                {
+                    XTrace.WriteException(ex);
+                }
+            }
         }
         #endregion
     }

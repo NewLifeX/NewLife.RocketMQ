@@ -65,6 +65,12 @@ namespace NewLife.RocketMQ
 
         private void OnPing(Object state)
         {
+            Ping();
+        }
+
+        /// <summary>心跳</summary>
+        public void Ping()
+        {
             var cfg = Config;
 
             Invoke(RequestCode.HEART_BEAT, new

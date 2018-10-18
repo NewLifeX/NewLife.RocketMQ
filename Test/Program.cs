@@ -71,6 +71,9 @@ namespace Test
             };
 
             consumer.Start();
+
+            consumer.GetConsumers();
+
             var br = consumer.Brokers.FirstOrDefault();
             var mq = new MessageQueue { BrokerName = br.Name, QueueId = 1 };
 

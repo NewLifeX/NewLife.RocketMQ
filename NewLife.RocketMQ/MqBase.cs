@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using NewLife.Log;
+using NewLife.Security;
 
 namespace NewLife.RocketMQ.Client
 {
@@ -92,6 +93,9 @@ namespace NewLife.RocketMQ.Client
         public MqBase()
         {
             InstanceName = Process.GetCurrentProcess().Id + "";
+
+            // 设置UnitName，避免一个进程多实例时冲突
+            //UnitName = Rand.Next() + "";
         }
 
         /// <summary>销毁</summary>
