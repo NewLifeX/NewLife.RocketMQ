@@ -32,8 +32,13 @@ namespace NewLife.RocketMQ
         {
             base.OnDispose(disposing);
 
+            // 停止并保存偏移
+            Stop();
+            PersistAll(_Queues);
+
             _timer.TryDispose();
             _threads.TryDispose();
+            _persist.TryDispose();
         }
         #endregion
 
@@ -216,22 +221,7 @@ namespace NewLife.RocketMQ
             if (qs == null || qs.Length == 0) return;
 
             // 关线程
-            _running = false;
-            if (_threads != null && _threads.Length > 0)
-            {
-                WriteLog("停止调度线程[{0}]", _threads.Length);
-
-                // 预留一点退出时间
-                foreach (var item in _threads)
-                {
-                    if (item.ThreadState != ThreadState.Running) continue;
-                    try
-                    {
-                        if (item.Join(1000)) item.Abort();
-                    }
-                    catch { }
-                }
-            }
+            Stop();
 
             _running = true;
 
@@ -247,13 +237,39 @@ namespace NewLife.RocketMQ
 
                 _threads[i] = th;
             }
+
+            // 定时保存偏移量
+            if (_persist == null)
+            {
+                var time = PersistConsumerOffsetInterval;
+                _persist = new TimerX(DoPersist, null, time, time) { Async = true };
+            }
+        }
+
+        private void Stop()
+        {
+            _running = false;
+            if (_threads != null && _threads.Length > 0)
+            {
+                WriteLog("停止调度线程[{0}]", _threads.Length);
+
+                // 预留一点退出时间
+                foreach (var item in _threads)
+                {
+                    if (item.ThreadState != ThreadState.Running) continue;
+                    try
+                    {
+                        if (item.Join(3_000)) item.Abort();
+                    }
+                    catch { }
+                }
+            }
         }
 
         private void DoPull(Object state)
         {
             var st = state as QueueStore;
             var mq = st.Queue;
-            var nextPersist = TimerX.Now.AddMilliseconds(PersistConsumerOffsetInterval);
 
             while (_running)
             {
@@ -276,20 +292,7 @@ namespace NewLife.RocketMQ
                         var rs = Receive(mq, pr);
 
                         // 更新偏移
-                        if (rs)
-                        {
-                            st.Offset = pr.NextBeginOffset;
-
-                            // 回写偏移给Broker
-                            var now = TimerX.Now;
-                            if (nextPersist >= now)
-                            {
-                                WriteLog("队列[{0}@{1}]更新偏移[{2:n0}]", mq.BrokerName, mq.QueueId, st.Offset);
-                                UpdateOffset(mq, st.Offset);
-
-                                nextPersist = TimerX.Now.AddMilliseconds(PersistConsumerOffsetInterval);
-                            }
-                        }
+                        if (rs) st.Offset = pr.NextBeginOffset;
                     }
                 }
                 catch (ThreadAbortException) { }
@@ -312,11 +315,24 @@ namespace NewLife.RocketMQ
             return true;
         }
 
+        private TimerX _persist;
+        private void DoPersist(Object state) { PersistAll(_Queues); }
+
         private void PersistAll(IEnumerable<QueueStore> stores)
         {
+            if (stores == null) return;
+
             foreach (var item in stores)
             {
-                if (item.Offset >= 0) UpdateOffset(item.Queue, item.Offset);
+                if (item.Offset >= 0 && item.Offset != item.LastOffset)
+                {
+                    var mq = item.Queue;
+                    WriteLog("队列[{0}@{1}]更新偏移[{2:n0}]", mq.BrokerName, mq.QueueId, item.Offset);
+
+                    UpdateOffset(item.Queue, item.Offset);
+
+                    item.LastOffset = item.Offset;
+                }
             }
         }
         #endregion
@@ -331,6 +347,7 @@ namespace NewLife.RocketMQ
         {
             public MessageQueue Queue { get; set; }
             public Int64 Offset { get; set; } = -1;
+            public Int64 LastOffset { get; set; } = -1;
 
             #region 相等
             /// <summary>相等比较</summary>
