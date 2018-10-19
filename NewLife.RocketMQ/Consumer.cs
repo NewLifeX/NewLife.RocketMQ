@@ -213,17 +213,17 @@ namespace NewLife.RocketMQ
 
         #region 消费调度
         private Thread[] _threads;
-        private Boolean _running;
+        private volatile Int32 _version;
 
         private void DoSchedule()
         {
             var qs = _Queues;
             if (qs == null || qs.Length == 0) return;
 
+            _version++;
+
             // 关线程
             Stop();
-
-            _running = true;
 
             // 开线程
             _threads = new Thread[qs.Length];
@@ -248,7 +248,6 @@ namespace NewLife.RocketMQ
 
         private void Stop()
         {
-            _running = false;
             if (_threads != null && _threads.Length > 0)
             {
                 WriteLog("停止调度线程[{0}]", _threads.Length);
@@ -271,14 +270,15 @@ namespace NewLife.RocketMQ
             var st = state as QueueStore;
             var mq = st.Queue;
 
-            while (_running)
+            var v = _version;
+            while (v == _version)
             {
                 try
                 {
                     // 查询偏移量
                     if (st.Offset < 0)
                     {
-                        st.Offset = QueryOffset(mq);
+                        st.Offset = st.LastOffset = QueryOffset(mq);
 
                         if (st.Offset >= 0) WriteLog("开始消费[{0}@{1}] Offset={2:n0}", mq.BrokerName, mq.QueueId, st.Offset);
                     }
