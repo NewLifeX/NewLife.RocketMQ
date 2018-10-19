@@ -18,8 +18,8 @@ namespace NewLife.RocketMQ
         /// <summary>持久化消费偏移间隔。默认5_000ms</summary>
         public Int32 PersistConsumerOffsetInterval { get; set; } = 5_000;
 
-        /// <summary>拉取的批大小。默认100</summary>
-        public Int32 BatchSize { get; set; } = 100;
+        /// <summary>拉取的批大小。默认32</summary>
+        public Int32 BatchSize { get; set; } = 32;
 
         /// <summary>消费委托</summary>
         public Func<MessageQueue, PullResult, Boolean> OnReceive;
