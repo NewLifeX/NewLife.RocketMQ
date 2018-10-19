@@ -21,7 +21,7 @@ namespace NewLife.RocketMQ.Protocol
         /// <summary>标识</summary>
         /// <remarks>
         /// 第0位标识是这次通信是request还是response，0标识request, 1 标识response。
-        /// 第1位标识是否是oneway请求，1标识oneway。应答方在处理oneway请求的时候，不会做出响应，请求方也无序等待应答方响应。
+        /// 第1位标识是否是oneway请求，1标识oneway。应答方在处理oneway请求的时候，不会做出响应，请求方也无需等待应答方响应。
         /// </remarks>
         public Int32 Flag { get; set; }
 

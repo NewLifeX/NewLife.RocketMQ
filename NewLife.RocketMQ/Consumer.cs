@@ -225,6 +225,9 @@ namespace NewLife.RocketMQ
             // 关线程
             Stop();
 
+            // 如果有多个消费者，则等一段时间让大家停止消费，尽量避免重复消费
+            if (_Consumers != null && _Consumers.Length > 1) Thread.Sleep(10_000);
+
             // 开线程
             _threads = new Thread[qs.Length];
             for (var i = 0; i < qs.Length; i++)
@@ -295,13 +298,16 @@ namespace NewLife.RocketMQ
                         if (rs) st.Offset = pr.NextBeginOffset;
                     }
                 }
-                catch (ThreadAbortException) { }
-                catch (ThreadInterruptedException) { }
+                catch (ThreadAbortException) { break; }
+                catch (ThreadInterruptedException) { break; }
                 catch (Exception ex)
                 {
                     Log?.Error(ex.GetMessage());
                 }
             }
+
+            // 保存消费进度
+            if (st.Offset >= 0 && st.Offset != st.LastOffset) UpdateOffset(mq, st.Offset);
         }
 
         /// <summary>拉取到一批消息</summary>
@@ -342,6 +348,7 @@ namespace NewLife.RocketMQ
         public MessageQueue[] Queues => _Queues.Select(e => e.Queue).ToArray();
 
         private QueueStore[] _Queues;
+        private String[] _Consumers;
 
         class QueueStore
         {
@@ -382,16 +389,6 @@ namespace NewLife.RocketMQ
              */
 
             var cs = GetConsumers(Group);
-            //if (cs.Count == 0)
-            //{
-            //    for (var i = 0; i < 60; i++)
-            //    {
-            //        cs = GetConsumers(Group);
-            //        if (cs.Count > 0) break;
-
-            //        Thread.Sleep(1000);
-            //    }
-            //}
             if (cs.Count == 0) return false;
 
             var qs = new List<MessageQueue>();
@@ -456,6 +453,7 @@ namespace NewLife.RocketMQ
             WriteLog("消费重新平衡：{0}", dic.Join(";", e => $"{e.Key}[{e.Value}]"));
 
             _Queues = rs.ToArray();
+            _Consumers = cs2.ToArray();
 
             return true;
         }
