@@ -17,6 +17,24 @@ namespace NewLife.RocketMQ.Protocol
         #endregion
 
         #region 相等
+        /// <summary>相等比较</summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public override Boolean Equals(Object obj)
+        {
+            var x = this;
+            if (!(obj is MessageQueue y)) return false;
+
+            return x.Topic == y.Topic && x.BrokerName == y.BrokerName && x.QueueId == y.QueueId;
+        }
+
+        /// <summary>计算哈希</summary>
+        /// <returns></returns>
+        public override Int32 GetHashCode()
+        {
+            var obj = this;
+            return obj.Topic.GetHashCode() ^ obj.BrokerName.GetHashCode() ^ obj.BrokerName.GetHashCode();
+        }
         #endregion
 
         #region 辅助

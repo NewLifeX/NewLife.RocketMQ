@@ -97,12 +97,16 @@ namespace NewLife.RocketMQ
 
             // 轮询调用
             Exception last = null;
-            for (var i = 0; i < Servers.Length; i++)
+            var times = Servers.Length + 1;
+            for (var i = 0; i < times; i++)
             {
                 var client = _Pool.Get();
                 try
                 {
                     var ns = client.GetStream();
+
+                    // 清空残留
+                    while (ns.DataAvailable) ns.ReadBytes(1024);
 
                     cmd.Write(ns);
 
@@ -206,6 +210,13 @@ namespace NewLife.RocketMQ
             public ClusterClient Client { get; set; }
 
             protected override TcpClient OnCreate() => Client.OnCreate();
+
+            public override Boolean Put(TcpClient value)
+            {
+                if (!value.Connected) return false;
+
+                return base.Put(value);
+            }
         }
 
         private Int32 _ServerIndex;

@@ -71,6 +71,8 @@ namespace NewLife.RocketMQ.Protocol
 
             // 读取
             StoreSize = bn.Read<Int32>();
+            if (StoreSize <= 0) return false;
+
             var n = bn.Read<Int32>();
             BodyCRC = bn.Read<Int32>();
             QueueId = bn.Read<Int32>();
@@ -134,7 +136,7 @@ namespace NewLife.RocketMQ.Protocol
             while (ms.Position < ms.Length)
             {
                 var msg = new MessageExt();
-                msg.Read(ms, bn);
+                if (!msg.Read(ms, bn)) break;
 
                 list.Add(msg);
             }

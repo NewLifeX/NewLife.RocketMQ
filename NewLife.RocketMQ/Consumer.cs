@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using NewLife.Log;
+using System.Threading;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
+using NewLife.Threading;
 
 namespace NewLife.RocketMQ
 {
@@ -16,6 +17,24 @@ namespace NewLife.RocketMQ
 
         /// <summary>持久化消费偏移间隔。默认5_000ms</summary>
         public Int32 PersistConsumerOffsetInterval { get; set; } = 5_000;
+
+        /// <summary>拉取的批大小。默认100</summary>
+        public Int32 BatchSize { get; set; } = 100;
+
+        /// <summary>消费委托</summary>
+        public Func<MessageQueue, PullResult, Boolean> OnReceive;
+        #endregion
+
+        #region 构造
+        /// <summary>销毁</summary>
+        /// <param name="disposing"></param>
+        protected override void OnDispose(Boolean disposing)
+        {
+            base.OnDispose(disposing);
+
+            _timer.TryDispose();
+            _threads.TryDispose();
+        }
         #endregion
 
         #region 方法
@@ -23,6 +42,8 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         public override Boolean Start()
         {
+            if (Active) return true;
+
             var list = Data;
             if (list == null)
             {
@@ -42,7 +63,12 @@ namespace NewLife.RocketMQ
                 Data = list;
             }
 
-            return base.Start();
+            if (!base.Start()) return false;
+
+            // 快速检查消费组，均衡成功后改为30秒一次
+            _timer = new TimerX(CheckGroup, null, 100, 1_000) { Async = true };
+
+            return true;
         }
         #endregion
 
@@ -70,6 +96,7 @@ namespace NewLife.RocketMQ
             var bk = GetBroker(mq.BrokerName);
 
             var rs = bk.Invoke(RequestCode.PULL_MESSAGE, null, dic, true);
+            if (rs?.Header == null) return null;
 
             var pr = new PullResult();
 
@@ -78,7 +105,7 @@ namespace NewLife.RocketMQ
             else if (rs.Header.Code == (Int32)ResponseCode.PULL_NOT_FOUND)
                 pr.Status = PullStatus.NoNewMessage;
 
-            pr.Read(rs.Header.ExtFields);
+            pr.Read(rs.Header?.ExtFields);
 
             // 读取内容
             if (rs.Body != null && rs.Body.Length > 0) pr.Messages = MessageExt.ReadAll(rs.Body).ToArray();
@@ -104,7 +131,7 @@ namespace NewLife.RocketMQ
             var dic = rs.Header.ExtFields;
             if (dic == null) return -1;
 
-            return dic["offset"].ToLong();
+            return dic.TryGetValue("offset", out var str) ? str.ToLong() : -1;
         }
 
         /// <summary>根据时间戳查询偏移</summary>
@@ -170,11 +197,127 @@ namespace NewLife.RocketMQ
                 }
                 catch (Exception ex)
                 {
-                    XTrace.WriteException(ex);
+                    //XTrace.WriteException(ex);
+                    WriteLog(ex.GetTrue().Message);
                 }
             }
 
             return cs;
+        }
+        #endregion
+
+        #region 消费调度
+        private Thread[] _threads;
+        private Boolean _running;
+
+        private void DoSchedule()
+        {
+            var qs = _Queues;
+            if (qs == null || qs.Length == 0) return;
+
+            // 关线程
+            _running = false;
+            if (_threads != null && _threads.Length > 0)
+            {
+                WriteLog("停止调度线程[{0}]", _threads.Length);
+
+                // 预留一点退出时间
+                foreach (var item in _threads)
+                {
+                    if (item.ThreadState != ThreadState.Running) continue;
+                    try
+                    {
+                        if (item.Join(1000)) item.Abort();
+                    }
+                    catch { }
+                }
+            }
+
+            _running = true;
+
+            // 开线程
+            _threads = new Thread[qs.Length];
+            for (var i = 0; i < qs.Length; i++)
+            {
+                var th = new Thread(DoPull)
+                {
+                    IsBackground = true
+                };
+                th.Start(qs[i]);
+
+                _threads[i] = th;
+            }
+        }
+
+        private void DoPull(Object state)
+        {
+            var st = state as QueueStore;
+            var mq = st.Queue;
+            var nextPersist = TimerX.Now.AddMilliseconds(PersistConsumerOffsetInterval);
+
+            while (_running)
+            {
+                try
+                {
+                    // 查询偏移量
+                    if (st.Offset < 0)
+                    {
+                        st.Offset = QueryOffset(mq);
+
+                        if (st.Offset >= 0) WriteLog("开始消费[{0}@{1}] Offset={2:n0}", mq.BrokerName, mq.QueueId, st.Offset);
+                    }
+
+                    // 拉取一批，阻塞等待
+                    var offset = st.Offset >= 0 ? st.Offset : 0;
+                    var pr = Pull(mq, offset, BatchSize, 10_000);
+                    if (pr != null && pr.Status == PullStatus.Found && pr.Messages != null && pr.Messages.Length > 0)
+                    {
+                        // 触发消费
+                        var rs = Receive(mq, pr);
+
+                        // 更新偏移
+                        if (rs)
+                        {
+                            st.Offset = pr.NextBeginOffset;
+
+                            // 回写偏移给Broker
+                            var now = TimerX.Now;
+                            if (nextPersist >= now)
+                            {
+                                WriteLog("队列[{0}@{1}]更新偏移[{2:n0}]", mq.BrokerName, mq.QueueId, st.Offset);
+                                UpdateOffset(mq, st.Offset);
+
+                                nextPersist = TimerX.Now.AddMilliseconds(PersistConsumerOffsetInterval);
+                            }
+                        }
+                    }
+                }
+                catch (ThreadAbortException) { }
+                catch (ThreadInterruptedException) { }
+                catch (Exception ex)
+                {
+                    Log?.Error(ex.GetMessage());
+                }
+            }
+        }
+
+        /// <summary>拉取到一批消息</summary>
+        /// <param name="queue"></param>
+        /// <param name="result"></param>
+        /// <returns></returns>
+        protected virtual Boolean Receive(MessageQueue queue, PullResult result)
+        {
+            if (OnReceive != null) return OnReceive(queue, result);
+
+            return true;
+        }
+
+        private void PersistAll(IEnumerable<QueueStore> stores)
+        {
+            foreach (var item in stores)
+            {
+                if (item.Offset >= 0) UpdateOffset(item.Queue, item.Offset);
+            }
         }
         #endregion
 
@@ -188,6 +331,27 @@ namespace NewLife.RocketMQ
         {
             public MessageQueue Queue { get; set; }
             public Int64 Offset { get; set; } = -1;
+
+            #region 相等
+            /// <summary>相等比较</summary>
+            /// <param name="obj"></param>
+            /// <returns></returns>
+            public override Boolean Equals(Object obj)
+            {
+                var x = this;
+                if (!(obj is QueueStore y)) return false;
+
+                return Equals(x.Queue, y.Queue) && x.Offset == y.Offset;
+            }
+
+            /// <summary>计算哈希</summary>
+            /// <returns></returns>
+            public override Int32 GetHashCode()
+            {
+                var obj = this;
+                return (obj.Queue == null ? 0 : obj.Queue.GetHashCode()) ^ obj.Offset.GetHashCode();
+            }
+            #endregion
         }
 
         /// <summary>重新平衡消费队列</summary>
@@ -259,9 +423,34 @@ namespace NewLife.RocketMQ
                 rs.Add(new QueueStore { Queue = item });
             }
 
+            // 如果序列相等则返回false
+            var ori = _Queues;
+            if (ori != null)
+            {
+                var q1 = ori.Select(e => e.Queue).ToArray();
+                var q2 = rs.Select(e => e.Queue).ToArray();
+
+                if (q1.SequenceEqual(q2)) return false;
+
+                PersistAll(ori);
+            }
+
+            var dic = qs.GroupBy(e => e.BrokerName).ToDictionary(e => e.Key, e => e.Join(",", x => x.QueueId));
+            WriteLog("消费重新平衡：{0}", dic.Join(";", e => $"{e.Key}[{e.Value}]"));
+
             _Queues = rs.ToArray();
 
             return true;
+        }
+
+        private TimerX _timer;
+        private void CheckGroup(Object state)
+        {
+            if (!Rebalance()) return;
+
+            DoSchedule();
+
+            _timer.Period = 30_000;
         }
         #endregion
     }

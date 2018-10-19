@@ -15,7 +15,7 @@ namespace NewLife.RocketMQ
     }
 
     /// <summary>代理信息</summary>
-    public class BrokerInfo /*: IEqualityComparer<BrokerInfo>*/
+    public class BrokerInfo
     {
         #region 属性
         /// <summary>名称</summary>
@@ -37,6 +37,7 @@ namespace NewLife.RocketMQ
         public Int32 TopicSynFlag { get; set; }
         #endregion
 
+        #region 相等
         /// <summary>相等比较</summary>
         /// <param name="obj"></param>
         /// <returns></returns>
@@ -59,26 +60,6 @@ namespace NewLife.RocketMQ
                 ^ obj.Permission.GetHashCode() ^ obj.TopicSynFlag
                 ^ obj.ReadQueueNums ^ obj.WriteQueueNums;
         }
-
-        ///// <summary>相等比较</summary>
-        ///// <param name="x"></param>
-        ///// <param name="y"></param>
-        ///// <returns></returns>
-        //public Boolean Equals(BrokerInfo x, BrokerInfo y)
-        //{
-        //    return x.Name == y.Name && x.Addresses.SequenceEqual(y.Addresses)
-        //        && x.Permission == y.Permission && x.TopicSynFlag == y.TopicSynFlag
-        //        && x.ReadQueueNums == y.ReadQueueNums && x.WriteQueueNums == y.WriteQueueNums;
-        //}
-
-        ///// <summary>计算哈希</summary>
-        ///// <param name="obj"></param>
-        ///// <returns></returns>
-        //public Int32 GetHashCode(BrokerInfo obj)
-        //{
-        //    return obj.Name.GetHashCode() ^ obj.Addresses.GetHashCode()
-        //        ^ obj.Permission.GetHashCode() ^ obj.TopicSynFlag
-        //        ^ obj.ReadQueueNums ^ obj.WriteQueueNums;
-        //}
+        #endregion
     }
 }

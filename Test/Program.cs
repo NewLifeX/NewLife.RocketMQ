@@ -5,7 +5,6 @@ using System.Threading;
 using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Common;
-using NewLife.RocketMQ.Protocol;
 
 namespace Test
 {
@@ -39,7 +38,7 @@ namespace Test
 
             mq.Start();
 
-            //mq.CreateTopic("nx_test", 13);
+            //mq.CreateTopic("nx_test", 2);
 
             for (var i = 0; i < 16; i++)
             {
@@ -70,37 +69,44 @@ namespace Test
                 Log = XTrace.Log,
             };
 
+            consumer.OnReceive = (q, pr) =>
+            {
+                XTrace.WriteLine("[{0}@{1}]收到消息[{2}]({3}, {4})", q.BrokerName, q.QueueId, pr.Messages.Length, pr.MinOffset, pr.MaxOffset);
+
+                return true;
+            };
+
             consumer.Start();
 
-            Thread.Sleep(1000);
-            for (var i = 0; i < 1000; i++)
-            {
-                //var cs = consumer.GetConsumers();
-                //if (cs.Count > 0) XTrace.WriteLine("发现消费者：{0}", cs.Join());
-                if (consumer.Rebalance())
-                {
-                    var qs = consumer.Queues;
-                    var dic = qs.GroupBy(e => e.BrokerName).ToDictionary(e => e.Key, e => e.Join(",", x => x.QueueId));
+            //Thread.Sleep(1000);
+            //for (var i = 0; i < 1000; i++)
+            //{
+            //    //var cs = consumer.GetConsumers();
+            //    //if (cs.Count > 0) XTrace.WriteLine("发现消费者：{0}", cs.Join());
+            //    if (consumer.Rebalance())
+            //    {
+            //        var qs = consumer.Queues;
+            //        var dic = qs.GroupBy(e => e.BrokerName).ToDictionary(e => e.Key, e => e.Join(",", x => x.QueueId));
 
-                    XTrace.WriteLine("重新平衡[{0}]：\r\n{1}", qs.Length, dic.Join("\r\n", e => $"{e.Key}[{e.Value}]"));
-                }
+            //        XTrace.WriteLine("重新平衡[{0}]：\r\n{1}", qs.Length, dic.Join("\r\n", e => $"{e.Key}[{e.Value}]"));
+            //    }
 
-                Thread.Sleep(1000);
-            }
+            //    Thread.Sleep(1000);
+            //}
 
-            var br = consumer.Brokers.FirstOrDefault();
-            var mq = new MessageQueue { BrokerName = br.Name, QueueId = 1 };
+            //var br = consumer.Brokers.FirstOrDefault();
+            //var mq = new MessageQueue { BrokerName = br.Name, QueueId = 1 };
 
-            //foreach (var mq in consumer.Queues)
-            {
-                //var offset = 0;
-                var offset = consumer.QueryOffset(mq);
-                var pr = consumer.Pull(mq, offset, 32, 500);
+            ////foreach (var mq in consumer.Queues)
+            //{
+            //    //var offset = 0;
+            //    var offset = consumer.QueryOffset(mq);
+            //    var pr = consumer.Pull(mq, offset, 32, 500);
 
-                Console.WriteLine("消费：{0}", pr.Messages.Length);
+            //    Console.WriteLine("消费：{0}", pr.Messages.Length);
 
-                consumer.UpdateOffset(mq, pr.MaxOffset);
-            }
+            //    consumer.UpdateOffset(mq, pr.MaxOffset);
+            //}
         }
 
         static void Test3()

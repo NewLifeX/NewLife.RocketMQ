@@ -107,6 +107,10 @@ namespace NewLife.RocketMQ.Client
                 item.Value.TryDispose();
             }
         }
+
+        /// <summary>友好字符串</summary>
+        /// <returns></returns>
+        public override String ToString() => Group;
         #endregion
 
         #region 基础方法
@@ -178,7 +182,7 @@ namespace NewLife.RocketMQ.Client
         /// <summary>写日志</summary>
         /// <param name="format"></param>
         /// <param name="args"></param>
-        public void WriteLog(String format, params Object[] args) => Log?.Info(format, args);
+        public void WriteLog(String format, params Object[] args) => Log?.Info($"[{this}]" + format, args);
         #endregion
     }
 }
