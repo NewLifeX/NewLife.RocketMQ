@@ -85,7 +85,7 @@ namespace NewLife.RocketMQ
                 Status = SendStatus.SendOK,
                 Queue = mq
             };
-            sr.Read(rs.Header.ExtFields);
+            sr.Read(rs.Header?.ExtFields);
 
             return sr;
         }

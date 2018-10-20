@@ -131,9 +131,9 @@ namespace NewLife.RocketMQ
                 consumerGroup = Group,
                 topic = Topic,
                 queueId = mq.QueueId,
-            });
+            }, true);
 
-            var dic = rs.Header.ExtFields;
+            var dic = rs.Header?.ExtFields;
             if (dic == null) return -1;
 
             return dic.TryGetValue("offset", out var str) ? str.ToLong() : -1;
@@ -163,7 +163,7 @@ namespace NewLife.RocketMQ
                 commitOffset,
             });
 
-            var dic = rs.Header.ExtFields;
+            var dic = rs.Header?.ExtFields;
             if (dic == null) return false;
 
             return true;

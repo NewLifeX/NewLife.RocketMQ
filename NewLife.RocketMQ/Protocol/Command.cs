@@ -29,9 +29,12 @@ namespace NewLife.RocketMQ.Protocol
                 IsLittleEndian = false,
             };
             var len = bn.Read<Int32>();
+            if (len < 4) return false;
 
             // 读取头部
             var hlen = bn.Read<Int32>();
+            if (hlen <= 0 || hlen > 8 * 1024) return false;
+
             var json = bn.ReadBytes(hlen).ToStr();
             Header = json.ToJsonEntity<Header>();
 
@@ -61,8 +64,8 @@ namespace NewLife.RocketMQ.Protocol
         public Boolean Write(Stream stream, Object context = null)
         {
             // 计算头部
-            var json = Header.ToJson();
-            //var json = JsonWriter.ToJson(Header, false, false, true);
+            //var json = Header.ToJson();
+            var json = JsonWriter.ToJson(Header, false, false, false);
             var hs = json.GetBytes();
             var buf = Body;
 
