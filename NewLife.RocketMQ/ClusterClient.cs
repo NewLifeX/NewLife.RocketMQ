@@ -10,6 +10,7 @@ using NewLife.Net;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
+using NewLife.Threading;
 
 namespace NewLife.RocketMQ
 {
@@ -50,6 +51,7 @@ namespace NewLife.RocketMQ
             base.OnDispose(disposing);
 
             _Pool.TryDispose();
+            //_Client.TryDispose();
         }
         #endregion
 
@@ -68,43 +70,22 @@ namespace NewLife.RocketMQ
         {
             if (cmd.Header.Opaque == 0) cmd.Header.Opaque = g_id++;
 
-            // 签名。阿里云ONS需要反射消息具体字段，把值转字符串后拼起来，再加上body后，取HmacSHA1
-            var cfg = Config;
-            if (!cfg.AccessKey.IsNullOrEmpty())
-            {
-                var sha = new HMACSHA1(cfg.SecretKey.GetBytes());
-
-                var ms = new MemoryStream();
-                // AccessKey + OnsChannel
-                ms.Write(cfg.AccessKey.GetBytes());
-                ms.Write(cfg.OnsChannel.GetBytes());
-                // ExtFields
-                var dic = cmd.Header.GetExtFields();
-
-                foreach (var item in dic)
-                {
-                    if (item.Value != null) ms.Write(item.Value.GetBytes());
-                }
-                // Body
-                if (cmd.Body != null && cmd.Body.Length > 0) ms.Write(cmd.Body);
-
-                var sign = sha.ComputeHash(ms.ToArray());
-
-                dic["Signature"] = sign.ToBase64();
-                dic["AccessKey"] = cfg.AccessKey;
-                dic["OnsChannel"] = cfg.OnsChannel;
-            }
+            // 签名
+            SetSignature(cmd);
 
             // 轮询调用
             Exception last = null;
-            var times = Servers.Length + 1;
+            var times = Servers.Length;
             for (var i = 0; i < times; i++)
             {
                 var client = _Pool.Get();
+                //var client = GetClient();
                 try
                 {
                     var ns = client.GetStream();
 
+                    //// 接收
+                    //if (ns.DataAvailable) CheckReceive();
                     // 清空残留
                     while (ns.DataAvailable) ns.ReadBytes(1024);
 
@@ -115,7 +96,11 @@ namespace NewLife.RocketMQ
 
                     return rs;
                 }
-                catch (Exception ex) { last = ex; }
+                catch (Exception ex)
+                {
+                    last = ex;
+                    Thread.Sleep(100);
+                }
                 finally
                 {
                     _Pool.Put(client);
@@ -123,6 +108,35 @@ namespace NewLife.RocketMQ
             }
 
             throw last;
+        }
+
+        private void SetSignature(Command cmd)
+        {
+            // 签名。阿里云ONS需要反射消息具体字段，把值转字符串后拼起来，再加上body后，取HmacSHA1
+            var cfg = Config;
+            if (cfg.AccessKey.IsNullOrEmpty()) return;
+
+            var sha = new HMACSHA1(cfg.SecretKey.GetBytes());
+
+            var ms = new MemoryStream();
+            // AccessKey + OnsChannel
+            ms.Write(cfg.AccessKey.GetBytes());
+            ms.Write(cfg.OnsChannel.GetBytes());
+            // ExtFields
+            var dic = cmd.Header.GetExtFields();
+
+            foreach (var item in dic)
+            {
+                if (item.Value != null) ms.Write(item.Value.GetBytes());
+            }
+            // Body
+            if (cmd.Body != null && cmd.Body.Length > 0) ms.Write(cmd.Body);
+
+            var sign = sha.ComputeHash(ms.ToArray());
+
+            dic["Signature"] = sign.ToBase64();
+            dic["AccessKey"] = cfg.AccessKey;
+            dic["OnsChannel"] = cfg.OnsChannel;
         }
 
         /// <summary>发送指定类型的命令</summary>
@@ -147,7 +161,7 @@ namespace NewLife.RocketMQ
             if (body is Byte[] buf)
                 cmd.Body = buf;
             else if (body != null)
-                cmd.Body = body.ToJson().GetBytes();
+                cmd.Body = JsonWriter.ToJson(body, false, false, false).GetBytes();
 
             if (extFields != null)
             {
@@ -202,6 +216,34 @@ namespace NewLife.RocketMQ
         }
         #endregion
 
+        #region 接收数据
+        private TimerX _timer;
+
+        /// <summary>开启异步接收</summary>
+        protected void ReceiveAsync()
+        {
+            if (_timer == null) _timer = new TimerX(CheckReceive, null, 1000, 1000, "ClusterClient");
+        }
+
+        private void CheckReceive(Object state = null)
+        {
+            var ns = _Pool.Get()?.GetStream();
+            if (ns == null) return;
+
+            // 循环处理收到的命令
+            while (ns.DataAvailable)
+            {
+                var cmd = new Command();
+                if (cmd.Read(ns) && cmd.Header != null) ThreadPool.QueueUserWorkItem(s => OnReceive(cmd));
+            }
+        }
+
+        /// <summary>收到命令时</summary>
+        public event EventHandler<EventArgs<Command>> Received;
+
+        protected virtual void OnReceive(Command cmd) => Received?.Invoke(this, new EventArgs<Command>(cmd));
+        #endregion
+
         #region 连接池
         private readonly MyPool _Pool;
 
@@ -218,6 +260,14 @@ namespace NewLife.RocketMQ
                 return base.Put(value);
             }
         }
+
+        //private TcpClient _Client;
+        //private TcpClient GetClient()
+        //{
+        //    if (_Client != null && _Client.Connected) return _Client;
+
+        //    return _Client = OnCreate();
+        //}
 
         private Int32 _ServerIndex;
         /// <summary>创建网络连接。轮询使用地址</summary>
