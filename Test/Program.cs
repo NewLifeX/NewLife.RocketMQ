@@ -42,7 +42,7 @@ namespace Test
 
             for (var i = 0; i < 16; i++)
             {
-                var sr = mq.Send("学无先后达者为师" + i, "TagA");
+                var sr = mq.Publish("学无先后达者为师" + i, "TagA");
 
                 Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
 

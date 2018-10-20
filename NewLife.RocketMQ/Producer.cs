@@ -54,7 +54,7 @@ namespace NewLife.RocketMQ
         /// <param name="msg"></param>
         /// <param name="timeout"></param>
         /// <returns></returns>
-        public virtual SendResult Send(Message msg, Int32 timeout = -1)
+        public virtual SendResult Publish(Message msg, Int32 timeout = -1)
         {
             // 选择队列分片
             var mq = SelectQueue();
@@ -95,7 +95,7 @@ namespace NewLife.RocketMQ
         /// <param name="tags"></param>
         /// <param name="timeout"></param>
         /// <returns></returns>
-        public virtual SendResult Send(Object body, String tags = null, Int32 timeout = -1)
+        public virtual SendResult Publish(Object body, String tags = null, Int32 timeout = -1)
         {
             if (!(body is Byte[] buf))
             {
@@ -104,7 +104,7 @@ namespace NewLife.RocketMQ
                 buf = str.GetBytes();
             }
 
-            return Send(new Message { Body = buf, Tags = tags }, timeout);
+            return Publish(new Message { Body = buf, Tags = tags }, timeout);
         }
         #endregion
 
