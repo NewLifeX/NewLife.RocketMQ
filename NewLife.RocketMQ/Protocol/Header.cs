@@ -27,7 +27,7 @@ namespace NewLife.RocketMQ.Protocol
 
         /// <summary>由于要支持多语言，所以这一字段可以给通信双方知道对方通信层锁使用的开发语言</summary>
         /// <remarks>这里必须是JAVA，不能是CSharp，甚至Java都不行</remarks>
-        public String Language { get; set; } = "JAVA";
+        public String Language { get; set; } = "CPP";
 
         /// <summary>请求标识码。在Java版的通信层中，这个只是一个不断自增的整形，为了收到应答方响应的的时候找到对应的请求。</summary>
         public Int32 Opaque { get; set; }
@@ -36,7 +36,7 @@ namespace NewLife.RocketMQ.Protocol
         public String SerializeTypeCurrentRPC { get; set; } = "JSON";
 
         /// <summary>给通信层知道对方的版本号，响应方可以以此做兼容老版本等的特殊操作</summary>
-        public Int32 Version { get; set; } = 252;
+        public Int32 Version { get; set; } = 138;
 
         /// <summary>附带的文本信息。常见的如存放一些broker/nameserver返回的一些异常信息，方便开发人员定位问题。</summary>
         public String Remark { get; set; }

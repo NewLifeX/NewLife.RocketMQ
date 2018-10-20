@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
+using System.Xml.Serialization;
+using NewLife.Reflection;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
+using NewLife.Serialization;
 using NewLife.Threading;
 
 namespace NewLife.RocketMQ
@@ -355,6 +359,7 @@ namespace NewLife.RocketMQ
 
         class QueueStore
         {
+            [XmlIgnore]
             public MessageQueue Queue { get; set; }
             public Int64 Offset { get; set; } = -1;
             public Int64 LastOffset { get; set; } = -1;
@@ -484,7 +489,7 @@ namespace NewLife.RocketMQ
                     DoSchedule();
 
                     _timer.Period = 30_000;
-                    _nextCheck = now.AddSeconds(1);
+                    _nextCheck = now.AddSeconds(3);
                 }
                 finally
                 {
@@ -492,12 +497,117 @@ namespace NewLife.RocketMQ
                 }
             }
         }
+        #endregion
 
+        #region 下行指令
         /// <summary>收到命令</summary>
         /// <param name="cmd"></param>
-        protected override void OnReceive(Command cmd)
+        protected override Command OnReceive(Command cmd)
         {
-            if (cmd?.Header != null && cmd.Header.Code == (Int32)RequestCode.NOTIFY_CONSUMER_IDS_CHANGED) CheckGroup();
+            if (cmd?.Header != null && (cmd.Header.Flag & 1) == 0)
+            {
+                switch ((RequestCode)cmd.Header.Code)
+                {
+                    case RequestCode.NOTIFY_CONSUMER_IDS_CHANGED:
+                        NotifyConsumerIdsChanged(cmd);
+                        break;
+                    case RequestCode.RESET_CONSUMER_CLIENT_OFFSET:
+                        NotifyConsumerIdsChanged(cmd);
+                        break;
+                    case RequestCode.GET_CONSUMER_STATUS_FROM_CLIENT:
+                        NotifyConsumerIdsChanged(cmd);
+                        break;
+                    case RequestCode.GET_CONSUMER_RUNNING_INFO:
+                        return GetConsumerRunningInfo(cmd);
+                    default:
+                        break;
+                }
+            }
+
+            return null;
+        }
+
+        private void NotifyConsumerIdsChanged(Command cmd)
+        {
+            ThreadPool.QueueUserWorkItem(s => CheckGroup());
+        }
+
+        private void ResetOffset(Command cmd)
+        {
+
+        }
+
+        private void GetConsumeStatus(Command cmd)
+        {
+
+        }
+
+        private DateTime StartTime { get; set; } = DateTime.Now;
+
+        private Command GetConsumerRunningInfo(Command cmd)
+        {
+            var ci = new ConsumerRunningInfo();
+            var dic = new Dictionary<String, String>();
+            foreach (var pi in GetType().GetProperties())
+            {
+                if (pi.DeclaringType == typeof(DisposeBase)) continue;
+                if (pi.PropertyType.GetTypeCode() == TypeCode.Object) continue;
+
+                var val = pi.GetValue(this, null);
+                if (val != null) dic[pi.Name] = val + "";
+            }
+            dic["PROP_CLIENT_VERSION"] = "1.0.2018.1020";
+            dic["PROP_CONSUMEORDERLY"] = "false";
+            dic["PROP_CONSUMER_START_TIMESTAMP"] = StartTime.ToInt() + "";
+            dic["PROP_CONSUME_TYPE"] = "CONSUME_PASSIVELY";
+            dic["PROP_NAMESERVER_ADDR"] = NameServerAddress;
+            dic["PROP_THREADPOOL_CORE_SIZE"] = "2";
+            dic["messageModel"] = "CLUSTERING";
+            ci.Properties = dic;
+
+            var sd = new SubscriptionData
+            {
+                Topic = Topic,
+            };
+            ci.SubscriptionSet = new[] { sd };
+
+            var sb = new StringBuilder();
+            sb.Append("{");
+            {
+                sb.Append("\"mqTable\":{");
+                for (var i = 0; i < _Queues.Length; i++)
+                {
+                    if (i > 0) sb.Append(",");
+
+                    var item = _Queues[i];
+
+                    sb.Append(JsonWriter.ToJson(item.Queue, false, false, true));
+                    sb.Append(":");
+                    sb.Append(JsonWriter.ToJson(item, false, false, true));
+                }
+                sb.Append("}");
+            }
+            {
+                sb.Append(",");
+                sb.Append("\"properties\":");
+                sb.Append(ci.Properties.ToJson());
+            }
+            {
+                sb.Append(",");
+                sb.Append("\"subscriptionSet\":");
+                sb.Append(JsonWriter.ToJson(ci.SubscriptionSet, false, false, true));
+            }
+            sb.Append("}");
+
+            var rs = new Command();
+            var header = rs.Header = new Header();
+
+            header.Flag = 1;
+            header.Opaque = cmd.Header.Opaque;
+
+            rs.Body = sb.ToString().GetBytes();
+
+            return rs;
         }
         #endregion
     }

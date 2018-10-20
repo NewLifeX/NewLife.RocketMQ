@@ -170,7 +170,10 @@ namespace NewLife.RocketMQ.Client
                     Log = Log,
                 };
 
-                client.Received += (s, e) => OnReceive(e.Arg);
+                client.Received += (s, e) =>
+                {
+                    e.Arg = OnReceive(e.Arg);
+                };
 
                 client.Start();
 
@@ -183,7 +186,7 @@ namespace NewLife.RocketMQ.Client
 
         /// <summary>收到命令</summary>
         /// <param name="cmd"></param>
-        protected virtual void OnReceive(Command cmd) { }
+        protected virtual Command OnReceive(Command cmd) => null;
         #endregion
 
         #region 日志

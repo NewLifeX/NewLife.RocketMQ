@@ -87,14 +87,15 @@ namespace NewLife.RocketMQ
                     //{
                     var ns = client.GetStream();
 
+                    // 其它指令
                     while (ns.DataAvailable)
                     {
-                        var rs = new Command();
-                        rs.Read(ns);
-                        if (rs.Header == null) break;
+                        var cmd2 = new Command();
+                        cmd2.Read(ns);
+                        if (cmd2.Header == null) break;
 
-                        // 其它指令
-                        ThreadPool.QueueUserWorkItem(s => OnReceive(rs));
+                        var rs = OnReceive(cmd2);
+                        if (rs != null) rs.Write(ns);
                     }
                     // 清空残留
                     while (ns.DataAvailable) ns.ReadBytes(1024);
@@ -113,7 +114,8 @@ namespace NewLife.RocketMQ
                         if ((rs.Header.Flag & 1) == 1 && rs.Header.Opaque == cmd.Header.Opaque) return rs;
 
                         // 其它指令
-                        ThreadPool.QueueUserWorkItem(s => OnReceive(rs));
+                        rs = OnReceive(rs);
+                        if (rs != null) rs.Write(ns);
                     }
                     //}
                 }
@@ -276,7 +278,7 @@ namespace NewLife.RocketMQ
 
         /// <summary>收到命令</summary>
         /// <param name="cmd"></param>
-        protected virtual void OnReceive(Command cmd)
+        protected virtual Command OnReceive(Command cmd)
         {
 #if DEBUG
             var code = (cmd.Header.Flag & 1) == 0 ? (RequestCode)cmd.Header.Code + "" : (ResponseCode)cmd.Header.Code + "";
@@ -284,7 +286,12 @@ namespace NewLife.RocketMQ
             WriteLog("收到：Code={0} {1}", code, cmd.Header.ToJson());
 #endif
 
-            Received?.Invoke(this, new EventArgs<Command>(cmd));
+            if (Received == null) return null;
+
+            var e = new EventArgs<Command>(cmd);
+            Received.Invoke(this, e);
+
+            return e.Arg;
         }
         #endregion
 
