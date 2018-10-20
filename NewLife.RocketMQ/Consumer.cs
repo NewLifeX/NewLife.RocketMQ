@@ -22,7 +22,7 @@ namespace NewLife.RocketMQ
         public Int32 BatchSize { get; set; } = 32;
 
         /// <summary>消费委托</summary>
-        public Func<MessageQueue, PullResult, Boolean> OnReceive;
+        public Func<MessageQueue, PullResult, Boolean> OnConsume;
         #endregion
 
         #region 构造
@@ -226,7 +226,7 @@ namespace NewLife.RocketMQ
             Stop();
 
             // 如果有多个消费者，则等一段时间让大家停止消费，尽量避免重复消费
-            if (_Consumers != null && _Consumers.Length > 1) Thread.Sleep(10_000);
+            //if (_Consumers != null && _Consumers.Length > 1) Thread.Sleep(10_000);
 
             // 开线程
             _threads = new Thread[qs.Length];
@@ -292,7 +292,7 @@ namespace NewLife.RocketMQ
                     if (pr != null && pr.Status == PullStatus.Found && pr.Messages != null && pr.Messages.Length > 0)
                     {
                         // 触发消费
-                        var rs = Receive(mq, pr);
+                        var rs = Consume(mq, pr);
 
                         // 更新偏移
                         if (rs) st.Offset = pr.NextBeginOffset;
@@ -314,9 +314,9 @@ namespace NewLife.RocketMQ
         /// <param name="queue"></param>
         /// <param name="result"></param>
         /// <returns></returns>
-        protected virtual Boolean Receive(MessageQueue queue, PullResult result)
+        protected virtual Boolean Consume(MessageQueue queue, PullResult result)
         {
-            if (OnReceive != null) return OnReceive(queue, result);
+            if (OnConsume != null) return OnConsume(queue, result);
 
             return true;
         }
@@ -459,13 +459,20 @@ namespace NewLife.RocketMQ
         }
 
         private TimerX _timer;
-        private void CheckGroup(Object state)
+        private void CheckGroup(Object state = null)
         {
             if (!Rebalance()) return;
 
             DoSchedule();
 
             _timer.Period = 30_000;
+        }
+
+        /// <summary>收到命令</summary>
+        /// <param name="cmd"></param>
+        protected override void OnReceive(Command cmd)
+        {
+            if (cmd?.Header != null && cmd.Header.Code == (Int32)RequestCode.NOTIFY_CONSUMER_IDS_CHANGED) CheckGroup();
         }
         #endregion
     }

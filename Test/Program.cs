@@ -69,7 +69,7 @@ namespace Test
                 Log = XTrace.Log,
             };
 
-            consumer.OnReceive = (q, pr) =>
+            consumer.OnConsume = (q, pr) =>
             {
                 XTrace.WriteLine("[{0}@{1}]收到消息[{2}]({3}, {4})", q.BrokerName, q.QueueId, pr.Messages.Length, pr.MinOffset, pr.MaxOffset);
 

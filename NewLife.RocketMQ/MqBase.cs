@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using NewLife.Log;
+using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ.Client
 {
@@ -169,10 +170,16 @@ namespace NewLife.RocketMQ.Client
             var client2 = _Brokers.GetOrAdd(name, client);
             if (client2 != client) return client2;
 
+            client.Received += (s, e) => OnReceive(e.Arg);
+
             client.Start();
 
             return client;
         }
+
+        /// <summary>收到命令</summary>
+        /// <param name="cmd"></param>
+        protected virtual void OnReceive(Command cmd) { }
         #endregion
 
         #region 日志
