@@ -157,24 +157,28 @@ namespace NewLife.RocketMQ.Client
             var bk = Brokers?.FirstOrDefault(e => name == null || e.Name == name);
             if (bk == null) return null;
 
-            // 实例化客户端
-            client = new BrokerClient(bk.Addresses)
+            lock (_Brokers)
             {
-                Id = ClientId,
-                Name = bk.Name,
-                Config = this,
-                Log = Log,
-            };
+                if (_Brokers.TryGetValue(name, out client)) return client;
 
-            // 尝试添加
-            var client2 = _Brokers.GetOrAdd(name, client);
-            if (client2 != client) return client2;
+                // 实例化客户端
+                client = new BrokerClient(bk.Addresses)
+                {
+                    Id = ClientId,
+                    Name = bk.Name,
+                    Config = this,
+                    Log = Log,
+                };
 
-            client.Received += (s, e) => OnReceive(e.Arg);
+                client.Received += (s, e) => OnReceive(e.Arg);
 
-            client.Start();
+                client.Start();
 
-            return client;
+                // 尝试添加
+                _Brokers.TryAdd(name, client);
+
+                return client;
+            }
         }
 
         /// <summary>收到命令</summary>
