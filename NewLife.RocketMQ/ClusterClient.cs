@@ -60,6 +60,8 @@ namespace NewLife.RocketMQ
         public virtual void Start()
         {
             WriteLog("[{0}]集群地址：{1}", Name, Servers.Join(";", e => $"{e.Host}:{e.Port}"));
+
+            ReceiveAsync();
         }
 
         private Int32 g_id;
@@ -90,11 +92,19 @@ namespace NewLife.RocketMQ
                     while (ns.DataAvailable) ns.ReadBytes(1024);
 
                     cmd.Write(ns);
+                    ns.Flush();
 
-                    var rs = new Command();
-                    rs.Read(ns);
+                    while (true)
+                    {
+                        var rs = new Command();
+                        rs.Read(ns);
 
-                    return rs;
+                        // 当前请求的响应
+                        if ((rs.Header.Flag & 1) == 1 && rs.Header.Opaque == cmd.Header.Opaque) return rs;
+
+                        // 其它指令
+                        ThreadPool.QueueUserWorkItem(s => OnReceive(rs));
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -227,21 +237,38 @@ namespace NewLife.RocketMQ
 
         private void CheckReceive(Object state = null)
         {
-            var ns = _Pool.Get()?.GetStream();
-            if (ns == null) return;
-
-            // 循环处理收到的命令
-            while (ns.DataAvailable)
+            var client = _Pool.Get();
+            try
             {
-                var cmd = new Command();
-                if (cmd.Read(ns) && cmd.Header != null) ThreadPool.QueueUserWorkItem(s => OnReceive(cmd));
+                var ns = client?.GetStream();
+                if (ns == null) return;
+
+                // 循环处理收到的命令
+                while (ns.DataAvailable)
+                {
+                    var cmd = new Command();
+                    if (cmd.Read(ns) && cmd.Header != null) ThreadPool.QueueUserWorkItem(s => OnReceive(cmd));
+                }
+            }
+            finally
+            {
+                _Pool.Put(client);
             }
         }
 
         /// <summary>收到命令时</summary>
         public event EventHandler<EventArgs<Command>> Received;
 
-        protected virtual void OnReceive(Command cmd) => Received?.Invoke(this, new EventArgs<Command>(cmd));
+        /// <summary>收到命令</summary>
+        /// <param name="cmd"></param>
+        protected virtual void OnReceive(Command cmd)
+        {
+            var code = (cmd.Header.Flag & 1) == 0 ? (RequestCode)cmd.Header.Code + "" : (ResponseCode)cmd.Header.Code + "";
+
+            //WriteLog("收到：Code={0} {1}", code, cmd.Header.ToJson());
+
+            Received?.Invoke(this, new EventArgs<Command>(cmd));
+        }
         #endregion
 
         #region 连接池
@@ -253,12 +280,7 @@ namespace NewLife.RocketMQ
 
             protected override TcpClient OnCreate() => Client.OnCreate();
 
-            public override Boolean Put(TcpClient value)
-            {
-                if (!value.Connected) return false;
-
-                return base.Put(value);
-            }
+            protected override Boolean OnPut(TcpClient value) => value.Connected;
         }
 
         //private TcpClient _Client;

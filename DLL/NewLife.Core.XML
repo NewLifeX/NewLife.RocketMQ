@@ -1773,6 +1773,11 @@
             <summary>归还</summary>
             <param name="value"></param>
         </member>
+        <member name="M:NewLife.Collections.ObjectPool`1.OnPut(`0)">
+            <summary>归还时是否可用</summary>
+            <param name="value"></param>
+            <returns></returns>
+        </member>
         <member name="M:NewLife.Collections.ObjectPool`1.Clear">
             <summary>清空已有对象</summary>
         </member>
@@ -2945,6 +2950,128 @@
             <summary>获取表示分页参数唯一性的键值，可用作缓存键</summary>
             <returns></returns>
         </member>
+        <member name="T:NewLife.IO.CsvFile">
+            <summary>Csv文件</summary>
+            <remarks>
+            支持整体读写以及增量式读写，目标是读写超大Csv文件
+            </remarks>
+        </member>
+        <member name="P:NewLife.IO.CsvFile.Encoding">
+            <summary>文件编码</summary>
+        </member>
+        <member name="P:NewLife.IO.CsvFile.Separator">
+            <summary>分隔符。默认逗号</summary>
+        </member>
+        <member name="M:NewLife.IO.CsvFile.#ctor(System.IO.Stream)">
+            <summary>数据流实例化</summary>
+            <param name="stream"></param>
+        </member>
+        <member name="M:NewLife.IO.CsvFile.#ctor(System.String,System.Boolean)">
+            <summary>Csv文件实例化</summary>
+            <param name="file"></param>
+            <param name="write"></param>
+        </member>
+        <member name="M:NewLife.IO.CsvFile.OnDispose(System.Boolean)">
+            <summary>销毁</summary>
+            <param name="disposing"></param>
+        </member>
+        <member name="M:NewLife.IO.CsvFile.ReadLine">
+            <summary>读取一行</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.IO.CsvFile.ReadAll">
+            <summary>读取所有行</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.IO.CsvFile.WriteAll(System.Collections.Generic.IEnumerable{System.Collections.Generic.IEnumerable{System.Object}})">
+            <summary>写入全部</summary>
+            <param name="data"></param>
+        </member>
+        <member name="M:NewLife.IO.CsvFile.WriteLine(System.Collections.Generic.IEnumerable{System.Object})">
+            <summary>写入一行</summary>
+            <param name="line"></param>
+        </member>
+        <member name="T:NewLife.IO.EncodingHelper">
+            <summary>编码助手</summary>
+        </member>
+        <member name="M:NewLife.IO.EncodingHelper.Detect(System.String)">
+            <summary>检测文件编码</summary>
+            <param name="filename">文件名</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.IO.EncodingHelper.DetectEncoding(System.IO.FileInfo)">
+            <summary>检测文件编码</summary>
+            <param name="file"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.IO.EncodingHelper.Detect(System.IO.Stream,System.Int64)">
+            <summary>检测数据流编码</summary>
+            <param name="stream">数据流</param>
+            <param name="sampleSize">BOM检测失败时用于启发式探索的数据大小</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.IO.EncodingHelper.Detect(System.Byte[])">
+            <summary>检测字节数组编码</summary>
+            <param name="data">字节数组</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.IO.EncodingHelper.DetectBOM(System.Byte[])">
+            <summary>检测BOM字节序</summary>
+            <param name="boms"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.IO.EncodingHelper.DetectASCII(System.Byte[])">
+            <summary>检测是否ASCII</summary>
+            <param name="data"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.IO.EncodingHelper.DetectUnicode(System.Byte[])">
+            <summary>启发式探测Unicode编码</summary>
+            <param name="data"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.IO.EncodingHelper.IsCommonASCII(System.Byte)">
+            <summary>是否可见ASCII</summary>
+            <param name="bt"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.IO.EncodingHelper.DetectSuspiciousUTF8SequenceLength(System.Byte[],System.Int64)">
+            <summary>检测可能的UTF8序列长度</summary>
+            <param name="buf"></param>
+            <param name="pos"></param>
+            <returns></returns>
+        </member>
+        <member name="T:NewLife.IO.FileSource">
+            <summary>文件资源</summary>
+        </member>
+        <member name="M:NewLife.IO.FileSource.ReleaseFile(System.Reflection.Assembly,System.String,System.String,System.Boolean)">
+            <summary>释放文件</summary>
+            <param name="asm"></param>
+            <param name="fileName"></param>
+            <param name="destFile"></param>
+            <param name="overWrite"></param>
+        </member>
+        <member name="M:NewLife.IO.FileSource.ReleaseFolder(System.Reflection.Assembly,System.String,System.String,System.Boolean)">
+            <summary>释放文件夹</summary>
+            <param name="asm"></param>
+            <param name="prefix"></param>
+            <param name="dest"></param>
+            <param name="overWrite"></param>
+        </member>
+        <member name="M:NewLife.IO.FileSource.ReleaseFolder(System.Reflection.Assembly,System.String,System.String,System.Boolean,System.Func{System.String,System.String})">
+            <summary>释放文件夹</summary>
+            <param name="asm"></param>
+            <param name="prefix"></param>
+            <param name="dest"></param>
+            <param name="overWrite"></param>
+            <param name="filenameResolver"></param>
+        </member>
+        <member name="M:NewLife.IO.FileSource.GetFileResource(System.Reflection.Assembly,System.String)">
+            <summary>获取文件资源</summary>
+            <param name="asm"></param>
+            <param name="filename"></param>
+            <returns></returns>
+        </member>
         <member name="M:NewLife.Extension.SpeakProvider.CheckVoice">
             <summary>检查是否安装了语音库</summary>
         </member>
@@ -3153,87 +3280,6 @@
         <member name="M:NewLife.Http.TinyHttpClient.GetAsync(System.String)">
             <summary>异步获取</summary>
             <param name="url">地址</param>
-            <returns></returns>
-        </member>
-        <member name="T:NewLife.IO.EncodingHelper">
-            <summary>编码助手</summary>
-        </member>
-        <member name="M:NewLife.IO.EncodingHelper.Detect(System.String)">
-            <summary>检测文件编码</summary>
-            <param name="filename">文件名</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.IO.EncodingHelper.DetectEncoding(System.IO.FileInfo)">
-            <summary>检测文件编码</summary>
-            <param name="file"></param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.IO.EncodingHelper.Detect(System.IO.Stream,System.Int64)">
-            <summary>检测数据流编码</summary>
-            <param name="stream">数据流</param>
-            <param name="sampleSize">BOM检测失败时用于启发式探索的数据大小</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.IO.EncodingHelper.Detect(System.Byte[])">
-            <summary>检测字节数组编码</summary>
-            <param name="data">字节数组</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.IO.EncodingHelper.DetectBOM(System.Byte[])">
-            <summary>检测BOM字节序</summary>
-            <param name="boms"></param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.IO.EncodingHelper.DetectASCII(System.Byte[])">
-            <summary>检测是否ASCII</summary>
-            <param name="data"></param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.IO.EncodingHelper.DetectUnicode(System.Byte[])">
-            <summary>启发式探测Unicode编码</summary>
-            <param name="data"></param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.IO.EncodingHelper.IsCommonASCII(System.Byte)">
-            <summary>是否可见ASCII</summary>
-            <param name="bt"></param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.IO.EncodingHelper.DetectSuspiciousUTF8SequenceLength(System.Byte[],System.Int64)">
-            <summary>检测可能的UTF8序列长度</summary>
-            <param name="buf"></param>
-            <param name="pos"></param>
-            <returns></returns>
-        </member>
-        <member name="T:NewLife.IO.FileSource">
-            <summary>文件资源</summary>
-        </member>
-        <member name="M:NewLife.IO.FileSource.ReleaseFile(System.Reflection.Assembly,System.String,System.String,System.Boolean)">
-            <summary>释放文件</summary>
-            <param name="asm"></param>
-            <param name="fileName"></param>
-            <param name="destFile"></param>
-            <param name="overWrite"></param>
-        </member>
-        <member name="M:NewLife.IO.FileSource.ReleaseFolder(System.Reflection.Assembly,System.String,System.String,System.Boolean)">
-            <summary>释放文件夹</summary>
-            <param name="asm"></param>
-            <param name="prefix"></param>
-            <param name="dest"></param>
-            <param name="overWrite"></param>
-        </member>
-        <member name="M:NewLife.IO.FileSource.ReleaseFolder(System.Reflection.Assembly,System.String,System.String,System.Boolean,System.Func{System.String,System.String})">
-            <summary>释放文件夹</summary>
-            <param name="asm"></param>
-            <param name="prefix"></param>
-            <param name="dest"></param>
-            <param name="overWrite"></param>
-            <param name="filenameResolver"></param>
-        </member>
-        <member name="M:NewLife.IO.FileSource.GetFileResource(System.Reflection.Assembly,System.String)">
-            <summary>获取文件资源</summary>
-            <param name="asm"></param>
-            <param name="filename"></param>
             <returns></returns>
         </member>
         <member name="T:NewLife.Json.JsonConfig`1">
