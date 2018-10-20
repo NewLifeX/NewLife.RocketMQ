@@ -36,7 +36,7 @@ namespace NewLife.RocketMQ.Protocol
         public String SerializeTypeCurrentRPC { get; set; } = "JSON";
 
         /// <summary>给通信层知道对方的版本号，响应方可以以此做兼容老版本等的特殊操作</summary>
-        public Int32 Version { get; set; } = 138;
+        public Int32 Version { get; set; } = 137;
 
         /// <summary>附带的文本信息。常见的如存放一些broker/nameserver返回的一些异常信息，方便开发人员定位问题。</summary>
         public String Remark { get; set; }

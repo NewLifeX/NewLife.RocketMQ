@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Xml.Serialization;
@@ -512,10 +513,10 @@ namespace NewLife.RocketMQ
                         NotifyConsumerIdsChanged(cmd);
                         break;
                     case RequestCode.RESET_CONSUMER_CLIENT_OFFSET:
-                        NotifyConsumerIdsChanged(cmd);
+                        ResetOffset(cmd);
                         break;
                     case RequestCode.GET_CONSUMER_STATUS_FROM_CLIENT:
-                        NotifyConsumerIdsChanged(cmd);
+                        GetConsumeStatus(cmd);
                         break;
                     case RequestCode.GET_CONSUMER_RUNNING_INFO:
                         return GetConsumerRunningInfo(cmd);
@@ -534,7 +535,20 @@ namespace NewLife.RocketMQ
 
         private void ResetOffset(Command cmd)
         {
+            var js = cmd.Body?.ToStr();
+            if (js.IsNullOrEmpty()) return;
 
+            // 请求内容是一个奇怪的Json，Key是MessageQueue对象，Value是偏移量
+            var ss = js.Split(",{");
+            foreach (var item in ss)
+            {
+                var name = item.Substring("\"brokerName\":", ",").Trim('\"');
+                var qid = item.Substring("\"queueId\":", ",").ToInt();
+                var offset = item.TrimEnd('}').Substring("}:", null).ToLong();
+
+                var mq = _Queues.FirstOrDefault(e => e.Queue.BrokerName == name & e.Queue.QueueId == qid);
+                if (mq != null) mq.Offset = offset;
+            }
         }
 
         private void GetConsumeStatus(Command cmd)
@@ -556,7 +570,8 @@ namespace NewLife.RocketMQ
                 var val = pi.GetValue(this, null);
                 if (val != null) dic[pi.Name] = val + "";
             }
-            dic["PROP_CLIENT_VERSION"] = "1.0.2018.1020";
+            var asm = Assembly.GetExecutingAssembly();
+            dic["PROP_CLIENT_VERSION"] = asm.GetName().Version + "";
             dic["PROP_CONSUMEORDERLY"] = "false";
             dic["PROP_CONSUMER_START_TIMESTAMP"] = StartTime.ToInt() + "";
             dic["PROP_CONSUME_TYPE"] = "CONSUME_PASSIVELY";
