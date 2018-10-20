@@ -10,7 +10,6 @@ using NewLife.Net;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
-using NewLife.Threading;
 
 namespace NewLife.RocketMQ
 {
@@ -61,7 +60,7 @@ namespace NewLife.RocketMQ
         {
             WriteLog("[{0}]集群地址：{1}", Name, Servers.Join(";", e => $"{e.Host}:{e.Port}"));
 
-            ReceiveAsync();
+            //ReceiveAsync();
         }
 
         private Int32 g_id;
@@ -81,23 +80,34 @@ namespace NewLife.RocketMQ
             for (var i = 0; i < times; i++)
             {
                 var client = _Pool.Get();
-                //var client = GetClient();
                 try
                 {
+                    //var client = GetClient();
+                    //lock (client)
+                    //{
                     var ns = client.GetStream();
 
-                    //// 接收
-                    //if (ns.DataAvailable) CheckReceive();
+                    while (ns.DataAvailable)
+                    {
+                        var rs = new Command();
+                        rs.Read(ns);
+                        if (rs.Header == null) break;
+
+                        // 其它指令
+                        ThreadPool.QueueUserWorkItem(s => OnReceive(rs));
+                    }
                     // 清空残留
                     while (ns.DataAvailable) ns.ReadBytes(1024);
 
-                    cmd.Write(ns);
-                    ns.Flush();
+                    var ms = new BufferedStream(ns);
+                    cmd.Write(ms);
+                    ms.Flush();
 
                     while (true)
                     {
                         var rs = new Command();
-                        rs.Read(ns);
+                        rs.Read(ms);
+                        if (rs.Header == null) return rs;
 
                         // 当前请求的响应
                         if ((rs.Header.Flag & 1) == 1 && rs.Header.Opaque == cmd.Header.Opaque) return rs;
@@ -105,9 +115,12 @@ namespace NewLife.RocketMQ
                         // 其它指令
                         ThreadPool.QueueUserWorkItem(s => OnReceive(rs));
                     }
+                    //}
                 }
                 catch (Exception ex)
                 {
+                    //if (ex is SocketException) _Client = null;
+
                     last = ex;
                     Thread.Sleep(100);
                 }
@@ -157,6 +170,8 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         internal virtual Command Invoke(RequestCode request, Object body, Object extFields = null, Boolean ignoreError = false)
         {
+            WriteLog("Invoke: {0}", request);
+
             var header = new Header
             {
                 Code = (Int32)request,
@@ -227,34 +242,32 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 接收数据
-        private TimerX _timer;
+        //private TimerX _timer;
 
-        /// <summary>开启异步接收</summary>
-        protected void ReceiveAsync()
-        {
-            if (_timer == null) _timer = new TimerX(CheckReceive, null, 1000, 1000, "ClusterClient");
-        }
+        ///// <summary>开启异步接收</summary>
+        //protected void ReceiveAsync()
+        //{
+        //    if (_timer == null) _timer = new TimerX(CheckReceive, null, 1000, 1000, "ClusterClient");
+        //}
 
-        private void CheckReceive(Object state = null)
-        {
-            var client = _Pool.Get();
-            try
-            {
-                var ns = client?.GetStream();
-                if (ns == null) return;
+        //private void CheckReceive(Object state = null)
+        //{
+        //    var client = _Client;
+        //    if (client == null) return;
 
-                // 循环处理收到的命令
-                while (ns.DataAvailable)
-                {
-                    var cmd = new Command();
-                    if (cmd.Read(ns) && cmd.Header != null) ThreadPool.QueueUserWorkItem(s => OnReceive(cmd));
-                }
-            }
-            finally
-            {
-                _Pool.Put(client);
-            }
-        }
+        //    lock (client)
+        //    {
+        //        var ns = client.GetStream();
+        //        if (ns == null) return;
+
+        //        // 循环处理收到的命令
+        //        while (ns.DataAvailable)
+        //        {
+        //            var cmd = new Command();
+        //            if (cmd.Read(ns) && cmd.Header != null) ThreadPool.QueueUserWorkItem(s => OnReceive(cmd));
+        //        }
+        //    }
+        //}
 
         /// <summary>收到命令时</summary>
         public event EventHandler<EventArgs<Command>> Received;
@@ -265,7 +278,7 @@ namespace NewLife.RocketMQ
         {
             var code = (cmd.Header.Flag & 1) == 0 ? (RequestCode)cmd.Header.Code + "" : (ResponseCode)cmd.Header.Code + "";
 
-            //WriteLog("收到：Code={0} {1}", code, cmd.Header.ToJson());
+            WriteLog("收到：Code={0} {1}", code, cmd.Header.ToJson());
 
             Received?.Invoke(this, new EventArgs<Command>(cmd));
         }
@@ -273,18 +286,28 @@ namespace NewLife.RocketMQ
 
         #region 连接池
         private readonly MyPool _Pool;
+        //private TcpClient _Client;
 
         class MyPool : ObjectPool<TcpClient>
         {
             public ClusterClient Client { get; set; }
+
+            public MyPool()
+            {
+                // 最小两个连接，一个长连接拉数据，另一个传输心跳等命令
+                Min = 2;
+                IdleTime = 40;
+                AllIdleTime = 180;
+            }
 
             protected override TcpClient OnCreate() => Client.OnCreate();
 
             protected override Boolean OnPut(TcpClient value) => value.Connected;
         }
 
-        //private TcpClient _Client;
-        //private TcpClient GetClient()
+        ///// <summary>获取主连接</summary>
+        ///// <returns></returns>
+        //protected virtual TcpClient GetMaster()
         //{
         //    if (_Client != null && _Client.Connected) return _Client;
 
@@ -300,7 +323,7 @@ namespace NewLife.RocketMQ
             idx = (idx - 1) % Servers.Length;
 
             var uri = Servers[idx];
-            //WriteLog("正在连接[{0}:{1}]", uri.Host, uri.Port);
+            WriteLog("正在连接[{0}:{1}]", uri.Host, uri.Port);
 
             var client = new TcpClient();
 
@@ -325,7 +348,7 @@ namespace NewLife.RocketMQ
         /// <summary>写日志</summary>
         /// <param name="format"></param>
         /// <param name="args"></param>
-        public void WriteLog(String format, params Object[] args) => Log?.Info(format, args);
+        public void WriteLog(String format, params Object[] args) => Log?.Info($"[{Name}]{format}", args);
         #endregion
     }
 }
