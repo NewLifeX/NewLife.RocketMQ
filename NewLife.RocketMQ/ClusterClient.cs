@@ -170,7 +170,9 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         internal virtual Command Invoke(RequestCode request, Object body, Object extFields = null, Boolean ignoreError = false)
         {
+#if DEBUG
             WriteLog("Invoke: {0}", request);
+#endif
 
             var header = new Header
             {
@@ -276,9 +278,11 @@ namespace NewLife.RocketMQ
         /// <param name="cmd"></param>
         protected virtual void OnReceive(Command cmd)
         {
+#if DEBUG
             var code = (cmd.Header.Flag & 1) == 0 ? (RequestCode)cmd.Header.Code + "" : (ResponseCode)cmd.Header.Code + "";
 
             WriteLog("收到：Code={0} {1}", code, cmd.Header.ToJson());
+#endif
 
             Received?.Invoke(this, new EventArgs<Command>(cmd));
         }

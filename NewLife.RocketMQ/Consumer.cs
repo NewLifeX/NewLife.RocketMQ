@@ -462,16 +462,34 @@ namespace NewLife.RocketMQ
         }
 
         private TimerX _timer;
+        private DateTime _nextCheck;
+        private Boolean _checking;
         private void CheckGroup(Object state = null)
         {
+            if (_checking) return;
+
             // 避免多次平衡同时进行
+            var now = TimerX.Now;
+            if (now < _nextCheck) return;
+
             lock (this)
             {
-                if (!Rebalance()) return;
+                if (_checking) return;
+                _checking = true;
 
-                DoSchedule();
+                try
+                {
+                    if (!Rebalance()) return;
 
-                _timer.Period = 30_000;
+                    DoSchedule();
+
+                    _timer.Period = 30_000;
+                    _nextCheck = now.AddSeconds(1);
+                }
+                finally
+                {
+                    _checking = false;
+                }
             }
         }
 
