@@ -28,21 +28,26 @@ namespace NewLife.RocketMQ.Protocol
                 Stream = stream,
                 IsLittleEndian = false,
             };
-            var len = bn.Read<Int32>();
-            if (len < 4) return false;
 
-            // 读取头部
-            var hlen = bn.Read<Int32>();
-            if (hlen <= 0 || hlen > 8 * 1024) return false;
-
-            var json = bn.ReadBytes(hlen).ToStr();
-            Header = json.ToJsonEntity<Header>();
-
-            //  读取主体
-            if (len > 4 + hlen)
+            try
             {
-                Body = bn.ReadBytes(len - 4 - hlen);
+                var len = bn.Read<Int32>();
+                if (len < 4 || len > 4 * 1024 * 1024) return false;
+
+                // 读取头部
+                var hlen = bn.Read<Int32>();
+                if (hlen <= 0 || hlen > 8 * 1024) return false;
+
+                var json = bn.ReadBytes(hlen).ToStr();
+                Header = json.ToJsonEntity<Header>();
+
+                //  读取主体
+                if (len > 4 + hlen)
+                {
+                    Body = bn.ReadBytes(len - 4 - hlen);
+                }
             }
+            catch { return false; }
 
             return true;
         }
