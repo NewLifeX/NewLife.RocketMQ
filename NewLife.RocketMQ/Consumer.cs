@@ -234,7 +234,8 @@ namespace NewLife.RocketMQ
             {
                 var th = new Thread(DoPull)
                 {
-                    IsBackground = true
+                    Name = "CT" + i,
+                    IsBackground = true,
                 };
                 th.Start(qs[i]);
 
@@ -251,16 +252,18 @@ namespace NewLife.RocketMQ
 
         private void Stop()
         {
-            if (_threads != null && _threads.Length > 0)
+            var ts = _threads;
+            if (ts != null && ts.Length > 0)
             {
-                WriteLog("停止调度线程[{0}]", _threads.Length);
+                WriteLog("停止调度线程[{0}]", ts.Length);
 
                 // 预留一点退出时间
-                foreach (var item in _threads)
+                foreach (var item in ts)
                 {
-                    if (item.ThreadState != ThreadState.Running) continue;
                     try
                     {
+                        if (item == null || item.ThreadState != ThreadState.Running) continue;
+
                         if (item.Join(3_000)) item.Abort();
                     }
                     catch { }
@@ -461,11 +464,15 @@ namespace NewLife.RocketMQ
         private TimerX _timer;
         private void CheckGroup(Object state = null)
         {
-            if (!Rebalance()) return;
+            // 避免多次平衡同时进行
+            lock (this)
+            {
+                if (!Rebalance()) return;
 
-            DoSchedule();
+                DoSchedule();
 
-            _timer.Period = 30_000;
+                _timer.Period = 30_000;
+            }
         }
 
         /// <summary>收到命令</summary>
