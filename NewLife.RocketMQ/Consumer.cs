@@ -112,7 +112,7 @@ namespace NewLife.RocketMQ
             var dic = header.GetProperties();
             var bk = GetBroker(mq.BrokerName);
 
-            var rs = bk.Invoke(RequestCode.PULL_MESSAGE, null, dic, false);
+            var rs = bk.Invoke(RequestCode.PULL_MESSAGE, null, dic, true);
             if (rs?.Header == null) return null;
 
             var pr = new PullResult();
@@ -121,6 +121,8 @@ namespace NewLife.RocketMQ
                 pr.Status = PullStatus.Found;
             else if (rs.Header.Code == (Int32)ResponseCode.PULL_NOT_FOUND)
                 pr.Status = PullStatus.NoNewMessage;
+            else if (rs.Header.Code == (Int32)ResponseCode.PULL_OFFSET_MOVED)
+                pr.Status = PullStatus.OffsetIllegal;
 
             pr.Read(rs.Header?.ExtFields);
 
@@ -169,10 +171,10 @@ namespace NewLife.RocketMQ
             var bk = GetBroker(mq.BrokerName);
             var rs = bk.Invoke(RequestCode.UPDATE_CONSUMER_OFFSET, null, new
             {
-                consumerGroup = Group,
-                topic = Topic,
-                queueId = mq.QueueId,
                 commitOffset,
+                consumerGroup = Group,
+                queueId = mq.QueueId,
+                topic = Topic,
             });
 
             var dic = rs.Header?.ExtFields;
@@ -307,24 +309,34 @@ namespace NewLife.RocketMQ
                     // 拉取一批，阻塞等待
                     var offset = st.Offset >= 0 ? st.Offset : 0;
                     var pr = Pull(mq, offset, BatchSize, 15_000);
-                    if (pr != null && pr.Status == PullStatus.Found && pr.Messages != null && pr.Messages.Length > 0)
+                    if (pr != null)
                     {
-                        // 触发消费
-                        var rs = Consume(mq, pr);
+                        switch (pr.Status)
+                        {
+                            case PullStatus.Found:
+                                if (pr.Messages != null && pr.Messages.Length > 0)
+                                {
+                                    // 触发消费
+                                    var rs = Consume(mq, pr);
 
-                        // 更新偏移
-                        if (rs) st.Offset = pr.NextBeginOffset;
+                                    // 更新偏移
+                                    if (rs) st.Offset = pr.NextBeginOffset;
+                                }
+                                break;
+                            case PullStatus.NoNewMessage:
+                                break;
+                            case PullStatus.NoMatchedMessage:
+                                break;
+                            case PullStatus.OffsetIllegal:
+                                if (pr.NextBeginOffset > 0) st.Offset = pr.NextBeginOffset;
+                                break;
+                            default:
+                                break;
+                        }
                     }
                 }
                 catch (ThreadAbortException) { break; }
                 catch (ThreadInterruptedException) { break; }
-                catch(ResponseException ex)
-                {
-                    if (ex.Code == 21)
-                    {
-
-                    }
-                }
                 catch (Exception ex)
                 {
                     Log?.Error(ex.GetMessage());
