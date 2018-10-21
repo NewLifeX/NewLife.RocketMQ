@@ -26,6 +26,9 @@ namespace NewLife.RocketMQ
         /// <summary>拉取的批大小。默认32</summary>
         public Int32 BatchSize { get; set; } = 32;
 
+        /// <summary>启动时间</summary>
+        private DateTime StartTime { get; set; } = DateTime.Now;
+
         /// <summary>消费委托</summary>
         public Func<MessageQueue, PullResult, Boolean> OnConsume;
         #endregion
@@ -99,13 +102,17 @@ namespace NewLife.RocketMQ
                 QueueOffset = offset,
                 MaxMsgNums = maxNums,
                 SysFlag = 6,
+                SubVersion = StartTime.ToLong(),
             };
             if (msTimeout >= 0) header.SuspendTimeoutMillis = msTimeout;
+
+            var st = _Queues.FirstOrDefault(e => e.Queue == mq);
+            if (st != null) header.CommitOffset = st.CommitOffset;
 
             var dic = header.GetProperties();
             var bk = GetBroker(mq.BrokerName);
 
-            var rs = bk.Invoke(RequestCode.PULL_MESSAGE, null, dic, true);
+            var rs = bk.Invoke(RequestCode.PULL_MESSAGE, null, dic, false);
             if (rs?.Header == null) return null;
 
             var pr = new PullResult();
@@ -286,17 +293,20 @@ namespace NewLife.RocketMQ
             {
                 try
                 {
-                    // 查询偏移量
+                    // 查询偏移量，可能首次启动-1
                     if (st.Offset < 0)
                     {
-                        st.Offset = st.LastOffset = QueryOffset(mq);
+                        var p = QueryOffset(mq);
+                        //if (p == -1) p = 0;
+
+                        st.Offset = st.CommitOffset = p;
 
                         if (st.Offset >= 0) WriteLog("开始消费[{0}@{1}] Offset={2:n0}", mq.BrokerName, mq.QueueId, st.Offset);
                     }
 
                     // 拉取一批，阻塞等待
                     var offset = st.Offset >= 0 ? st.Offset : 0;
-                    var pr = Pull(mq, offset, BatchSize, 10_000);
+                    var pr = Pull(mq, offset, BatchSize, 15_000);
                     if (pr != null && pr.Status == PullStatus.Found && pr.Messages != null && pr.Messages.Length > 0)
                     {
                         // 触发消费
@@ -308,14 +318,22 @@ namespace NewLife.RocketMQ
                 }
                 catch (ThreadAbortException) { break; }
                 catch (ThreadInterruptedException) { break; }
+                catch(ResponseException ex)
+                {
+                    if (ex.Code == 21)
+                    {
+
+                    }
+                }
                 catch (Exception ex)
                 {
                     Log?.Error(ex.GetMessage());
+                    Thread.Sleep(1000);
                 }
             }
 
             // 保存消费进度
-            if (st.Offset >= 0 && st.Offset != st.LastOffset) UpdateOffset(mq, st.Offset);
+            if (st.Offset >= 0 && st.Offset != st.CommitOffset) UpdateOffset(mq, st.Offset);
         }
 
         /// <summary>拉取到一批消息</summary>
@@ -338,14 +356,14 @@ namespace NewLife.RocketMQ
 
             foreach (var item in stores)
             {
-                if (item.Offset >= 0 && item.Offset != item.LastOffset)
+                if (item.Offset >= 0 && item.Offset != item.CommitOffset)
                 {
                     var mq = item.Queue;
                     WriteLog("队列[{0}@{1}]更新偏移[{2:n0}]", mq.BrokerName, mq.QueueId, item.Offset);
 
                     UpdateOffset(item.Queue, item.Offset);
 
-                    item.LastOffset = item.Offset;
+                    item.CommitOffset = item.Offset;
                 }
             }
         }
@@ -363,7 +381,7 @@ namespace NewLife.RocketMQ
             [XmlIgnore]
             public MessageQueue Queue { get; set; }
             public Int64 Offset { get; set; } = -1;
-            public Int64 LastOffset { get; set; } = -1;
+            public Int64 CommitOffset { get; set; } = -1;
 
             #region 相等
             /// <summary>相等比较</summary>
@@ -555,8 +573,6 @@ namespace NewLife.RocketMQ
         {
 
         }
-
-        private DateTime StartTime { get; set; } = DateTime.Now;
 
         private Command GetConsumerRunningInfo(Command cmd)
         {

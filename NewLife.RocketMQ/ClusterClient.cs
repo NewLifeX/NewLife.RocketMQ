@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Threading;
@@ -74,6 +75,9 @@ namespace NewLife.RocketMQ
             // 签名
             SetSignature(cmd);
 
+            // 序列化
+            var buf = cmd.ToArray();
+
             // 轮询调用
             Exception last = null;
             var times = Servers.Length;
@@ -101,7 +105,8 @@ namespace NewLife.RocketMQ
                     while (ns.DataAvailable) ns.ReadBytes(1024);
 
                     var ms = new BufferedStream(ns);
-                    cmd.Write(ms);
+                    //cmd.Write(ms);
+                    ms.Write(buf);
                     ms.Flush();
 
                     while (true)
@@ -149,7 +154,7 @@ namespace NewLife.RocketMQ
             ms.Write(cfg.OnsChannel.GetBytes());
             // ExtFields
             var dic = cmd.Header.GetExtFields();
-
+            //var dic2 = dic.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
             foreach (var item in dic)
             {
                 if (item.Value != null) ms.Write(item.Value.GetBytes());

@@ -57,13 +57,12 @@ namespace Test
         {
             var consumer = new Consumer
             {
-                //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
-                //AccessKey = "LTAINsp1qKfO61c5",
-                //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
+                Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
+                AccessKey = "LTAINsp1qKfO61c5",
+                SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
                 Topic = "nx_test",
-                //Topic = "defaulttopic1",
-                Group = "CID_Stone_001",
+                Group = "CID_nxTest",
                 NameServerAddress = "10.9.30.35:9876",
 
                 Log = XTrace.Log,
@@ -111,6 +110,37 @@ namespace Test
 
         static void Test3()
         {
+            var dic = new SortedList<String, String>(StringComparer.Ordinal)
+            {
+                ["subscription"] = "aaa",
+                ["subVersion"] = "ccc",
+            };
+            Console.WriteLine(dic.Join(",", e => $"{e.Key}={e.Value}"));
+
+            Console.WriteLine('s' > 'V');
+
+            Console.WriteLine();
+            var cmp = Comparer<String>.Default;
+            Console.WriteLine(cmp.Compare("s", "S"));
+            Console.WriteLine(cmp.Compare("s", "v"));
+            Console.WriteLine(cmp.Compare("s", "V"));
+
+            Console.WriteLine();
+            var cmp2 = StringComparer.OrdinalIgnoreCase;
+            Console.WriteLine(cmp2.Compare("s", "S"));
+            Console.WriteLine(cmp2.Compare("s", "v"));
+            Console.WriteLine(cmp2.Compare("s", "V"));
+
+            Console.WriteLine();
+            cmp2 = StringComparer.Ordinal;
+            Console.WriteLine(cmp2.Compare("s", "S"));
+            Console.WriteLine(cmp2.Compare("s", "v"));
+            Console.WriteLine(cmp2.Compare("s", "V"));
+
+            //dic.Clear();
+            //dic = dic.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
+            //Console.WriteLine(dic.Join(",", e => $"{e.Key}={e.Value}"));
+
             var list = new List<BrokerInfo>
             {
                 new BrokerInfo { Name = "A", WriteQueueNums = 5 },
