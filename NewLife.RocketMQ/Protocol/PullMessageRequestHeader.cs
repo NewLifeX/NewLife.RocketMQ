@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using NewLife.Reflection;
 
 namespace NewLife.RocketMQ.Protocol
@@ -14,8 +15,8 @@ namespace NewLife.RocketMQ.Protocol
         /// <summary>主题</summary>
         public String Topic { get; set; }
 
-        /// <summary>表达式类型</summary>
-        public String ExpressionType { get; set; } = "TAG";
+        ///// <summary>表达式类型</summary>
+        //public String ExpressionType { get; set; } = "TAG";
 
         /// <summary>订阅表达式</summary>
         public String Subscription { get; set; } = "*";
@@ -24,7 +25,7 @@ namespace NewLife.RocketMQ.Protocol
         public Int32 SuspendTimeoutMillis { get; set; } = 20_000;
 
         /// <summary>子版本</summary>
-        public Int32 SubVersion { get; set; }
+        public Int64 SubVersion { get; set; }
 
         /// <summary>队列</summary>
         public Int32 QueueId { get; set; }
@@ -36,7 +37,7 @@ namespace NewLife.RocketMQ.Protocol
         public Int32 MaxMsgNums { get; set; }
 
         /// <summary>提交偏移</summary>
-        public Int32 CommitOffset { get; set; }
+        public Int64 CommitOffset { get; set; }
 
         /// <summary>系统标记</summary>
         public Int32 SysFlag { get; set; }
@@ -47,7 +48,8 @@ namespace NewLife.RocketMQ.Protocol
         /// <returns></returns>
         public IDictionary<String, Object> GetProperties()
         {
-            var dic = new Dictionary<String, Object>();
+            //var dic = new Dictionary<String, Object>();
+            var dic = new SortedList<String, Object>(StringComparer.Ordinal);
 
             foreach (var pi in GetType().GetProperties())
             {

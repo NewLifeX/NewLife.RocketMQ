@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using NewLife.Collections;
 using NewLife.Serialization;
 
 namespace NewLife.RocketMQ.Protocol
@@ -94,6 +95,16 @@ namespace NewLife.RocketMQ.Protocol
             if (buf != null && buf.Length > 0) stream.Write(buf);
 
             return true;
+        }
+
+        /// <summary>命令转字节数组</summary>
+        /// <returns></returns>
+        public Byte[] ToArray()
+        {
+            var ms = Pool.MemoryStream.Get();
+            Write(ms, null);
+
+            return ms.Put(true);
         }
         #endregion
     }
