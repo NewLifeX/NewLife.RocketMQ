@@ -108,6 +108,7 @@ namespace NewLife.RocketMQ
             // 签名
             SetSignature(cmd);
 
+            EnsureCreate();
             var client = _Client;
             try
             {
@@ -238,7 +239,7 @@ namespace NewLife.RocketMQ
         private void Client_Received(Object sender, ReceivedEventArgs e)
         {
             var cmd = e.Message as Command;
-            if (cmd.Reply) return;
+            if (cmd == null || cmd.Reply) return;
 
             var rs = OnReceive(cmd);
             if (rs != null)

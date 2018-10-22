@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using NewLife.Reflection;
 using NewLife.RocketMQ.Client;
@@ -30,7 +31,7 @@ namespace NewLife.RocketMQ
         private DateTime StartTime { get; set; } = DateTime.Now;
 
         /// <summary>消费委托</summary>
-        public Func<MessageQueue, PullResult, Boolean> OnConsume;
+        public Func<MessageQueue, MessageExt[], Boolean> OnConsume;
         #endregion
 
         #region 构造
@@ -337,6 +338,7 @@ namespace NewLife.RocketMQ
                 }
                 catch (ThreadAbortException) { break; }
                 catch (ThreadInterruptedException) { break; }
+                catch (TaskCanceledException) { }
                 catch (Exception ex)
                 {
                     Log?.Error(ex.GetMessage());
@@ -354,7 +356,7 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         protected virtual Boolean Consume(MessageQueue queue, PullResult result)
         {
-            if (OnConsume != null) return OnConsume(queue, result);
+            if (OnConsume != null) return OnConsume(queue, result.Messages);
 
             return true;
         }
