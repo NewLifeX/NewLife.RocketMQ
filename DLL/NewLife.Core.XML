@@ -609,6 +609,10 @@
             <param name="value">变化量</param>
             <returns></returns>
         </member>
+        <member name="M:NewLife.Caching.Cache.Commit">
+            <summary>提交变更。部分提供者需要刷盘</summary>
+            <returns></returns>
+        </member>
         <member name="M:NewLife.Caching.Cache.AcquireLock(System.String,System.Int32)">
             <summary>申请分布式锁</summary>
             <param name="key"></param>
@@ -838,6 +842,10 @@
             <summary>递减，原子操作</summary>
             <param name="key">键</param>
             <param name="value">变化量</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Caching.ICache.Commit">
+            <summary>提交变更。部分提供者需要刷盘</summary>
             <returns></returns>
         </member>
         <member name="M:NewLife.Caching.ICache.AcquireLock(System.String,System.Int32)">
@@ -1146,6 +1154,10 @@
         <member name="M:NewLife.Caching.Redis.StopPipeline(System.Boolean)">
             <summary>结束管道模式</summary>
             <param name="requireResult">要求结果。默认false</param>
+        </member>
+        <member name="M:NewLife.Caching.Redis.Commit">
+            <summary>提交变更。处理某些残留在管道里的命令</summary>
+            <returns></returns>
         </member>
         <member name="P:NewLife.Caching.Redis.Count">
             <summary>缓存个数</summary>
@@ -1765,6 +1777,11 @@
             <summary>借出</summary>
             <returns></returns>
         </member>
+        <member name="M:NewLife.Collections.ObjectPool`1.OnGet(`0)">
+            <summary>借出时是否可用</summary>
+            <param name="value"></param>
+            <returns></returns>
+        </member>
         <member name="M:NewLife.Collections.ObjectPool`1.GetItem">
             <summary>申请资源包装项，Dispose时自动归还到池中</summary>
             <returns></returns>
@@ -1780,6 +1797,10 @@
         </member>
         <member name="M:NewLife.Collections.ObjectPool`1.Clear">
             <summary>清空已有对象</summary>
+        </member>
+        <member name="M:NewLife.Collections.ObjectPool`1.OnDispose(`0)">
+            <summary>销毁</summary>
+            <param name="value"></param>
         </member>
         <member name="M:NewLife.Collections.ObjectPool`1.OnCreate">
             <summary>创建实例</summary>
@@ -4612,6 +4633,255 @@
         <member name="P:NewLife.Model.IManageUser.Enable">
             <summary>启用</summary>
         </member>
+        <member name="T:NewLife.Model.NetHandlerContext">
+            <summary>网络处理器上下文</summary>
+        </member>
+        <member name="P:NewLife.Model.NetHandlerContext.Session">
+            <summary>远程连接</summary>
+        </member>
+        <member name="P:NewLife.Model.NetHandlerContext.Data">
+            <summary>数据帧</summary>
+        </member>
+        <member name="M:NewLife.Model.NetHandlerContext.FireRead(System.Object)">
+            <summary>读取管道过滤后最终处理消息</summary>
+            <param name="message"></param>
+        </member>
+        <member name="M:NewLife.Model.NetHandlerContext.FireWrite(System.Object)">
+            <summary>写入管道过滤后最终处理消息</summary>
+            <param name="message"></param>
+        </member>
+        <member name="T:NewLife.Model.IHandler">
+            <summary>处理器</summary>
+        </member>
+        <member name="P:NewLife.Model.IHandler.Prev">
+            <summary>上一个处理器</summary>
+        </member>
+        <member name="P:NewLife.Model.IHandler.Next">
+            <summary>下一个处理器</summary>
+        </member>
+        <member name="M:NewLife.Model.IHandler.Read(NewLife.Model.IHandlerContext,System.Object)">
+            <summary>读取数据，返回结果作为下一个处理器消息</summary>
+            <param name="context">上下文</param>
+            <param name="message">消息</param>
+        </member>
+        <member name="M:NewLife.Model.IHandler.Write(NewLife.Model.IHandlerContext,System.Object)">
+            <summary>写入数据，返回结果作为下一个处理器消息</summary>
+            <param name="context">上下文</param>
+            <param name="message">消息</param>
+        </member>
+        <member name="M:NewLife.Model.IHandler.Open(NewLife.Model.IHandlerContext)">
+            <summary>打开连接</summary>
+            <param name="context">上下文</param>
+        </member>
+        <member name="M:NewLife.Model.IHandler.Close(NewLife.Model.IHandlerContext,System.String)">
+            <summary>关闭连接</summary>
+            <param name="context">上下文</param>
+            <param name="reason">原因</param>
+        </member>
+        <member name="M:NewLife.Model.IHandler.Error(NewLife.Model.IHandlerContext,System.Exception)">
+            <summary>发生错误</summary>
+            <param name="context">上下文</param>
+            <param name="exception">异常</param>
+        </member>
+        <member name="T:NewLife.Model.Handler">
+            <summary>处理器</summary>
+        </member>
+        <member name="P:NewLife.Model.Handler.Prev">
+            <summary>上一个处理器</summary>
+        </member>
+        <member name="P:NewLife.Model.Handler.Next">
+            <summary>下一个处理器</summary>
+        </member>
+        <member name="M:NewLife.Model.Handler.Read(NewLife.Model.IHandlerContext,System.Object)">
+            <summary>读取数据，返回结果作为下一个处理器消息</summary>
+            <param name="context">上下文</param>
+            <param name="message">消息</param>
+        </member>
+        <member name="M:NewLife.Model.Handler.Write(NewLife.Model.IHandlerContext,System.Object)">
+            <summary>写入数据，返回结果作为下一个处理器消息</summary>
+            <param name="context">上下文</param>
+            <param name="message">消息</param>
+        </member>
+        <member name="M:NewLife.Model.Handler.Open(NewLife.Model.IHandlerContext)">
+            <summary>打开连接</summary>
+            <param name="context">上下文</param>
+        </member>
+        <member name="M:NewLife.Model.Handler.Close(NewLife.Model.IHandlerContext,System.String)">
+            <summary>关闭连接</summary>
+            <param name="context">上下文</param>
+            <param name="reason">原因</param>
+        </member>
+        <member name="M:NewLife.Model.Handler.Error(NewLife.Model.IHandlerContext,System.Exception)">
+            <summary>发生错误</summary>
+            <param name="context">上下文</param>
+            <param name="exception">异常</param>
+        </member>
+        <member name="T:NewLife.Model.IHandlerContext">
+            <summary>处理器上下文</summary>
+        </member>
+        <member name="P:NewLife.Model.IHandlerContext.Pipeline">
+            <summary>管道</summary>
+        </member>
+        <member name="P:NewLife.Model.IHandlerContext.Owner">
+            <summary>上下文拥有者</summary>
+        </member>
+        <member name="M:NewLife.Model.IHandlerContext.FireRead(System.Object)">
+            <summary>读取管道过滤后最终处理消息</summary>
+            <param name="message"></param>
+        </member>
+        <member name="M:NewLife.Model.IHandlerContext.FireWrite(System.Object)">
+            <summary>写入管道过滤后最终处理消息</summary>
+            <param name="message"></param>
+        </member>
+        <member name="T:NewLife.Model.HandlerContext">
+            <summary>处理器上下文</summary>
+        </member>
+        <member name="P:NewLife.Model.HandlerContext.Pipeline">
+            <summary>管道</summary>
+        </member>
+        <member name="P:NewLife.Model.HandlerContext.Owner">
+            <summary>上下文拥有者</summary>
+        </member>
+        <member name="P:NewLife.Model.HandlerContext.Items">
+            <summary>数据项</summary>
+        </member>
+        <member name="P:NewLife.Model.HandlerContext.Item(System.String)">
+            <summary>设置 或 获取 数据项</summary>
+            <param name="key"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Model.HandlerContext.FireRead(System.Object)">
+            <summary>读取管道过滤后最终处理消息</summary>
+            <param name="message"></param>
+        </member>
+        <member name="M:NewLife.Model.HandlerContext.FireWrite(System.Object)">
+            <summary>写入管道过滤后最终处理消息</summary>
+            <param name="message"></param>
+        </member>
+        <member name="T:NewLife.Model.IPipeline">
+            <summary>管道。进站顺序，出站逆序</summary>
+        </member>
+        <member name="P:NewLife.Model.IPipeline.Head">
+            <summary>头部处理器</summary>
+        </member>
+        <member name="P:NewLife.Model.IPipeline.Tail">
+            <summary>尾部处理器</summary>
+        </member>
+        <member name="M:NewLife.Model.IPipeline.AddFirst(NewLife.Model.IHandler)">
+            <summary>添加处理器到开头</summary>
+            <param name="handler">处理器</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Model.IPipeline.AddLast(NewLife.Model.IHandler)">
+            <summary>添加处理器到末尾</summary>
+            <param name="handler">处理器</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Model.IPipeline.AddBefore(NewLife.Model.IHandler,NewLife.Model.IHandler)">
+            <summary>添加处理器到指定名称之前</summary>
+            <param name="baseHandler">基准处理器</param>
+            <param name="handler">处理器</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Model.IPipeline.AddAfter(NewLife.Model.IHandler,NewLife.Model.IHandler)">
+            <summary>添加处理器到指定名称之后</summary>
+            <param name="baseHandler">基准处理器</param>
+            <param name="handler">处理器</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Model.IPipeline.Remove(NewLife.Model.IHandler)">
+            <summary>删除处理器</summary>
+            <param name="handler">处理器</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Model.IPipeline.Read(NewLife.Model.IHandlerContext,System.Object)">
+            <summary>读取数据，返回结果作为下一个处理器消息</summary>
+            <param name="context">上下文</param>
+            <param name="message">消息</param>
+        </member>
+        <member name="M:NewLife.Model.IPipeline.Write(NewLife.Model.IHandlerContext,System.Object)">
+            <summary>写入数据，返回结果作为下一个处理器消息</summary>
+            <param name="context">上下文</param>
+            <param name="message">消息</param>
+        </member>
+        <member name="M:NewLife.Model.IPipeline.Open(NewLife.Model.IHandlerContext)">
+            <summary>打开连接</summary>
+            <param name="context">上下文</param>
+        </member>
+        <member name="M:NewLife.Model.IPipeline.Close(NewLife.Model.IHandlerContext,System.String)">
+            <summary>关闭连接</summary>
+            <param name="context">上下文</param>
+            <param name="reason">原因</param>
+        </member>
+        <member name="M:NewLife.Model.IPipeline.Error(NewLife.Model.IHandlerContext,System.Exception)">
+            <summary>发生错误</summary>
+            <param name="context">上下文</param>
+            <param name="exception">异常</param>
+        </member>
+        <member name="T:NewLife.Model.Pipeline">
+            <summary>管道。进站顺序，出站逆序</summary>
+        </member>
+        <member name="P:NewLife.Model.Pipeline.Head">
+            <summary>头部处理器</summary>
+        </member>
+        <member name="P:NewLife.Model.Pipeline.Tail">
+            <summary>尾部处理器</summary>
+        </member>
+        <member name="M:NewLife.Model.Pipeline.AddFirst(NewLife.Model.IHandler)">
+            <summary>添加处理器到开头</summary>
+            <param name="handler">处理器</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Model.Pipeline.AddLast(NewLife.Model.IHandler)">
+            <summary>添加处理器到末尾</summary>
+            <param name="handler">处理器</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Model.Pipeline.AddBefore(NewLife.Model.IHandler,NewLife.Model.IHandler)">
+            <summary>添加处理器到指定名称之前</summary>
+            <param name="baseHandler">基准处理器</param>
+            <param name="handler">处理器</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Model.Pipeline.AddAfter(NewLife.Model.IHandler,NewLife.Model.IHandler)">
+            <summary>添加处理器到指定名称之后</summary>
+            <param name="baseHandler">基准处理器</param>
+            <param name="handler">处理器</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Model.Pipeline.Remove(NewLife.Model.IHandler)">
+            <summary>删除处理器</summary>
+            <param name="handler">处理器</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Model.Pipeline.Read(NewLife.Model.IHandlerContext,System.Object)">
+            <summary>读取数据，顺序过滤消息，返回结果作为下一个处理器消息</summary>
+            <param name="context">上下文</param>
+            <param name="message">消息</param>
+        </member>
+        <member name="M:NewLife.Model.Pipeline.Write(NewLife.Model.IHandlerContext,System.Object)">
+            <summary>写入数据，逆序过滤消息，返回结果作为下一个处理器消息</summary>
+            <param name="context">上下文</param>
+            <param name="message">消息</param>
+        </member>
+        <member name="M:NewLife.Model.Pipeline.Open(NewLife.Model.IHandlerContext)">
+            <summary>打开连接</summary>
+            <param name="context">上下文</param>
+        </member>
+        <member name="M:NewLife.Model.Pipeline.Close(NewLife.Model.IHandlerContext,System.String)">
+            <summary>关闭连接</summary>
+            <param name="context">上下文</param>
+            <param name="reason">原因</param>
+        </member>
+        <member name="M:NewLife.Model.Pipeline.Error(NewLife.Model.IHandlerContext,System.Exception)">
+            <summary>发生错误</summary>
+            <param name="context">上下文</param>
+            <param name="exception">异常</param>
+        </member>
+        <member name="M:NewLife.Model.Pipeline.GetEnumerator">
+            <summary>枚举器</summary>
+            <returns></returns>
+        </member>
         <member name="T:NewLife.Model.IObjectContainer">
             <summary>对象容器接口</summary>
             <remarks>
@@ -5506,13 +5776,13 @@
         <member name="P:NewLife.Serialization.BinaryCodec2.EncodedInt">
             <summary>使用7位编码整数。默认true使用</summary>
         </member>
-        <member name="M:NewLife.Serialization.BinaryCodec2.Write(NewLife.Net.Handlers.IHandlerContext,System.Object)">
+        <member name="M:NewLife.Serialization.BinaryCodec2.Write(NewLife.Model.IHandlerContext,System.Object)">
             <summary>对象转二进制</summary>
             <param name="context"></param>
             <param name="message"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Serialization.BinaryCodec2.Read(NewLife.Net.Handlers.IHandlerContext,System.Object)">
+        <member name="M:NewLife.Serialization.BinaryCodec2.Read(NewLife.Model.IHandlerContext,System.Object)">
             <summary>二进制转对象</summary>
             <param name="context"></param>
             <param name="message"></param>
@@ -5521,13 +5791,13 @@
         <member name="T:NewLife.Serialization.JsonCodec2">
             <summary>Json编码解码器</summary>
         </member>
-        <member name="M:NewLife.Serialization.JsonCodec2.Write(NewLife.Net.Handlers.IHandlerContext,System.Object)">
+        <member name="M:NewLife.Serialization.JsonCodec2.Write(NewLife.Model.IHandlerContext,System.Object)">
             <summary>对象转Json</summary>
             <param name="context"></param>
             <param name="message"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Serialization.JsonCodec2.Read(NewLife.Net.Handlers.IHandlerContext,System.Object)">
+        <member name="M:NewLife.Serialization.JsonCodec2.Read(NewLife.Model.IHandlerContext,System.Object)">
             <summary>Json转对象</summary>
             <param name="context"></param>
             <param name="message"></param>
@@ -5536,13 +5806,13 @@
         <member name="T:NewLife.Serialization.JsonCodec`1">
             <summary>Json编码解码器</summary>
         </member>
-        <member name="M:NewLife.Serialization.JsonCodec`1.Write(NewLife.Net.Handlers.IHandlerContext,System.Object)">
+        <member name="M:NewLife.Serialization.JsonCodec`1.Write(NewLife.Model.IHandlerContext,System.Object)">
             <summary>对象转Json</summary>
             <param name="context"></param>
             <param name="message"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Serialization.JsonCodec`1.Read(NewLife.Net.Handlers.IHandlerContext,System.Object)">
+        <member name="M:NewLife.Serialization.JsonCodec`1.Read(NewLife.Model.IHandlerContext,System.Object)">
             <summary>Json转对象</summary>
             <param name="context"></param>
             <param name="message"></param>
@@ -5554,13 +5824,13 @@
         <member name="P:NewLife.Serialization.BinaryCodec`1.EncodedInt">
             <summary>使用7位编码整数。默认true使用</summary>
         </member>
-        <member name="M:NewLife.Serialization.BinaryCodec`1.Write(NewLife.Net.Handlers.IHandlerContext,System.Object)">
+        <member name="M:NewLife.Serialization.BinaryCodec`1.Write(NewLife.Model.IHandlerContext,System.Object)">
             <summary>对象转二进制</summary>
             <param name="context"></param>
             <param name="message"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Serialization.BinaryCodec`1.Read(NewLife.Net.Handlers.IHandlerContext,System.Object)">
+        <member name="M:NewLife.Serialization.BinaryCodec`1.Read(NewLife.Model.IHandlerContext,System.Object)">
             <summary>二进制转对象</summary>
             <param name="context"></param>
             <param name="message"></param>
@@ -6981,19 +7251,19 @@
         <member name="T:NewLife.Net.Handlers.StandardCodec">
             <summary>标准网络封包。头部4字节定长</summary>
         </member>
-        <member name="M:NewLife.Net.Handlers.StandardCodec.Write(NewLife.Net.Handlers.IHandlerContext,System.Object)">
+        <member name="M:NewLife.Net.Handlers.StandardCodec.Write(NewLife.Model.IHandlerContext,System.Object)">
             <summary>写入数据</summary>
             <param name="context"></param>
             <param name="message"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Net.Handlers.StandardCodec.AddToQueue(NewLife.Net.Handlers.IHandlerContext,NewLife.Messaging.IMessage)">
+        <member name="M:NewLife.Net.Handlers.StandardCodec.AddToQueue(NewLife.Model.IHandlerContext,NewLife.Messaging.IMessage)">
             <summary>加入队列</summary>
             <param name="context"></param>
             <param name="msg"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Net.Handlers.StandardCodec.Decode(NewLife.Net.Handlers.IHandlerContext,NewLife.Data.Packet)">
+        <member name="M:NewLife.Net.Handlers.StandardCodec.Decode(NewLife.Model.IHandlerContext,NewLife.Data.Packet)">
             <summary>解码</summary>
             <param name="context"></param>
             <param name="pk"></param>
@@ -7017,13 +7287,13 @@
         <member name="P:NewLife.Net.Handlers.LengthFieldCodec.Expire">
             <summary>过期时间，超过该时间后按废弃数据处理，默认500ms</summary>
         </member>
-        <member name="M:NewLife.Net.Handlers.LengthFieldCodec.Encode(NewLife.Net.Handlers.IHandlerContext,NewLife.Data.Packet)">
+        <member name="M:NewLife.Net.Handlers.LengthFieldCodec.Encode(NewLife.Model.IHandlerContext,NewLife.Data.Packet)">
             <summary>编码</summary>
             <param name="context"></param>
             <param name="msg"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Net.Handlers.LengthFieldCodec.Decode(NewLife.Net.Handlers.IHandlerContext,NewLife.Data.Packet)">
+        <member name="M:NewLife.Net.Handlers.LengthFieldCodec.Decode(NewLife.Model.IHandlerContext,NewLife.Data.Packet)">
             <summary>解码</summary>
             <param name="context"></param>
             <param name="pk"></param>
@@ -7041,31 +7311,31 @@
         <member name="P:NewLife.Net.Handlers.MessageCodec`1.UserPacket">
             <summary>使用数据包，写入时数据包转消息，读取时消息自动解包返回数据负载。默认true</summary>
         </member>
-        <member name="M:NewLife.Net.Handlers.MessageCodec`1.Write(NewLife.Net.Handlers.IHandlerContext,System.Object)">
+        <member name="M:NewLife.Net.Handlers.MessageCodec`1.Write(NewLife.Model.IHandlerContext,System.Object)">
             <summary>写入数据</summary>
             <param name="context"></param>
             <param name="message"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Net.Handlers.MessageCodec`1.Encode(NewLife.Net.Handlers.IHandlerContext,`0)">
+        <member name="M:NewLife.Net.Handlers.MessageCodec`1.Encode(NewLife.Model.IHandlerContext,`0)">
             <summary>编码</summary>
             <param name="context"></param>
             <param name="msg"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Net.Handlers.MessageCodec`1.AddToQueue(NewLife.Net.Handlers.IHandlerContext,`0)">
+        <member name="M:NewLife.Net.Handlers.MessageCodec`1.AddToQueue(NewLife.Model.IHandlerContext,`0)">
             <summary>加入队列</summary>
             <param name="context"></param>
             <param name="msg"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Net.Handlers.MessageCodec`1.Read(NewLife.Net.Handlers.IHandlerContext,System.Object)">
+        <member name="M:NewLife.Net.Handlers.MessageCodec`1.Read(NewLife.Model.IHandlerContext,System.Object)">
             <summary>读取数据</summary>
             <param name="context"></param>
             <param name="message"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Net.Handlers.MessageCodec`1.Decode(NewLife.Net.Handlers.IHandlerContext,NewLife.Data.Packet)">
+        <member name="M:NewLife.Net.Handlers.MessageCodec`1.Decode(NewLife.Model.IHandlerContext,NewLife.Data.Packet)">
             <summary>解码</summary>
             <param name="context"></param>
             <param name="pk"></param>
@@ -7100,112 +7370,6 @@
         </member>
         <member name="F:NewLife.Net.Handlers.CodecItem.Last">
             <summary>最后一次接收</summary>
-        </member>
-        <member name="T:NewLife.Net.Handlers.IHandler">
-            <summary>处理器</summary>
-        </member>
-        <member name="P:NewLife.Net.Handlers.IHandler.Prev">
-            <summary>上一个处理器</summary>
-        </member>
-        <member name="P:NewLife.Net.Handlers.IHandler.Next">
-            <summary>下一个处理器</summary>
-        </member>
-        <member name="M:NewLife.Net.Handlers.IHandler.Read(NewLife.Net.Handlers.IHandlerContext,System.Object)">
-            <summary>读取数据，返回结果作为下一个处理器消息</summary>
-            <param name="context">上下文</param>
-            <param name="message">消息</param>
-        </member>
-        <member name="M:NewLife.Net.Handlers.IHandler.Write(NewLife.Net.Handlers.IHandlerContext,System.Object)">
-            <summary>写入数据，返回结果作为下一个处理器消息</summary>
-            <param name="context">上下文</param>
-            <param name="message">消息</param>
-        </member>
-        <member name="M:NewLife.Net.Handlers.IHandler.Open(NewLife.Net.Handlers.IHandlerContext)">
-            <summary>打开连接</summary>
-            <param name="context">上下文</param>
-        </member>
-        <member name="M:NewLife.Net.Handlers.IHandler.Close(NewLife.Net.Handlers.IHandlerContext,System.String)">
-            <summary>关闭连接</summary>
-            <param name="context">上下文</param>
-            <param name="reason">原因</param>
-        </member>
-        <member name="M:NewLife.Net.Handlers.IHandler.Error(NewLife.Net.Handlers.IHandlerContext,System.Exception)">
-            <summary>发生错误</summary>
-            <param name="context">上下文</param>
-            <param name="exception">异常</param>
-        </member>
-        <member name="T:NewLife.Net.Handlers.Handler">
-            <summary>处理器</summary>
-        </member>
-        <member name="P:NewLife.Net.Handlers.Handler.Prev">
-            <summary>上一个处理器</summary>
-        </member>
-        <member name="P:NewLife.Net.Handlers.Handler.Next">
-            <summary>下一个处理器</summary>
-        </member>
-        <member name="M:NewLife.Net.Handlers.Handler.Read(NewLife.Net.Handlers.IHandlerContext,System.Object)">
-            <summary>读取数据，返回结果作为下一个处理器消息</summary>
-            <param name="context">上下文</param>
-            <param name="message">消息</param>
-        </member>
-        <member name="M:NewLife.Net.Handlers.Handler.Write(NewLife.Net.Handlers.IHandlerContext,System.Object)">
-            <summary>写入数据，返回结果作为下一个处理器消息</summary>
-            <param name="context">上下文</param>
-            <param name="message">消息</param>
-        </member>
-        <member name="M:NewLife.Net.Handlers.Handler.Open(NewLife.Net.Handlers.IHandlerContext)">
-            <summary>打开连接</summary>
-            <param name="context">上下文</param>
-        </member>
-        <member name="M:NewLife.Net.Handlers.Handler.Close(NewLife.Net.Handlers.IHandlerContext,System.String)">
-            <summary>关闭连接</summary>
-            <param name="context">上下文</param>
-            <param name="reason">原因</param>
-        </member>
-        <member name="M:NewLife.Net.Handlers.Handler.Error(NewLife.Net.Handlers.IHandlerContext,System.Exception)">
-            <summary>发生错误</summary>
-            <param name="context">上下文</param>
-            <param name="exception">异常</param>
-        </member>
-        <member name="T:NewLife.Net.Handlers.IHandlerContext">
-            <summary>处理器上下文</summary>
-        </member>
-        <member name="P:NewLife.Net.Handlers.IHandlerContext.Pipeline">
-            <summary>管道</summary>
-        </member>
-        <member name="P:NewLife.Net.Handlers.IHandlerContext.Session">
-            <summary>远程连接</summary>
-        </member>
-        <member name="P:NewLife.Net.Handlers.IHandlerContext.Data">
-            <summary>数据帧</summary>
-        </member>
-        <member name="M:NewLife.Net.Handlers.IHandlerContext.FireRead(System.Object)">
-            <summary>处理收到消息</summary>
-            <param name="message"></param>
-        </member>
-        <member name="T:NewLife.Net.Handlers.HandlerContext">
-            <summary>处理器上下文</summary>
-        </member>
-        <member name="P:NewLife.Net.Handlers.HandlerContext.Pipeline">
-            <summary>管道</summary>
-        </member>
-        <member name="P:NewLife.Net.Handlers.HandlerContext.Session">
-            <summary>远程连接</summary>
-        </member>
-        <member name="P:NewLife.Net.Handlers.HandlerContext.Items">
-            <summary>数据项</summary>
-        </member>
-        <member name="P:NewLife.Net.Handlers.HandlerContext.Item(System.String)">
-            <summary>设置 或 获取 数据项</summary>
-            <param name="key"></param>
-            <returns></returns>
-        </member>
-        <member name="P:NewLife.Net.Handlers.HandlerContext.Data">
-            <summary>数据帧</summary>
-        </member>
-        <member name="M:NewLife.Net.Handlers.HandlerContext.FireRead(System.Object)">
-            <summary>处理收到消息</summary>
-            <param name="message"></param>
         </member>
         <member name="T:NewLife.Net.Handlers.IMatchQueue">
             <summary>消息匹配队列接口。用于把响应数据包配对到请求包</summary>
@@ -7395,7 +7559,7 @@
             <param name="message">消息</param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Net.ISocketRemote.Receive(NewLife.Data.IData)">
+        <member name="M:NewLife.Net.ISocketRemote.Process(NewLife.Data.IData)">
             <summary>处理数据帧</summary>
             <param name="data">数据帧</param>
         </member>
@@ -7439,7 +7603,7 @@
             <typeparam name="THandler"></typeparam>
             <param name="session">会话</param>
         </member>
-        <member name="M:NewLife.Net.SocketRemoteHelper.Add(NewLife.Net.ISocket,NewLife.Net.Handlers.IHandler)">
+        <member name="M:NewLife.Net.SocketRemoteHelper.Add(NewLife.Net.ISocket,NewLife.Model.IHandler)">
             <summary>添加处理器</summary>
             <param name="session">会话</param>
             <param name="handler">处理器</param>
@@ -7647,7 +7811,7 @@
             <summary>添加处理器</summary>
             <typeparam name="THandler"></typeparam>
         </member>
-        <member name="M:NewLife.Net.NetServer.Add(NewLife.Net.Handlers.IHandler)">
+        <member name="M:NewLife.Net.NetServer.Add(NewLife.Model.IHandler)">
             <summary>添加处理器</summary>
             <param name="handler">处理器</param>
         </member>
@@ -7872,160 +8036,6 @@
         </member>
         <member name="M:NewLife.Net.NetSession.ToString">
             <summary>已重载。</summary>
-            <returns></returns>
-        </member>
-        <member name="T:NewLife.Net.IPipeline">
-            <summary>管道。进站顺序，出站逆序</summary>
-        </member>
-        <member name="P:NewLife.Net.IPipeline.Head">
-            <summary>头部处理器</summary>
-        </member>
-        <member name="P:NewLife.Net.IPipeline.Tail">
-            <summary>尾部处理器</summary>
-        </member>
-        <member name="M:NewLife.Net.IPipeline.AddFirst(NewLife.Net.Handlers.IHandler)">
-            <summary>添加处理器到开头</summary>
-            <param name="handler">处理器</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.IPipeline.AddLast(NewLife.Net.Handlers.IHandler)">
-            <summary>添加处理器到末尾</summary>
-            <param name="handler">处理器</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.IPipeline.AddBefore(NewLife.Net.Handlers.IHandler,NewLife.Net.Handlers.IHandler)">
-            <summary>添加处理器到指定名称之前</summary>
-            <param name="baseHandler">基准处理器</param>
-            <param name="handler">处理器</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.IPipeline.AddAfter(NewLife.Net.Handlers.IHandler,NewLife.Net.Handlers.IHandler)">
-            <summary>添加处理器到指定名称之后</summary>
-            <param name="baseHandler">基准处理器</param>
-            <param name="handler">处理器</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.IPipeline.Remove(NewLife.Net.Handlers.IHandler)">
-            <summary>删除处理器</summary>
-            <param name="handler">处理器</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.IPipeline.CreateContext(NewLife.Net.ISocketRemote)">
-            <summary>创建上下文</summary>
-            <param name="session">远程会话</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.IPipeline.Read(NewLife.Net.Handlers.IHandlerContext,System.Object)">
-            <summary>读取数据，返回结果作为下一个处理器消息</summary>
-            <param name="context">上下文</param>
-            <param name="message">消息</param>
-        </member>
-        <member name="M:NewLife.Net.IPipeline.Write(NewLife.Net.Handlers.IHandlerContext,System.Object)">
-            <summary>写入数据，返回结果作为下一个处理器消息</summary>
-            <param name="context">上下文</param>
-            <param name="message">消息</param>
-        </member>
-        <member name="M:NewLife.Net.IPipeline.FireWrite(NewLife.Net.ISocketRemote,System.Object)">
-            <summary>写入数据</summary>
-            <param name="session">远程会话</param>
-            <param name="message">消息</param>
-        </member>
-        <member name="M:NewLife.Net.IPipeline.FireWriteAndWait(NewLife.Net.ISocketRemote,System.Object)">
-            <summary>写入数据</summary>
-            <param name="session">远程会话</param>
-            <param name="message">消息</param>
-        </member>
-        <member name="M:NewLife.Net.IPipeline.Open(NewLife.Net.Handlers.IHandlerContext)">
-            <summary>打开连接</summary>
-            <param name="context">上下文</param>
-        </member>
-        <member name="M:NewLife.Net.IPipeline.Close(NewLife.Net.Handlers.IHandlerContext,System.String)">
-            <summary>关闭连接</summary>
-            <param name="context">上下文</param>
-            <param name="reason">原因</param>
-        </member>
-        <member name="M:NewLife.Net.IPipeline.Error(NewLife.Net.Handlers.IHandlerContext,System.Exception)">
-            <summary>发生错误</summary>
-            <param name="context">上下文</param>
-            <param name="exception">异常</param>
-        </member>
-        <member name="T:NewLife.Net.Pipeline">
-            <summary>管道。进站顺序，出站逆序</summary>
-        </member>
-        <member name="P:NewLife.Net.Pipeline.Head">
-            <summary>头部处理器</summary>
-        </member>
-        <member name="P:NewLife.Net.Pipeline.Tail">
-            <summary>尾部处理器</summary>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.AddFirst(NewLife.Net.Handlers.IHandler)">
-            <summary>添加处理器到开头</summary>
-            <param name="handler">处理器</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.AddLast(NewLife.Net.Handlers.IHandler)">
-            <summary>添加处理器到末尾</summary>
-            <param name="handler">处理器</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.AddBefore(NewLife.Net.Handlers.IHandler,NewLife.Net.Handlers.IHandler)">
-            <summary>添加处理器到指定名称之前</summary>
-            <param name="baseHandler">基准处理器</param>
-            <param name="handler">处理器</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.AddAfter(NewLife.Net.Handlers.IHandler,NewLife.Net.Handlers.IHandler)">
-            <summary>添加处理器到指定名称之后</summary>
-            <param name="baseHandler">基准处理器</param>
-            <param name="handler">处理器</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.Remove(NewLife.Net.Handlers.IHandler)">
-            <summary>删除处理器</summary>
-            <param name="handler">处理器</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.CreateContext(NewLife.Net.ISocketRemote)">
-            <summary>创建上下文</summary>
-            <param name="session">远程会话</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.Read(NewLife.Net.Handlers.IHandlerContext,System.Object)">
-            <summary>读取数据，返回结果作为下一个处理器消息</summary>
-            <param name="context">上下文</param>
-            <param name="message">消息</param>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.Write(NewLife.Net.Handlers.IHandlerContext,System.Object)">
-            <summary>写入数据，返回结果作为下一个处理器消息</summary>
-            <param name="context">上下文</param>
-            <param name="message">消息</param>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.FireWrite(NewLife.Net.ISocketRemote,System.Object)">
-            <summary>写入数据</summary>
-            <param name="session">远程会话</param>
-            <param name="message">消息</param>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.FireWriteAndWait(NewLife.Net.ISocketRemote,System.Object)">
-            <summary>写入数据</summary>
-            <param name="session">远程会话</param>
-            <param name="message">消息</param>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.Open(NewLife.Net.Handlers.IHandlerContext)">
-            <summary>打开连接</summary>
-            <param name="context">上下文</param>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.Close(NewLife.Net.Handlers.IHandlerContext,System.String)">
-            <summary>关闭连接</summary>
-            <param name="context">上下文</param>
-            <param name="reason">原因</param>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.Error(NewLife.Net.Handlers.IHandlerContext,System.Exception)">
-            <summary>发生错误</summary>
-            <param name="context">上下文</param>
-            <param name="exception">异常</param>
-        </member>
-        <member name="M:NewLife.Net.Pipeline.GetEnumerator">
-            <summary>枚举器</summary>
             <returns></returns>
         </member>
         <member name="T:NewLife.Net.ReceivedEventArgs">
@@ -8817,7 +8827,7 @@
             <summary>接收数据</summary>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Net.UdpSession.NewLife#Net#ISocketRemote#Receive(NewLife.Data.IData)">
+        <member name="M:NewLife.Net.UdpSession.NewLife#Net#ISocketRemote#Process(NewLife.Data.IData)">
             <summary>处理数据帧</summary>
             <param name="data">数据帧</param>
         </member>
@@ -9049,7 +9059,7 @@
             <param name="io">是否在IO线程调用</param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Net.SessionBase.ProcessReceive(System.Net.Sockets.SocketAsyncEventArgs)">
+        <member name="M:NewLife.Net.SessionBase.ProcessEvent(System.Net.Sockets.SocketAsyncEventArgs)">
             <summary>同步或异步收到数据</summary>
             <param name="se"></param>
         </member>
@@ -9085,6 +9095,11 @@
         <member name="P:NewLife.Net.SessionBase.Pipeline">
             <summary>消息管道。收发消息都经过管道处理器</summary>
         </member>
+        <member name="M:NewLife.Net.SessionBase.CreateContext(NewLife.Net.ISocketRemote)">
+            <summary>创建上下文</summary>
+            <param name="session">远程会话</param>
+            <returns></returns>
+        </member>
         <member name="M:NewLife.Net.SessionBase.SendMessage(System.Object)">
             <summary>通过管道发送消息</summary>
             <param name="message"></param>
@@ -9095,7 +9110,7 @@
             <param name="message"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Net.SessionBase.NewLife#Net#ISocketRemote#Receive(NewLife.Data.IData)">
+        <member name="M:NewLife.Net.SessionBase.NewLife#Net#ISocketRemote#Process(NewLife.Data.IData)">
             <summary>处理数据帧</summary>
             <param name="data">数据帧</param>
         </member>
