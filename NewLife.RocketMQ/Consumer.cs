@@ -21,6 +21,9 @@ namespace NewLife.RocketMQ
         /// <summary>数据</summary>
         public IList<ConsumerData> Data { get; set; }
 
+        /// <summary>消费间隔。默认15_000ms</summary>
+        public Int32 ConsumerInterval { get; set; } = 15_000;
+
         /// <summary>持久化消费偏移间隔。默认5_000ms</summary>
         public Int32 PersistConsumerOffsetInterval { get; set; } = 5_000;
 
@@ -29,6 +32,9 @@ namespace NewLife.RocketMQ
 
         /// <summary>启动时间</summary>
         private DateTime StartTime { get; set; } = DateTime.Now;
+
+        /// <summary>从最后偏移开始消费。默认true</summary>
+        public Boolean FromLastOffset { get; set; } = true;
 
         /// <summary>消费委托</summary>
         public Func<MessageQueue, MessageExt[], Boolean> OnConsume;
@@ -178,7 +184,7 @@ namespace NewLife.RocketMQ
                 topic = Topic,
             });
 
-            var dic = rs.Header?.ExtFields;
+            var dic = rs?.Header?.ExtFields;
             if (dic == null) return false;
 
             return true;
@@ -297,7 +303,7 @@ namespace NewLife.RocketMQ
                 try
                 {
                     // 查询偏移量，可能首次启动-1
-                    if (st.Offset < 0)
+                    if (st.Offset < 0 && FromLastOffset)
                     {
                         var p = QueryOffset(mq);
                         //if (p == -1) p = 0;
@@ -309,7 +315,7 @@ namespace NewLife.RocketMQ
 
                     // 拉取一批，阻塞等待
                     var offset = st.Offset >= 0 ? st.Offset : 0;
-                    var pr = Pull(mq, offset, BatchSize, 15_000);
+                    var pr = Pull(mq, offset, BatchSize, ConsumerInterval);
                     if (pr != null)
                     {
                         switch (pr.Status)
@@ -339,6 +345,7 @@ namespace NewLife.RocketMQ
                 catch (ThreadAbortException) { break; }
                 catch (ThreadInterruptedException) { break; }
                 catch (TaskCanceledException) { }
+                catch (AggregateException) { }
                 catch (Exception ex)
                 {
                     Log?.Error(ex.GetMessage());

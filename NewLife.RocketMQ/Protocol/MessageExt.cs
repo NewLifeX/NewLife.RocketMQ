@@ -115,7 +115,7 @@ namespace NewLife.RocketMQ.Protocol
             ms.Write(port.GetBytes(false));
             ms.Write(CommitLogOffset.GetBytes(false));
 
-            MsgId = ms.ToArray().ToHex(0, 16);
+            MsgId = ms.Put(true).ToHex(0, 16);
 
             return true;
         }

@@ -64,6 +64,7 @@ namespace Test
                 Topic = "nx_test",
                 Group = "CID_nxTest",
                 NameServerAddress = "10.9.30.35:9876",
+                FromLastOffset = false,
 
                 Log = XTrace.Log,
             };
