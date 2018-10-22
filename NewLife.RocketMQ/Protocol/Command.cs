@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using NewLife.Collections;
+using NewLife.Data;
 using NewLife.Serialization;
 
 namespace NewLife.RocketMQ.Protocol
@@ -15,6 +15,11 @@ namespace NewLife.RocketMQ.Protocol
 
         /// <summary>主体</summary>
         public Byte[] Body { get; set; }
+        #endregion
+
+        #region 扩展属性
+        /// <summary>是否响应</summary>
+        public Boolean Reply => Header == null ? false : ((Header.Flag & 1) == 1);
         #endregion
 
         #region 读写
@@ -99,12 +104,13 @@ namespace NewLife.RocketMQ.Protocol
 
         /// <summary>命令转字节数组</summary>
         /// <returns></returns>
-        public Byte[] ToArray()
+        public Packet ToPacket()
         {
-            var ms = Pool.MemoryStream.Get();
+            var ms = new MemoryStream();
             Write(ms, null);
+            ms.Position = 0;
 
-            return ms.Put(true);
+            return new Packet(ms);
         }
         #endregion
     }

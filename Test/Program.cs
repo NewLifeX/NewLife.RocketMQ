@@ -57,9 +57,9 @@ namespace Test
         {
             var consumer = new Consumer
             {
-                Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
-                AccessKey = "LTAINsp1qKfO61c5",
-                SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
+                //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
+                //AccessKey = "LTAINsp1qKfO61c5",
+                //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
                 Topic = "nx_test",
                 Group = "CID_nxTest",

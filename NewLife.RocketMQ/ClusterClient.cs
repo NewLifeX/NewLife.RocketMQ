@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Sockets;
 using System.Security.Cryptography;
-using System.Threading;
-using NewLife.Collections;
+using System.Threading.Tasks;
 using NewLife.Log;
 using NewLife.Net;
 using NewLife.RocketMQ.Client;
@@ -35,13 +33,15 @@ namespace NewLife.RocketMQ
 
         /// <summary>配置</summary>
         public MqBase Config { get; set; }
+
+        private ISocketClient _Client;
         #endregion
 
         #region 构造
         /// <summary>实例化</summary>
         public ClusterClient()
         {
-            _Pool = new MyPool { Client = this };
+            //_Pool = new MyPool { Client = this };
         }
 
         /// <summary>销毁</summary>
@@ -50,8 +50,8 @@ namespace NewLife.RocketMQ
         {
             base.OnDispose(disposing);
 
-            _Pool.TryDispose();
-            //_Client.TryDispose();
+            //_Pool.TryDispose();
+            _Client.TryDispose();
         }
         #endregion
 
@@ -59,85 +59,69 @@ namespace NewLife.RocketMQ
         /// <summary>开始</summary>
         public virtual void Start()
         {
-            WriteLog("[{0}]集群地址：{1}", Name, Servers.Join(";", e => $"{e.Host}:{e.Port}"));
+            WriteLog("集群地址：{0}", Servers.Join(";", e => $"{e.Host}:{e.Port}"));
 
-            //ReceiveAsync();
+            EnsureCreate();
+        }
+
+        /// <summary>确保创建连接</summary>
+        protected void EnsureCreate()
+        {
+            if (_Client != null && _Client.Active) return;
+
+            _Client = null;
+
+            foreach (var uri in Servers)
+            {
+                WriteLog("正在连接[{0}]", uri);
+
+                if (uri.Type == NetType.Unknown) uri.Type = NetType.Tcp;
+
+                var client = uri.CreateRemote();
+                client.Log = Log;
+                client.Timeout = Timeout;
+                client.Add<MqCodec>();
+
+                try
+                {
+                    if (client.Open())
+                    {
+                        client.Received += Client_Received;
+                        _Client = client;
+                        break;
+                    }
+                }
+                catch { }
+            }
+
+            if (_Client == null) throw new XException("[{0}]集群所有地址连接失败！", Name);
         }
 
         private Int32 g_id;
         /// <summary>发送命令</summary>
         /// <param name="cmd"></param>
         /// <returns></returns>
-        protected virtual Command Send(Command cmd)
+        protected virtual async Task<Command> SendAsync(Command cmd)
         {
             if (cmd.Header.Opaque == 0) cmd.Header.Opaque = g_id++;
 
             // 签名
             SetSignature(cmd);
 
-            // 序列化
-            var buf = cmd.ToArray();
-
-            // 轮询调用
-            Exception last = null;
-            var times = Servers.Length;
-            for (var i = 0; i < times; i++)
+            var client = _Client;
+            try
             {
-                var client = _Pool.Get();
-                try
-                {
-                    //var client = GetClient();
-                    //lock (client)
-                    //{
-                    var ns = client.GetStream();
+                var rs = await client.SendMessageAsync(cmd);
 
-                    // 其它指令
-                    while (ns.DataAvailable)
-                    {
-                        var cmd2 = new Command();
-                        cmd2.Read(ns);
-                        if (cmd2.Header == null) break;
-
-                        var rs = OnReceive(cmd2);
-                        if (rs != null) rs.Write(ns);
-                    }
-                    // 清空残留
-                    while (ns.DataAvailable) ns.ReadBytes(1024);
-
-                    var ms = new BufferedStream(ns);
-                    //cmd.Write(ms);
-                    ms.Write(buf);
-                    ms.Flush();
-
-                    while (true)
-                    {
-                        var rs = new Command();
-                        rs.Read(ms);
-                        if (rs.Header == null) return rs;
-
-                        // 当前请求的响应
-                        if ((rs.Header.Flag & 1) == 1 && rs.Header.Opaque == cmd.Header.Opaque) return rs;
-
-                        // 其它指令
-                        rs = OnReceive(rs);
-                        if (rs != null) rs.Write(ns);
-                    }
-                    //}
-                }
-                catch (Exception ex)
-                {
-                    //if (ex is SocketException) _Client = null;
-
-                    last = ex;
-                    Thread.Sleep(100);
-                }
-                finally
-                {
-                    _Pool.Put(client);
-                }
+                return rs as Command;
             }
+            catch
+            {
+                // 销毁，下次使用另一个地址
+                client.TryDispose();
 
-            throw last;
+                throw;
+            }
         }
 
         private void SetSignature(Command cmd)
@@ -208,7 +192,7 @@ namespace NewLife.RocketMQ
 
             OnBuild(header);
 
-            var rs = Send(cmd);
+            var rs = TaskEx.Run(() => SendAsync(cmd)).Result;
 
             // 判断异常响应
             if (!ignoreError && rs.Header != null && rs.Header.Code != 0)
@@ -251,32 +235,18 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 接收数据
-        //private TimerX _timer;
+        private void Client_Received(Object sender, ReceivedEventArgs e)
+        {
+            var cmd = e.Message as Command;
+            if (cmd.Reply) return;
 
-        ///// <summary>开启异步接收</summary>
-        //protected void ReceiveAsync()
-        //{
-        //    if (_timer == null) _timer = new TimerX(CheckReceive, null, 1000, 1000, "ClusterClient");
-        //}
-
-        //private void CheckReceive(Object state = null)
-        //{
-        //    var client = _Client;
-        //    if (client == null) return;
-
-        //    lock (client)
-        //    {
-        //        var ns = client.GetStream();
-        //        if (ns == null) return;
-
-        //        // 循环处理收到的命令
-        //        while (ns.DataAvailable)
-        //        {
-        //            var cmd = new Command();
-        //            if (cmd.Read(ns) && cmd.Header != null) ThreadPool.QueueUserWorkItem(s => OnReceive(cmd));
-        //        }
-        //    }
-        //}
+            var rs = OnReceive(cmd);
+            if (rs != null)
+            {
+                var ss = sender as ISocketRemote;
+                ss.SendMessage(rs);
+            }
+        }
 
         /// <summary>收到命令时</summary>
         public event EventHandler<EventArgs<Command>> Received;
@@ -297,63 +267,6 @@ namespace NewLife.RocketMQ
             Received.Invoke(this, e);
 
             return e.Arg;
-        }
-        #endregion
-
-        #region 连接池
-        private readonly MyPool _Pool;
-        //private TcpClient _Client;
-
-        class MyPool : ObjectPool<TcpClient>
-        {
-            public ClusterClient Client { get; set; }
-
-            public MyPool()
-            {
-                // 最小两个连接，一个长连接拉数据，另一个传输心跳等命令
-                Min = 2;
-                IdleTime = 40;
-                AllIdleTime = 180;
-            }
-
-            protected override TcpClient OnCreate() => Client.OnCreate();
-
-            protected override Boolean OnPut(TcpClient value) => value.Connected;
-        }
-
-        ///// <summary>获取主连接</summary>
-        ///// <returns></returns>
-        //protected virtual TcpClient GetMaster()
-        //{
-        //    if (_Client != null && _Client.Connected) return _Client;
-
-        //    return _Client = OnCreate();
-        //}
-
-        private Int32 _ServerIndex;
-        /// <summary>创建网络连接。轮询使用地址</summary>
-        /// <returns></returns>
-        protected virtual TcpClient OnCreate()
-        {
-            var idx = Interlocked.Increment(ref _ServerIndex);
-            idx = (idx - 1) % Servers.Length;
-
-            var uri = Servers[idx];
-            WriteLog("正在连接[{0}:{1}]", uri.Host, uri.Port);
-
-            var client = new TcpClient();
-
-            var timeout = Timeout;
-
-            // 采用异步来解决连接超时设置问题
-            var ar = client.BeginConnect(uri.Address, uri.Port, null, null);
-            if (!ar.AsyncWaitHandle.WaitOne(timeout, false))
-            {
-                client.Close();
-                throw new TimeoutException($"连接[{uri}][{timeout}ms]超时！");
-            }
-
-            return client;
         }
         #endregion
 
