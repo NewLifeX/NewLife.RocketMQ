@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Net.Http;
+using NewLife.Http;
 using NewLife.Log;
 using NewLife.RocketMQ.Protocol;
 
@@ -125,8 +125,9 @@ namespace NewLife.RocketMQ.Client
             var addr = Server;
             if (!addr.IsNullOrEmpty() && addr.StartsWithIgnoreCase("http"))
             {
-                var http = new HttpClient();
-                var html = http.GetStringAsync(addr).Result;
+                var http = new TinyHttpClient();
+                var html = http.GetAsync(addr).Result;
+
                 if (!html.IsNullOrWhiteSpace()) NameServerAddress = html.Trim();
             }
 
