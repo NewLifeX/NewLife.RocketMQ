@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>NewLife.RocketMQ</id>
+    <version>1.0.0</version>
+    <authors>新生命开发团队</authors>
+    <owners>新生命开发团队</owners>
+    <licenseUrl>http://www.NewLifeX.com</licenseUrl>
+    <projectUrl>https://github.com/NewLifeX</projectUrl>
+    <iconUrl>http://www.NewLifeX.com/favicon.ico</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>纯托管轻量级RocketMQ客户端，支持发布消息、消费消息、负载均衡等核心功能！</description>
+    <releaseNotes>https://github.com/NewLifeX/NewLife.RocketMQ</releaseNotes>
+    <copyright>Copyright 2002-2018 新生命开发团队 http://www.NewLifeX.com</copyright>
+    <tags>新生命团队 X组件 NewLife NewLife.RocketMQ</tags>
+    <dependencies>
+      <group targetFramework=".NETFramework4.5" />
+      <group targetFramework=".NETStandard2.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="D:\X\NewLife.RocketMQ\Bin\net45\NewLife.RocketMQ.dll" target="lib\net45\NewLife.RocketMQ.dll" />
+    <file src="D:\X\NewLife.RocketMQ\Bin\net45\NewLife.RocketMQ.xml" target="lib\net45\NewLife.RocketMQ.xml" />
+    <file src="D:\X\NewLife.RocketMQ\Bin\net45\NewLife.RocketMQ.pdb" target="lib\net45\NewLife.RocketMQ.pdb" />
+    <file src="D:\X\NewLife.RocketMQ\Bin\netstandard2.0\NewLife.RocketMQ.dll" target="lib\netstandard2.0\NewLife.RocketMQ.dll" />
+    <file src="D:\X\NewLife.RocketMQ\Bin\netstandard2.0\NewLife.RocketMQ.pdb" target="lib\netstandard2.0\NewLife.RocketMQ.pdb" />
+  </files>
+</package>

@@ -4,14 +4,18 @@
     <TargetFrameworks>net45;netstandard2.0</TargetFrameworks>
     <AssemblyName>NewLife.RocketMQ</AssemblyName>
     <AssemblyTitle>RocketMQ客户端</AssemblyTitle>
-    <Description>纯托管RocketMQ客户端</Description>
+    <Description>纯托管轻量级RocketMQ客户端，支持发布消息、消费消息、负载均衡等核心功能！</Description>
     <Copyright>版权所有(C) 新生命开发团队 2002~2018</Copyright>
     <Company>新生命开发团队</Company>
     <Deterministic>false</Deterministic>
     <AssemblyVersion>1.0.*</AssemblyVersion>
-    <FileVersion>1.0.2018.1016</FileVersion>
+    <FileVersion>1.0.2018.1024</FileVersion>
     <RootNamespace>NewLife.RocketMQ</RootNamespace>
+    <RepositoryUrl>https://github.com/NewLifeX/NewLife.RocketMQ</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <OutputPath>..\Bin</OutputPath>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Version>1.0.2018.1024</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net45|AnyCPU'">
@@ -27,9 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="NewLife.Core">
-      <HintPath>..\DLL\NewLife.Core.dll</HintPath>
-    </Reference>
+    <PackageReference Include="NewLife.Core" Version="7.3.6870.42457" />
   </ItemGroup>
 
 </Project>
