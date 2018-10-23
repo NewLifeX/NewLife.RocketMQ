@@ -82,6 +82,9 @@ namespace NewLife.RocketMQ
                 client.Timeout = Timeout;
                 client.Add<MqCodec>();
 
+                // 关闭Tcp延迟以合并小包的算法，降低延迟
+                if (client is TcpSession tcp) tcp.NoDelay = true;
+
                 try
                 {
                     if (client.Open())

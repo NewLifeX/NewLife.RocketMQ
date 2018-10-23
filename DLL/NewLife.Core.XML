@@ -1113,13 +1113,16 @@
             <summary>目标数据库。默认0</summary>
         </member>
         <member name="P:NewLife.Caching.Redis.Retry">
-            <summary>出错重试次数。如果出现协议解析错误，可以重试的次数，默认0</summary>
+            <summary>出错重试次数。如果出现协议解析错误，可以重试的次数，默认3</summary>
         </member>
         <member name="P:NewLife.Caching.Redis.FullPipeline">
             <summary>完全管道。读取操作是否合并进入管道，默认false</summary>
         </member>
         <member name="P:NewLife.Caching.Redis.AutoPipeline">
             <summary>自动管道。管道操作达到一定数量时，自动提交，默认0</summary>
+        </member>
+        <member name="P:NewLife.Caching.Redis.Counter">
+            <summary>性能计数器</summary>
         </member>
         <member name="M:NewLife.Caching.Redis.Init(System.String)">
             <summary>初始化</summary>
@@ -3503,7 +3506,7 @@
             <param name="counter"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Log.CounterHelper.StopCount(NewLife.Log.ICounter,System.Int64)">
+        <member name="M:NewLife.Log.CounterHelper.StopCount(NewLife.Log.ICounter,System.Nullable{System.Int64})">
             <summary>结束计时</summary>
             <param name="counter"></param>
             <param name="startTicks"></param>
@@ -8439,6 +8442,9 @@
         </member>
         <member name="P:NewLife.Net.TcpSession.MatchEmpty">
             <summary>是否匹配空包。Http协议需要</summary>
+        </member>
+        <member name="P:NewLife.Net.TcpSession.NoDelay">
+            <summary>不延迟直接发送。Tcp为了合并小包而设计，客户端默认false，服务端默认true</summary>
         </member>
         <member name="M:NewLife.Net.TcpSession.#ctor">
             <summary>实例化增强TCP</summary>
