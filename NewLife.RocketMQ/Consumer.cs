@@ -667,12 +667,7 @@ namespace NewLife.RocketMQ
             }
             sb.Append("}");
 
-            var rs = new Command();
-            var header = rs.Header = new Header();
-
-            header.Flag = 1;
-            header.Opaque = cmd.Header.Opaque;
-
+            var rs = cmd.CreateReply() as Command;
             rs.Body = sb.ToString().GetBytes();
 
             return rs;

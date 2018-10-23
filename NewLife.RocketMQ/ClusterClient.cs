@@ -80,7 +80,7 @@ namespace NewLife.RocketMQ
                 var client = uri.CreateRemote();
                 client.Log = Log;
                 client.Timeout = Timeout;
-                client.Add<MqCodec>();
+                client.Add(new MqCodec { Timeout = 59_000 });
 
                 // 关闭Tcp延迟以合并小包的算法，降低延迟
                 if (client is TcpSession tcp) tcp.NoDelay = true;
@@ -111,11 +111,19 @@ namespace NewLife.RocketMQ
             // 签名
             SetSignature(cmd);
 
+#if DEBUG
+            WriteLog("=> {0}", cmd);
+#endif
+
             EnsureCreate();
             var client = _Client;
             try
             {
                 var rs = await client.SendMessageAsync(cmd);
+
+#if DEBUG
+            WriteLog("<= {0}", rs as Command);
+#endif
 
                 return rs as Command;
             }
@@ -165,10 +173,6 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         internal virtual Command Invoke(RequestCode request, Object body, Object extFields = null, Boolean ignoreError = false)
         {
-#if DEBUG
-            WriteLog("Invoke: {0}", request);
-#endif
-
             var header = new Header
             {
                 Code = (Int32)request,
@@ -197,7 +201,8 @@ namespace NewLife.RocketMQ
 
             OnBuild(header);
 
-            var rs = TaskEx.Run(() => SendAsync(cmd)).Result;
+            //var rs = TaskEx.Run(() => SendAsync(cmd)).Result;
+            var rs = SendAsync(cmd).Result;
 
             // 判断异常响应
             if (!ignoreError && rs.Header != null && rs.Header.Code != 0)

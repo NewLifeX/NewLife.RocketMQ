@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NewLife.Data;
+using NewLife.Log;
 using NewLife.Model;
 using NewLife.Net.Handlers;
 
@@ -10,6 +11,9 @@ namespace NewLife.RocketMQ.Protocol
     /// <summary>编码器</summary>
     class MqCodec : MessageCodec<Command>
     {
+        /// <summary>实例化编码器</summary>
+        public MqCodec() => UserPacket = false;
+
         /// <summary>编码</summary>
         /// <param name="context"></param>
         /// <param name="msg"></param>
@@ -48,6 +52,8 @@ namespace NewLife.RocketMQ.Protocol
 
                 return msg;
             }).ToList();
+
+            //XTrace.WriteLine("Decode {0}=>{1} CodecItem={2}/{3} {4}", pks.Count, list.Count, mcp.Stream?.Position, mcp.Stream?.Length, list.FirstOrDefault());
 
             return list;
         }
