@@ -184,6 +184,9 @@ namespace NewLife.RocketMQ.Client
             }
         }
 
+        /// <summary>Broker客户端集合</summary>
+        public ICollection<BrokerClient> Clients => _Brokers.Values;
+
         /// <summary>收到命令</summary>
         /// <param name="cmd"></param>
         protected virtual Command OnReceive(Command cmd) => null;

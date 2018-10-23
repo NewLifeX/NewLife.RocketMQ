@@ -85,8 +85,8 @@ namespace NewLife.RocketMQ
 
             if (!base.Start()) return false;
 
-            // 快速检查消费组，均衡成功后改为30秒一次
-            _timer = new TimerX(CheckGroup, null, 100, 1_000) { Async = true };
+            // 默认自动开始调度
+            if (AutoSchedule) StartSchedule();
 
             return true;
         }
@@ -235,6 +235,22 @@ namespace NewLife.RocketMQ
         #region 消费调度
         private Thread[] _threads;
         private volatile Int32 _version;
+
+        /// <summary>启动消费者时自动开始调度。默认true</summary>
+        public Boolean AutoSchedule { get; set; } = true;
+
+        /// <summary>开始调度</summary>
+        public void StartSchedule()
+        {
+            if (_timer != null) return;
+            lock (this)
+            {
+                if (_timer != null) return;
+
+                // 快速检查消费组，均衡成功后改为30秒一次
+                _timer = new TimerX(CheckGroup, null, 100, 1_000) { Async = true };
+            }
+        }
 
         private void DoSchedule()
         {
@@ -526,9 +542,9 @@ namespace NewLife.RocketMQ
                 {
                     if (!Rebalance()) return;
 
-                    DoSchedule();
+                    if (AutoSchedule) DoSchedule();
 
-                    _timer.Period = 30_000;
+                    if (_timer != null) _timer.Period = 30_000;
                     _nextCheck = now.AddSeconds(3);
                 }
                 finally

@@ -68,6 +68,7 @@ namespace Test
                 Group = "CID_nxTest",
                 NameServerAddress = "10.9.30.35:9876",
                 FromLastOffset = false,
+                BatchSize = 4,
 
                 Log = XTrace.Log,
             };
@@ -81,35 +82,12 @@ namespace Test
 
             consumer.Start();
 
-            //Thread.Sleep(1000);
-            //for (var i = 0; i < 1000; i++)
-            //{
-            //    //var cs = consumer.GetConsumers();
-            //    //if (cs.Count > 0) XTrace.WriteLine("发现消费者：{0}", cs.Join());
-            //    if (consumer.Rebalance())
-            //    {
-            //        var qs = consumer.Queues;
-            //        var dic = qs.GroupBy(e => e.BrokerName).ToDictionary(e => e.Key, e => e.Join(",", x => x.QueueId));
-
-            //        XTrace.WriteLine("重新平衡[{0}]：\r\n{1}", qs.Length, dic.Join("\r\n", e => $"{e.Key}[{e.Value}]"));
-            //    }
-
-            //    Thread.Sleep(1000);
-            //}
-
-            //var br = consumer.Brokers.FirstOrDefault();
-            //var mq = new MessageQueue { BrokerName = br.Name, QueueId = 1 };
-
-            ////foreach (var mq in consumer.Queues)
-            //{
-            //    //var offset = 0;
-            //    var offset = consumer.QueryOffset(mq);
-            //    var pr = consumer.Pull(mq, offset, 32, 500);
-
-            //    Console.WriteLine("消费：{0}", pr.Messages.Length);
-
-            //    consumer.UpdateOffset(mq, pr.MaxOffset);
-            //}
+            Thread.Sleep(3000);
+            foreach (var item in consumer.Clients)
+            {
+                var rs = item.GetRuntimeInfo();
+                Console.WriteLine("{0}\t{1}", item.Name, rs["brokerVersionDesc"]);
+            }
         }
 
         static void Test3()

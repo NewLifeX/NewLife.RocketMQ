@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using NewLife.Net;
 using NewLife.RocketMQ.Protocol;
@@ -92,6 +93,20 @@ namespace NewLife.RocketMQ
 
             // 心跳忽略错误。有时候报40错误
             Invoke(RequestCode.HEART_BEAT, body, null, true);
+        }
+        #endregion
+
+        #region 运行信息
+        /// <summary>获取运行时信息</summary>
+        /// <returns></returns>
+        public IDictionary<String, Object> GetRuntimeInfo()
+        {
+            var rs = Invoke(RequestCode.GET_BROKER_RUNTIME_INFO, null);
+            if (rs == null || rs.Body == null) return null;
+
+            var dic = rs.ReadBodyAsJson();
+
+            return dic?["table"] as IDictionary<String, Object>;
         }
         #endregion
     }
