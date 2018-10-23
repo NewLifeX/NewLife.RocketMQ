@@ -5,6 +5,7 @@ using System.Threading;
 using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Common;
+using NewLife.Security;
 
 namespace Test
 {
@@ -28,7 +29,7 @@ namespace Test
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "nx_test",
+                Topic = "nx_test2",
                 Group = "PID_Stone_001",
                 NameServerAddress = "10.9.30.35:9876",
 
@@ -40,14 +41,16 @@ namespace Test
 
             //mq.CreateTopic("nx_test", 2);
 
-            for (var i = 0; i < 16; i++)
+            for (var i = 0; i < 32; i++)
             {
-                var sr = mq.Publish("学无先后达者为师" + i, "TagA");
+                //var str = "学无先后达者为师" + i;
+                var str = Rand.NextString(1337);
+                var sr = mq.Publish(str, "TagA");
 
                 Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
 
                 // 阿里云发送消息不能过快，否则报错“服务不可用”
-                Thread.Sleep(100);
+                //Thread.Sleep(100);
             }
 
             mq.Dispose();
@@ -61,7 +64,7 @@ namespace Test
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "nx_test",
+                Topic = "nx_test2",
                 Group = "CID_nxTest",
                 NameServerAddress = "10.9.30.35:9876",
                 FromLastOffset = false,

@@ -172,6 +172,7 @@ namespace NewLife.RocketMQ
             var header = new Header
             {
                 Code = (Int32)request,
+                Remark = request + "",
             };
 
             var cmd = new Command
