@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Text;
 using NewLife.Collections;
+using NewLife.Log;
 
 namespace NewLife.RocketMQ.Protocol
 {
@@ -58,8 +61,8 @@ namespace NewLife.RocketMQ.Protocol
         public void SetProperties(String properties)
         {
             if (properties.IsNullOrEmpty()) return;
+            var dic = properties.SplitAsDictionaryT('\u0001', '\u0002');
 
-            var dic = properties.SplitAsDictionary("\u0001", "\u0002");
             if (dic.TryGetValue(nameof(Tags), out var str)) Tags = str;
             if (dic.TryGetValue(nameof(Keys), out str)) Keys = str;
             if (dic.TryGetValue("DELAY", out str)) DelayTimeLevel = str.ToInt();

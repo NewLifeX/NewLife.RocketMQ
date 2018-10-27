@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Common;
 using NewLife.Security;
+using NewLife.Serialization;
 
 namespace Test
 {
@@ -29,29 +32,45 @@ namespace Test
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "nx_test2",
-                Group = "PID_Stone_001",
-                NameServerAddress = "10.9.30.35:9876",
+                Topic = "testGK",
+                Group = "GKTestWw",
+                NameServerAddress = "10.9.15.40:9876",
 
-                Log = XTrace.Log,
+                //Log = XTrace.Log,
             };
             // 105命令的数字签名是 NyRea4g3OHmd7RxEUoVJUz58lXc=
 
             mq.Start();
 
             //mq.CreateTopic("nx_test", 2);
+            var str = File.ReadAllText("data.json".GetFullPath());
 
-            for (var i = 0; i < 32; i++)
+            var entity = JsonHelper.ToJsonEntity<ProblemModel>(str);
+
+            //Parallel.For(0, 1000000, e =>
+            //{
+            //    entity.ScanDate = entity.ScanDate.AddSeconds(e);
+            //    var xtr = entity.ToJson();
+            //    var sr = mq.Publish(xtr, "TagA");
+            //});
+
+            for (var i = 0; i < 100000; i++)
             {
                 //var str = "学无先后达者为师" + i;
-                var str = Rand.NextString(1337);
-                var sr = mq.Publish(str, "TagA");
+                //var str = Rand.NextString(1337);
 
-                Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
+                entity.ScanDate = entity.ScanDate.AddSeconds(i);
+                var xtr = entity.ToJson();
+
+                var sr = mq.Publish(xtr, "TagA");
+
+                //Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
 
                 // 阿里云发送消息不能过快，否则报错“服务不可用”
                 //Thread.Sleep(100);
             }
+
+            Console.WriteLine("完成");
 
             mq.Dispose();
         }
@@ -64,9 +83,9 @@ namespace Test
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "nx_test2",
-                Group = "CID_nxTest",
-                NameServerAddress = "10.9.30.35:9876",
+                Topic = "testGK",
+                Group = "testgkr",
+                NameServerAddress = "10.9.15.40:9876",
                 FromLastOffset = false,
                 BatchSize = 4,
 
@@ -76,6 +95,11 @@ namespace Test
             consumer.OnConsume = (q, ms) =>
             {
                 XTrace.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
+
+                foreach (var item in ms)
+                {
+                    XTrace.WriteLine("标签：" + item.Tags);
+                }
 
                 return true;
             };
