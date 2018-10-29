@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Log;
 using NewLife.Net;
@@ -67,37 +68,42 @@ namespace NewLife.RocketMQ
         /// <summary>确保创建连接</summary>
         protected void EnsureCreate()
         {
-            if (_Client != null && _Client.Active) return;
-
-            _Client = null;
-
-            foreach (var uri in Servers)
+            var client = _Client;
+            if (client != null && client.Active && !client.Disposed) return;
+            lock (this)
             {
-                WriteLog("正在连接[{0}]", uri);
+                client = _Client;
+                if (client != null && client.Active && !client.Disposed) return;
+                _Client = null;
 
-                if (uri.Type == NetType.Unknown) uri.Type = NetType.Tcp;
-
-                var client = uri.CreateRemote();
-                client.Log = Log;
-                client.Timeout = Timeout;
-                client.Add(new MqCodec { Timeout = 59_000 });
-
-                // 关闭Tcp延迟以合并小包的算法，降低延迟
-                if (client is TcpSession tcp) tcp.NoDelay = true;
-
-                try
+                foreach (var uri in Servers)
                 {
-                    if (client.Open())
-                    {
-                        client.Received += Client_Received;
-                        _Client = client;
-                        break;
-                    }
-                }
-                catch { }
-            }
+                    WriteLog("正在连接[{0}]", uri);
 
-            if (_Client == null) throw new XException("[{0}]集群所有地址连接失败！", Name);
+                    if (uri.Type == NetType.Unknown) uri.Type = NetType.Tcp;
+
+                    client = uri.CreateRemote();
+                    client.Log = Log;
+                    client.Timeout = Timeout;
+                    client.Add(new MqCodec { Timeout = 59_000 });
+
+                    // 关闭Tcp延迟以合并小包的算法，降低延迟
+                    if (client is TcpSession tcp) tcp.NoDelay = true;
+
+                    try
+                    {
+                        if (client.Open())
+                        {
+                            client.Received += Client_Received;
+                            _Client = client;
+                            break;
+                        }
+                    }
+                    catch { }
+                }
+
+                if (_Client == null) throw new XException("[{0}]集群所有地址连接失败！", Name);
+            }
         }
 
         private Int32 g_id;
@@ -106,7 +112,7 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         protected virtual async Task<Command> SendAsync(Command cmd)
         {
-            if (cmd.Header.Opaque == 0) cmd.Header.Opaque = g_id++;
+            if (cmd.Header.Opaque == 0) cmd.Header.Opaque = Interlocked.Increment(ref g_id);
 
             // 签名
             SetSignature(cmd);
