@@ -260,3 +260,4 @@ paket-files/
 __pycache__/
 *.pyc
 /BinTest
+/BinTest - 副本/Config

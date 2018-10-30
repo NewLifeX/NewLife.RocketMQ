@@ -128,8 +128,10 @@ namespace NewLife.RocketMQ
                 pr.Status = PullStatus.Found;
             else if (rs.Header.Code == (Int32)ResponseCode.PULL_NOT_FOUND)
                 pr.Status = PullStatus.NoNewMessage;
-            else if (rs.Header.Code == (Int32)ResponseCode.PULL_OFFSET_MOVED)
+            else if (rs.Header.Code == (Int32)ResponseCode.PULL_OFFSET_MOVED || rs.Header.Code == (Int32)ResponseCode.PULL_RETRY_IMMEDIATELY)
                 pr.Status = PullStatus.OffsetIllegal;
+            else
+                pr.Status = PullStatus.Error;
 
             pr.Read(rs.Header?.ExtFields);
 
@@ -148,6 +150,48 @@ namespace NewLife.RocketMQ
         {
             var bk = GetBroker(mq.BrokerName);
             var rs = bk.Invoke(RequestCode.QUERY_CONSUMER_OFFSET, null, new
+            {
+                consumerGroup = Group,
+                topic = Topic,
+                queueId = mq.QueueId,
+            }, true);
+
+            var dic = rs.Header?.ExtFields;
+            if (dic == null) return -1;
+
+            return dic.TryGetValue("offset", out var str) ? str.ToLong() : -1;
+        }
+
+        /// <summary>
+        /// 查询“队列”最大偏移量，不是消费提交的最后偏移量
+        /// </summary>
+        /// <param name="mq"></param>
+        /// <returns></returns>
+        public Int64 QueryMaxOffset(MessageQueue mq)
+        {
+            var bk = GetBroker(mq.BrokerName);
+            var rs = bk.Invoke(RequestCode.GET_MAX_OFFSET, null, new
+            {
+                consumerGroup = Group,
+                topic = Topic,
+                queueId = mq.QueueId,
+            }, true);
+
+            var dic = rs.Header?.ExtFields;
+            if (dic == null) return -1;
+
+            return dic.TryGetValue("offset", out var str) ? str.ToLong() : -1;
+        }
+
+        /// <summary>
+        /// 获取最小偏移量
+        /// </summary>
+        /// <param name="mq"></param>
+        /// <returns></returns>
+        public Int64 QueryMinOffset(MessageQueue mq)
+        {
+            var bk = GetBroker(mq.BrokerName);
+            var rs = bk.Invoke(RequestCode.GET_MIN_OFFSET, null, new
             {
                 consumerGroup = Group,
                 topic = Topic,
@@ -323,6 +367,8 @@ namespace NewLife.RocketMQ
                     {
                         var p = QueryOffset(mq);
                         //if (p == -1) p = 0;
+                        //第一次消费新的队列，强制从消费最大偏移量的位置消费（避免由于第一次从最小偏移量消费而导致的数据大量积压问题）
+                        if (p <= 0) p = QueryMaxOffset(mq);
 
                         st.Offset = st.CommitOffset = p;
 
@@ -352,6 +398,9 @@ namespace NewLife.RocketMQ
                                 break;
                             case PullStatus.OffsetIllegal:
                                 if (pr.NextBeginOffset > 0) st.Offset = pr.NextBeginOffset;
+                                break;
+                            case PullStatus.Error:
+                                Log.Error("异常消息序列[{1}]偏移量{0}", st.Offset, st.Queue.QueueId);
                                 break;
                             default:
                                 break;

@@ -12,11 +12,14 @@ namespace NewLife.RocketMQ.Protocol
         /// <summary>没有新的消息</summary>
         NoNewMessage = 1,
 
-        /// <summary>没有批评消息</summary>
+        /// <summary>没有匹配消息</summary>
         NoMatchedMessage = 2,
 
         /// <summary>偏移量非法</summary>
-        OffsetIllegal = 3
+        OffsetIllegal = 3,
+
+        /// <summary>异常状态</summary>
+        Error = 4
     }
 
     /// <summary>拉取结果</summary>

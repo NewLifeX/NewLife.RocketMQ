@@ -32,9 +32,9 @@ namespace Test
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "testGK",
-                Group = "GKTestWw",
-                NameServerAddress = "10.9.15.40:9876",
+                Topic = "deftest",
+                Group = "abctestw",
+                NameServerAddress = "10.9.20.106:9876",
 
                 //Log = XTrace.Log,
             };
@@ -54,12 +54,13 @@ namespace Test
             //    var sr = mq.Publish(xtr, "TagA");
             //});
 
-            for (var i = 0; i < 100000; i++)
+            for (var i = 0; i < 1000000; i++)
             {
                 //var str = "学无先后达者为师" + i;
                 //var str = Rand.NextString(1337);
 
                 entity.ScanDate = entity.ScanDate.AddSeconds(i);
+                entity.Code = (entity.Code.ToInt() + 1) + "";
                 var xtr = entity.ToJson();
 
                 var sr = mq.Publish(xtr, "TagA");
@@ -83,23 +84,23 @@ namespace Test
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "testGK",
-                Group = "testgkr",
-                NameServerAddress = "10.9.15.40:9876",
-                FromLastOffset = false,
-                BatchSize = 4,
+                Topic = "abctest",
+                Group = "abctestr",
+                NameServerAddress = "10.9.20.106:9876",
+                //FromLastOffset = false,
+                BatchSize = 2,
 
                 Log = XTrace.Log,
             };
 
             consumer.OnConsume = (q, ms) =>
             {
-                XTrace.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
+                //XTrace.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
 
-                foreach (var item in ms)
-                {
-                    XTrace.WriteLine("标签：" + item.Tags);
-                }
+                //foreach (var item in ms)
+                //{
+                //    XTrace.WriteLine("标签：" + item.Tags);
+                //}
 
                 return true;
             };
