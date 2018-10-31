@@ -18,8 +18,8 @@ namespace NewLife.RocketMQ.Protocol
         /// <summary>偏移量非法</summary>
         OffsetIllegal = 3,
 
-        /// <summary>异常状态</summary>
-        Error = 4
+        /// <summary>未知类型</summary>
+        Unknown = 4
     }
 
     /// <summary>拉取结果</summary>
