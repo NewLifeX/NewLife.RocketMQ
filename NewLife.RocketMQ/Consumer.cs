@@ -131,7 +131,10 @@ namespace NewLife.RocketMQ
             else if (rs.Header.Code == (Int32)ResponseCode.PULL_OFFSET_MOVED || rs.Header.Code == (Int32)ResponseCode.PULL_RETRY_IMMEDIATELY)
                 pr.Status = PullStatus.OffsetIllegal;
             else
-                pr.Status = PullStatus.Error;
+            {
+                pr.Status = PullStatus.Unknown;
+                Log.Warn("响应编号：{0} 响应备注：{1} 序列编号：{2} 序列偏移量：{3}", rs.Header.Code, rs.Header.Remark, mq.QueueId, offset);
+            }
 
             pr.Read(rs.Header?.ExtFields);
 
@@ -399,8 +402,8 @@ namespace NewLife.RocketMQ
                             case PullStatus.OffsetIllegal:
                                 if (pr.NextBeginOffset > 0) st.Offset = pr.NextBeginOffset;
                                 break;
-                            case PullStatus.Error:
-                                Log.Error("异常消息序列[{1}]偏移量{0}", st.Offset, st.Queue.QueueId);
+                            case PullStatus.Unknown:
+                                Log.Error("未知响应类型消息序列[{1}]偏移量{0}", st.Offset, st.Queue.QueueId);
                                 break;
                             default:
                                 break;
