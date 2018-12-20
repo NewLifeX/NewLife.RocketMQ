@@ -5,7 +5,7 @@
     <AssemblyName>NewLife.RocketMQ</AssemblyName>
     <AssemblyTitle>RocketMQ客户端</AssemblyTitle>
     <Description>纯托管轻量级RocketMQ客户端，支持发布消息、消费消息、负载均衡等核心功能！</Description>
-    <Copyright>版权所有(C) 新生命开发团队 2002~2018</Copyright>
+    <Copyright>版权所有(C) 新生命开发团队 2002~2019</Copyright>
     <Company>新生命开发团队</Company>
     <Deterministic>false</Deterministic>
     <AssemblyVersion>1.0.*</AssemblyVersion>
@@ -31,7 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="7.3.6870.42457" />
+    <PackageReference Include="NewLife.Core" Version="7.4.6911.41889" />
   </ItemGroup>
 
 </Project>
