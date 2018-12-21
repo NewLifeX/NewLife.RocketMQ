@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using NewLife.Collections;
+﻿using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Messaging;
 using NewLife.Serialization;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace NewLife.RocketMQ.Protocol
 {
@@ -17,6 +17,8 @@ namespace NewLife.RocketMQ.Protocol
 
         /// <summary>主体</summary>
         public Byte[] Body { get; set; }
+
+
         #endregion
 
         #region 扩展属性
@@ -24,6 +26,12 @@ namespace NewLife.RocketMQ.Protocol
         public Boolean Reply => Header == null ? false : ((Header.Flag & 1) == 1);
 
         Packet IMessage.Payload { get; set; }
+
+        /// <summary></summary>
+        public bool OneWay => throw new NotImplementedException();
+
+        /// <summary></summary>
+        public bool Error { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         #endregion
 
         #region 读写
