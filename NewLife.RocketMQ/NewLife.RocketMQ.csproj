@@ -8,14 +8,14 @@
     <Copyright>版权所有(C) 新生命开发团队 2002~2019</Copyright>
     <Company>新生命开发团队</Company>
     <Deterministic>false</Deterministic>
-    <AssemblyVersion>1.0.*</AssemblyVersion>
-    <FileVersion>1.0.2018.1024</FileVersion>
+    <AssemblyVersion>1.1.*</AssemblyVersion>
+    <FileVersion>1.1.2019.0112</FileVersion>
     <RootNamespace>NewLife.RocketMQ</RootNamespace>
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.RocketMQ</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <OutputPath>..\Bin</OutputPath>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.0.2018.1024</Version>
+    <Version>1.1.2019.0112</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net45|AnyCPU'">
