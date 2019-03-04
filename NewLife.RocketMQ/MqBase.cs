@@ -126,7 +126,7 @@ namespace NewLife.RocketMQ.Client
             if (!addr.IsNullOrEmpty() && addr.StartsWithIgnoreCase("http"))
             {
                 var http = new TinyHttpClient();
-                var html = http.GetAsync(addr).Result;
+                var html = http.GetStringAsync(addr).Result;
 
                 if (!html.IsNullOrWhiteSpace()) NameServerAddress = html.Trim();
             }

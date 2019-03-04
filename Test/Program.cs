@@ -18,7 +18,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test1();
+            Test2();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -32,7 +32,7 @@ namespace Test
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "deftest",
+                Topic = "ntest",
                 Group = "abctestw",
                 NameServerAddress = "10.9.20.106:9876",
 
@@ -47,29 +47,29 @@ namespace Test
 
             var entity = JsonHelper.ToJsonEntity<ProblemModel>(str);
 
-            //Parallel.For(0, 1000000, e =>
-            //{
-            //    entity.ScanDate = entity.ScanDate.AddSeconds(e);
-            //    var xtr = entity.ToJson();
-            //    var sr = mq.Publish(xtr, "TagA");
-            //});
-
-            for (var i = 0; i < 1000000; i++)
+            Parallel.For(0, 1000000, e =>
             {
-                //var str = "学无先后达者为师" + i;
-                //var str = Rand.NextString(1337);
-
-                entity.ScanDate = entity.ScanDate.AddSeconds(i);
-                entity.Code = (entity.Code.ToInt() + 1) + "";
+                entity.ScanDate = entity.ScanDate.AddSeconds(e);
                 var xtr = entity.ToJson();
-
                 var sr = mq.Publish(xtr, "TagA");
+            });
 
-                //Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
+            //for (var i = 0; i < 1000000; i++)
+            //{
+            //    //var str = "学无先后达者为师" + i;
+            //    //var str = Rand.NextString(1337);
 
-                // 阿里云发送消息不能过快，否则报错“服务不可用”
-                //Thread.Sleep(100);
-            }
+            //    entity.ScanDate = entity.ScanDate.AddSeconds(i);
+            //    entity.Code = (entity.Code.ToInt() + 1) + "";
+            //    var xtr = entity.ToJson();
+
+            //    var sr = mq.Publish(xtr, "TagA");
+
+            //    //Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
+
+            //    // 阿里云发送消息不能过快，否则报错“服务不可用”
+            //    //Thread.Sleep(100);
+            //}
 
             Console.WriteLine("完成");
 
@@ -84,10 +84,13 @@ namespace Test
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "deftest",
+                Topic = "ntest",
                 Group = "abctestr",
                 NameServerAddress = "10.9.20.106:9876",
-                //FromLastOffset = false,
+                //Topic = "SCANRECORD",
+                //Group = "sd_scan_cachedata",
+                //NameServerAddress = "10.9.20.64:9876",
+                FromLastOffset = true,
                 BatchSize = 32,
 
                 Log = XTrace.Log,
@@ -95,24 +98,24 @@ namespace Test
 
             consumer.OnConsume = (q, ms) =>
             {
-                //XTrace.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
+                XTrace.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
 
-                //foreach (var item in ms)
-                //{
-                //    XTrace.WriteLine("标签：" + item.Tags);
-                //}
+                foreach (var item in ms.ToList())
+                {
+                    XTrace.WriteLine("消息：" + item.Body.ToStr());
+                }
 
                 return true;
             };
 
             consumer.Start();
 
-            Thread.Sleep(3000);
-            foreach (var item in consumer.Clients)
-            {
-                var rs = item.GetRuntimeInfo();
-                Console.WriteLine("{0}\t{1}", item.Name, rs["brokerVersionDesc"]);
-            }
+            //Thread.Sleep(3000);
+            //foreach (var item in consumer.Clients)
+            //{
+            //    var rs = item.GetRuntimeInfo();
+            //    Console.WriteLine("{0}\t{1}", item.Name, rs["brokerVersionDesc"]);
+            //}
         }
 
         static void Test3()

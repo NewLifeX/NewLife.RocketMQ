@@ -31,7 +31,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="8.0.6940.24647" />
+    <PackageReference Include="NewLife.Core" Version="8.0.6965.42074" />
+    <PackageReference Include="NewLife.XCode" Version="9.10.6965.42078" />
   </ItemGroup>
 
 </Project>
