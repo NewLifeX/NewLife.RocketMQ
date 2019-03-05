@@ -9,21 +9,22 @@
     <Company>新生命开发团队</Company>
     <Deterministic>false</Deterministic>
     <AssemblyVersion>1.1.*</AssemblyVersion>
+    <Version>1.1.2019.0112</Version>
     <FileVersion>1.1.2019.0112</FileVersion>
     <RootNamespace>NewLife.RocketMQ</RootNamespace>
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.RocketMQ</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <OutputPath>..\Bin</OutputPath>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.1.2019.0112</Version>
+    <DocumentationFile>..\Bin\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>DEBUG</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net45|AnyCPU'">
-    <DocumentationFile>..\Bin\NewLife.RocketMQ.xml</DocumentationFile>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net45|AnyCPU'">
-    <DocumentationFile>..\Bin\NewLife.RocketMQ.xml</DocumentationFile>
+  <PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
+    <DefineConstants>NETSTANDARD2_0;__CORE__</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
