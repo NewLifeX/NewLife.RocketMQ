@@ -5,4 +5,8 @@
     <TargetFramework>netcoreapp2.1</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="NewLife.Core" Version="8.1.2019.310" />
+  </ItemGroup>
+
 </Project>

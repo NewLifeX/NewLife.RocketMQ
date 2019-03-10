@@ -1,30 +1,49 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFrameworks>net45;netstandard2.0</TargetFrameworks>
     <AssemblyName>NewLife.RocketMQ</AssemblyName>
+    <RootNamespace>NewLife.RocketMQ</RootNamespace>
     <AssemblyTitle>RocketMQ客户端</AssemblyTitle>
     <Description>纯托管轻量级RocketMQ客户端，支持发布消息、消费消息、负载均衡等核心功能！</Description>
-    <Copyright>版权所有(C) 新生命开发团队 2002~2019</Copyright>
     <Company>新生命开发团队</Company>
-    <Deterministic>false</Deterministic>
+    <Copyright>版权所有(C) 新生命开发团队 2002~2019</Copyright>
+    <Version>1.1.2019.0310</Version>
+    <FileVersion>1.1.2019.0310</FileVersion>
     <AssemblyVersion>1.1.*</AssemblyVersion>
-    <Version>1.1.2019.0112</Version>
-    <FileVersion>1.1.2019.0112</FileVersion>
-    <RootNamespace>NewLife.RocketMQ</RootNamespace>
-    <RepositoryUrl>https://github.com/NewLifeX/NewLife.RocketMQ</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
+    <Deterministic>false</Deterministic>
     <OutputPath>..\Bin</OutputPath>
-    <DocumentationFile>..\Bin\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    <DocumentationFile>$(OutputPath)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
-  
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <DefineConstants>DEBUG</DefineConstants>
+
+  <PropertyGroup>
+    <PackageId>$(AssemblyName)</PackageId>
+    <Authors>$(Company)</Authors>
+    <ProjectUrl>https://github.com/NewLifeX</ProjectUrl>
+    <PackageIconUrl>http://www.NewLifeX.com/favicon.ico</PackageIconUrl>
+    <RepositoryUrl>https://github.com/NewLifeX/X</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSource>true</IncludeSource>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0-*" PrivateAssets="All"/>
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
-    <DefineConstants>NETSTANDARD2_0;__CORE__</DefineConstants>
+    <DefineConstants>$(DefineConstants);NETSTANDARD2_0;__CORE__</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)'=='net45'">
+    <DefineConstants>$(DefineConstants);__WIN__</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -32,8 +51,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="8.0.6965.42074" />
-    <PackageReference Include="NewLife.XCode" Version="9.10.6965.42078" />
+    <PackageReference Include="NewLife.Core" Version="8.1.2019.310" />
   </ItemGroup>
 
 </Project>
