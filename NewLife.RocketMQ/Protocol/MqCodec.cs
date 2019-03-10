@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using NewLife.Data;
-using NewLife.Log;
 using NewLife.Messaging;
 using NewLife.Model;
 using NewLife.Net.Handlers;
@@ -42,14 +41,10 @@ namespace NewLife.RocketMQ.Protocol
         protected override IList<Command> Decode(IHandlerContext context, Packet pk)
         {
             var ss = context.Owner as IExtend;
-            //var mcp = ss["CodecItem"] as CodecItem;
-            //if (mcp == null) ss["CodecItem"] = mcp = new CodecItem();
-            //var pks = Parse(pk, mcp, p => GetLength(p, 0, -4));
+            var pc = ss["Codec"] as PacketCodec;
+            if (pc == null) ss["Codec"] = pc = new PacketCodec { GetLength = p => GetLength(p, 0, -4) };
 
-            var mcp = ss["Codec"] as PacketCodec;
-            if (mcp == null) ss["Codec"] = mcp = new PacketCodec() { GetLength = e => GetLength(pk, 0, -4) };
-            var pks = mcp.Parse(pk);
-
+            var pks = pc.Parse(pk);
             var list = pks.Select(e =>
             {
                 var msg = new Command();
@@ -58,9 +53,18 @@ namespace NewLife.RocketMQ.Protocol
                 return msg;
             }).ToList();
 
-            //XTrace.WriteLine("Decode {0}=>{1} CodecItem={2}/{3} {4}", pks.Count, list.Count, mcp.Stream?.Position, mcp.Stream?.Length, list.FirstOrDefault());
-
             return list;
+        }
+
+        /// <summary>连接关闭时，清空粘包编码器</summary>
+        /// <param name="context"></param>
+        /// <param name="reason"></param>
+        /// <returns></returns>
+        public override Boolean Close(IHandlerContext context, String reason)
+        {
+            if (context.Owner is IExtend ss) ss["Codec"] = null;
+
+            return base.Close(context, reason);
         }
 
         /// <summary>是否匹配响应</summary>
