@@ -139,7 +139,8 @@ namespace NewLife.RocketMQ
             pr.Read(rs.Header?.ExtFields);
 
             // 读取内容
-            if (rs.Body != null && rs.Body.Length > 0) pr.Messages = MessageExt.ReadAll(rs.Body).ToArray();
+            var pk = rs.Payload;
+            if (pk != null) pr.Messages = MessageExt.ReadAll(pk).ToArray();
 
             return pr;
         }
@@ -642,7 +643,7 @@ namespace NewLife.RocketMQ
 
         private void ResetOffset(Command cmd)
         {
-            var js = cmd.Body?.ToStr();
+            var js = cmd.Payload?.ToStr();
             if (js.IsNullOrEmpty()) return;
 
             // 请求内容是一个奇怪的Json，Key是MessageQueue对象，Value是偏移量
@@ -720,7 +721,7 @@ namespace NewLife.RocketMQ
             sb.Append("}");
 
             var rs = cmd.CreateReply() as Command;
-            rs.Body = sb.ToString().GetBytes();
+            rs.Payload = sb.ToString().GetBytes();
 
             return rs;
         }

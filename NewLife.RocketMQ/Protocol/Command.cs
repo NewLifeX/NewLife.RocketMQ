@@ -1,10 +1,10 @@
-﻿using NewLife.Collections;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Messaging;
 using NewLife.Serialization;
-using System;
-using System.Collections.Generic;
-using System.IO;
 
 namespace NewLife.RocketMQ.Protocol
 {
@@ -16,22 +16,18 @@ namespace NewLife.RocketMQ.Protocol
         public Header Header { get; set; }
 
         /// <summary>主体</summary>
-        public Byte[] Body { get; set; }
-
-
+        public Packet Payload { get; set; }
         #endregion
 
         #region 扩展属性
         /// <summary>是否响应</summary>
         public Boolean Reply => Header == null ? false : ((Header.Flag & 1) == 1);
 
-        Packet IMessage.Payload { get; set; }
+        /// <summary></summary>
+        public Boolean OneWay => throw new NotImplementedException();
 
         /// <summary></summary>
-        public bool OneWay => throw new NotImplementedException();
-
-        /// <summary></summary>
-        public bool Error { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public Boolean Error { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         #endregion
 
         #region 读写
@@ -62,7 +58,7 @@ namespace NewLife.RocketMQ.Protocol
                 //  读取主体
                 if (len > 4 + hlen)
                 {
-                    Body = bn.ReadBytes(len - 4 - hlen);
+                    Payload = bn.ReadBytes(len - 4 - hlen);
                 }
             }
             catch { return false; }
@@ -74,10 +70,10 @@ namespace NewLife.RocketMQ.Protocol
         /// <returns></returns>
         public IDictionary<String, Object> ReadBodyAsJson()
         {
-            var buf = Body;
-            if (buf == null || buf.Length == 0) return null;
+            var pk = Payload;
+            if (pk == null || pk.Total == 0) return null;
 
-            return new JsonParser(buf.ToStr()).Decode() as IDictionary<String, Object>;
+            return new JsonParser(pk.ToStr()).Decode() as IDictionary<String, Object>;
         }
 
         /// <summary>写入命令到数据流</summary>
@@ -90,11 +86,11 @@ namespace NewLife.RocketMQ.Protocol
             //var json = Header.ToJson();
             var json = JsonWriter.ToJson(Header, false, false, false);
             var hs = json.GetBytes();
-            var buf = Body;
+            var pk = Payload;
 
             // 计算长度
             var len = 4 + hs.Length;
-            if (buf != null) len += buf.Length;
+            if (pk != null) len += pk.Total;
 
             // 写入总长度
             var bn = new Binary
@@ -109,7 +105,7 @@ namespace NewLife.RocketMQ.Protocol
             stream.Write(hs);
 
             // 写入主体
-            if (buf != null && buf.Length > 0) stream.Write(buf);
+            if (pk != null && pk.Total > 0) pk.CopyTo(stream);
 
             return true;
         }
@@ -167,7 +163,9 @@ namespace NewLife.RocketMQ.Protocol
             {
                 sb.Append((RequestCode)h.Code);
             }
-            sb.AppendFormat("({0})[{1}]", h.Opaque, Body == null ? 0 : Body.Length);
+
+            var pk = Payload;
+            sb.AppendFormat("({0})[{1}]", h.Opaque, pk == null ? 0 : pk.Total);
 
             return sb.Put(true);
         }

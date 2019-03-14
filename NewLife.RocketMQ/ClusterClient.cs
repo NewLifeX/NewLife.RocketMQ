@@ -162,7 +162,7 @@ namespace NewLife.RocketMQ
                 if (item.Value != null) ms.Write(item.Value.GetBytes());
             }
             // Body
-            if (cmd.Body != null && cmd.Body.Length > 0) ms.Write(cmd.Body);
+            cmd.Payload?.CopyTo(ms);
 
             var sign = sha.ComputeHash(ms.ToArray());
 
@@ -192,9 +192,9 @@ namespace NewLife.RocketMQ
 
             // 主体
             if (body is Byte[] buf)
-                cmd.Body = buf;
+                cmd.Payload = buf;
             else if (body != null)
-                cmd.Body = JsonWriter.ToJson(body, false, false, false).GetBytes();
+                cmd.Payload = JsonWriter.ToJson(body, false, false, false).GetBytes();
 
             if (extFields != null)
             {

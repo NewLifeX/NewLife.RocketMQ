@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using NewLife.Collections;
+using NewLife.Data;
 using NewLife.Serialization;
 
 namespace NewLife.RocketMQ.Protocol
@@ -123,9 +124,10 @@ namespace NewLife.RocketMQ.Protocol
         /// <summary>读取所有消息</summary>
         /// <param name="body"></param>
         /// <returns></returns>
-        public static IList<MessageExt> ReadAll(Byte[] body)
+        public static IList<MessageExt> ReadAll(Packet body)
         {
-            var ms = new MemoryStream(body);
+            //var ms = new MemoryStream(body);
+            var ms = body.GetStream();
             var bn = new Binary
             {
                 Stream = ms,

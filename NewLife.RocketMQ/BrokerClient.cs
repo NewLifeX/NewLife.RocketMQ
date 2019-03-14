@@ -102,7 +102,7 @@ namespace NewLife.RocketMQ
         public IDictionary<String, Object> GetRuntimeInfo()
         {
             var rs = Invoke(RequestCode.GET_BROKER_RUNTIME_INFO, null);
-            if (rs == null || rs.Body == null) return null;
+            if (rs == null || rs.Payload == null) return null;
 
             var dic = rs.ReadBodyAsJson();
 
