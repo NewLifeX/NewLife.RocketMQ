@@ -84,25 +84,23 @@ namespace Test
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "ntest",
-                Group = "abctestr",
-                NameServerAddress = "10.9.20.106:9876",
-                //Topic = "SCANRECORD",
-                //Group = "sd_scan_cachedata",
-                //NameServerAddress = "10.9.20.64:9876",
+                //Topic = "ntest",
+                //Group = "abctestr",
+                //NameServerAddress = "10.9.20.106:9876",
+
                 FromLastOffset = true,
-                BatchSize = 32,
+                BatchSize = 1,
 
                 Log = XTrace.Log,
             };
 
             consumer.OnConsume = (q, ms) =>
             {
-                XTrace.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
+                Console.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
 
                 foreach (var item in ms.ToList())
                 {
-                    XTrace.WriteLine("消息：" + item.Body.ToStr());
+                    Console.WriteLine("消息：" + item.Body.ToStr());
                 }
 
                 return true;
