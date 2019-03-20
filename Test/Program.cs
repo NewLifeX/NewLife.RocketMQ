@@ -80,12 +80,12 @@ namespace Test
         {
             var consumer = new Consumer
             {
-                //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
-                //AccessKey = "LTAINsp1qKfO61c5",
-                //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
+                Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
+                AccessKey = "LTAINsp1qKfO61c5",
+                SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                //Topic = "ntest",
-                //Group = "abctestr",
+                Topic = "ntest",
+                Group = "abctestr",
                 //NameServerAddress = "10.9.20.106:9876",
 
                 FromLastOffset = true,
