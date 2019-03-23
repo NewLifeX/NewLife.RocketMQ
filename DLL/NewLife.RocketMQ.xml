@@ -1,0 +1,1011 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>NewLife.RocketMQ</name>
+    </assembly>
+    <members>
+        <member name="T:NewLife.RocketMQ.BrokerClient">
+            <summary>代理客户端</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.BrokerClient._Servers">
+            <summary>服务器地址</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.BrokerClient.#ctor(System.String[])">
+            <summary>实例化代理客户端</summary>
+            <param name="servers"></param>
+        </member>
+        <member name="M:NewLife.RocketMQ.BrokerClient.Start">
+            <summary>启动</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.BrokerClient.UnRegisterClient(System.String,System.String)">
+            <summary>注销客户端</summary>
+            <param name="id"></param>
+            <param name="group"></param>
+        </member>
+        <member name="M:NewLife.RocketMQ.BrokerClient.Ping">
+            <summary>心跳</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.BrokerClient.GetRuntimeInfo">
+            <summary>获取运行时信息</summary>
+            <returns></returns>
+        </member>
+        <member name="T:NewLife.RocketMQ.ClusterClient">
+            <summary>集群客户端</summary>
+            <remarks>
+            维护到一个集群的客户端连接，内部采用负载均衡调度算法。
+            </remarks>
+        </member>
+        <member name="P:NewLife.RocketMQ.ClusterClient.Id">
+            <summary>编号</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.ClusterClient.Name">
+            <summary>名称</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.ClusterClient.Timeout">
+            <summary>超时。默认3000ms</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.ClusterClient.Servers">
+            <summary>服务器地址集合</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.ClusterClient.Config">
+            <summary>配置</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.ClusterClient.#ctor">
+            <summary>实例化</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.ClusterClient.OnDispose(System.Boolean)">
+            <summary>销毁</summary>
+            <param name="disposing"></param>
+        </member>
+        <member name="M:NewLife.RocketMQ.ClusterClient.Start">
+            <summary>开始</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.ClusterClient.EnsureCreate">
+            <summary>确保创建连接</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.ClusterClient.SendAsync(NewLife.RocketMQ.Protocol.Command)">
+            <summary>发送命令</summary>
+            <param name="cmd"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.ClusterClient.Invoke(NewLife.RocketMQ.Protocol.RequestCode,System.Object,System.Object,System.Boolean)">
+            <summary>发送指定类型的命令</summary>
+            <param name="request"></param>
+            <param name="body"></param>
+            <param name="extFields"></param>
+            <param name="ignoreError"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.ClusterClient.OnBuild(NewLife.RocketMQ.Protocol.Header)">
+            <summary>建立命令时，处理头部</summary>
+            <param name="header"></param>
+        </member>
+        <member name="E:NewLife.RocketMQ.ClusterClient.Received">
+            <summary>收到命令时</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.ClusterClient.OnReceive(NewLife.RocketMQ.Protocol.Command)">
+            <summary>收到命令</summary>
+            <param name="cmd"></param>
+        </member>
+        <member name="P:NewLife.RocketMQ.ClusterClient.Log">
+            <summary>日志</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.ClusterClient.WriteLog(System.String,System.Object[])">
+            <summary>写日志</summary>
+            <param name="format"></param>
+            <param name="args"></param>
+        </member>
+        <member name="T:NewLife.RocketMQ.Permissions">
+            <summary>权限</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Permissions.Write">
+            <summary>写入</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Permissions.Read">
+            <summary>读取</summary>
+        </member>
+        <member name="T:NewLife.RocketMQ.BrokerInfo">
+            <summary>代理信息</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.BrokerInfo.Name">
+            <summary>名称</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.BrokerInfo.Addresses">
+            <summary>地址集合</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.BrokerInfo.Permission">
+            <summary>权限</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.BrokerInfo.ReadQueueNums">
+            <summary>读队列数</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.BrokerInfo.WriteQueueNums">
+            <summary>写队列数</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.BrokerInfo.TopicSynFlag">
+            <summary>主题同步标记</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.BrokerInfo.Equals(System.Object)">
+            <summary>相等比较</summary>
+            <param name="obj"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.BrokerInfo.GetHashCode">
+            <summary>计算哈希</summary>
+            <returns></returns>
+        </member>
+        <member name="T:NewLife.RocketMQ.Common.WeightRoundRobin">
+            <summary>带权重负载均衡算法</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Common.WeightRoundRobin.Weights">
+            <summary>权重集合</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Common.WeightRoundRobin.minWeight">
+            <summary>最小权重</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Common.WeightRoundRobin._states">
+            <summary>状态值</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Common.WeightRoundRobin._times">
+            <summary>次数</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Common.WeightRoundRobin.#ctor(System.Int32[])">
+            <summary>实例化</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Common.WeightRoundRobin.Get(System.Int32@)">
+            <summary>根据权重选择，并返回该项是第几次选中</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Common.WeightRoundRobin.Get">
+            <summary>根据权重选择</summary>
+            <returns></returns>
+        </member>
+        <member name="T:NewLife.RocketMQ.Consumer">
+            <summary>消费者</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Consumer.Data">
+            <summary>数据</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Consumer.ConsumerInterval">
+            <summary>消费间隔。默认15_000ms</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Consumer.PersistConsumerOffsetInterval">
+            <summary>持久化消费偏移间隔。默认5_000ms</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Consumer.BatchSize">
+            <summary>拉取的批大小。默认32</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Consumer.StartTime">
+            <summary>启动时间</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Consumer.FromLastOffset">
+            <summary>从最后偏移开始消费。默认true</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Consumer.OnConsume">
+            <summary>消费委托</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.OnDispose(System.Boolean)">
+            <summary>销毁</summary>
+            <param name="disposing"></param>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.Start">
+            <summary>启动</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.Pull(NewLife.RocketMQ.Protocol.MessageQueue,System.Int64,System.Int32,System.Int32)">
+            <summary>从指定队列拉取消息</summary>
+            <param name="mq"></param>
+            <param name="offset"></param>
+            <param name="maxNums"></param>
+            <param name="msTimeout"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.QueryOffset(NewLife.RocketMQ.Protocol.MessageQueue)">
+            <summary>查询指定队列的偏移量</summary>
+            <param name="mq"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.QueryMaxOffset(NewLife.RocketMQ.Protocol.MessageQueue)">
+            <summary>
+            查询“队列”最大偏移量，不是消费提交的最后偏移量
+            </summary>
+            <param name="mq"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.QueryMinOffset(NewLife.RocketMQ.Protocol.MessageQueue)">
+            <summary>
+            获取最小偏移量
+            </summary>
+            <param name="mq"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.SearchOffset(NewLife.RocketMQ.Protocol.MessageQueue,System.Int64)">
+            <summary>根据时间戳查询偏移</summary>
+            <param name="mq"></param>
+            <param name="timestamp"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.UpdateOffset(NewLife.RocketMQ.Protocol.MessageQueue,System.Int64)">
+            <summary>更新队列的偏移</summary>
+            <param name="mq"></param>
+            <param name="commitOffset"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.GetConsumers(System.String)">
+            <summary>获取消费者下所有消费者</summary>
+            <param name="group"></param>
+        </member>
+        <member name="P:NewLife.RocketMQ.Consumer.AutoSchedule">
+            <summary>启动消费者时自动开始调度。默认true</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.StartSchedule">
+            <summary>开始调度</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.Consume(NewLife.RocketMQ.Protocol.MessageQueue,NewLife.RocketMQ.Protocol.PullResult)">
+            <summary>拉取到一批消息</summary>
+            <param name="queue"></param>
+            <param name="result"></param>
+            <returns></returns>
+        </member>
+        <member name="P:NewLife.RocketMQ.Consumer.Queues">
+            <summary>当前所需要消费的队列。由均衡算法产生</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.QueueStore.Equals(System.Object)">
+            <summary>相等比较</summary>
+            <param name="obj"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.QueueStore.GetHashCode">
+            <summary>计算哈希</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.Rebalance">
+            <summary>重新平衡消费队列</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Consumer.OnReceive(NewLife.RocketMQ.Protocol.Command)">
+            <summary>收到命令</summary>
+            <param name="cmd"></param>
+        </member>
+        <member name="T:NewLife.RocketMQ.Client.MqBase">
+            <summary>业务基类</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.NameServerAddress">
+            <summary>名称服务器地址</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.Group">
+            <summary>消费组</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.Topic">
+            <summary>主题</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.ClientIP">
+            <summary>本地IP地址</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.InstanceName">
+            <summary>实例名</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.PollNameServerInterval">
+            <summary>拉取名称服务器间隔。默认30_000ms</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.HeartbeatBrokerInterval">
+            <summary>Broker心跳间隔。默认30_000ms</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.UnitName">
+            <summary>单元名称</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.UnitMode">
+            <summary>单元模式</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.Active">
+            <summary>是否可用</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.Brokers">
+            <summary>代理集合</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Client.MqBase._NameServer">
+            <summary>名称服务器</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.Server">
+            <summary>获取名称服务器地址的http地址</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.AccessKey">
+            <summary>访问令牌</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.SecretKey">
+            <summary>访问密钥</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.OnsChannel">
+            <summary>阿里云MQ通道</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.ClientId">
+            <summary>客户端标识</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Client.MqBase.#ctor">
+            <summary>实例化</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Client.MqBase.OnDispose(System.Boolean)">
+            <summary>销毁</summary>
+            <param name="disposing"></param>
+        </member>
+        <member name="M:NewLife.RocketMQ.Client.MqBase.ToString">
+            <summary>友好字符串</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Client.MqBase.Start">
+            <summary>开始</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Client.MqBase.GetBroker(System.String)">
+            <summary>获取代理客户端</summary>
+            <param name="name"></param>
+            <returns></returns>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.Clients">
+            <summary>Broker客户端集合</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Client.MqBase.OnReceive(NewLife.RocketMQ.Protocol.Command)">
+            <summary>收到命令</summary>
+            <param name="cmd"></param>
+        </member>
+        <member name="P:NewLife.RocketMQ.Client.MqBase.Log">
+            <summary>日志</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Client.MqBase.WriteLog(System.String,System.Object[])">
+            <summary>写日志</summary>
+            <param name="format"></param>
+            <param name="args"></param>
+        </member>
+        <member name="T:NewLife.RocketMQ.NameClient">
+            <summary>连接名称服务器的客户端</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.NameClient.Brokers">
+            <summary>Broker集合</summary>
+        </member>
+        <member name="E:NewLife.RocketMQ.NameClient.OnBrokerChange">
+            <summary>代理改变时触发</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.NameClient.#ctor(System.String,NewLife.RocketMQ.Client.MqBase)">
+            <summary>实例化</summary>
+            <param name="id"></param>
+            <param name="config"></param>
+        </member>
+        <member name="M:NewLife.RocketMQ.NameClient.Start">
+            <summary>启动</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.NameClient.GetRouteInfo(System.String)">
+            <summary>获取主题的路由信息，含登录验证</summary>
+            <param name="topic"></param>
+            <returns></returns>
+        </member>
+        <member name="T:NewLife.RocketMQ.Producer">
+            <summary>生产者</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Producer.Start">
+            <summary>启动</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Producer.Publish(NewLife.RocketMQ.Protocol.Message,System.Int32)">
+            <summary>发送消息</summary>
+            <param name="msg"></param>
+            <param name="timeout"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Producer.Publish(System.Object,System.String,System.Int32)">
+            <summary>发布消息</summary>
+            <param name="body"></param>
+            <param name="tags"></param>
+            <param name="timeout"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Producer.CreateTopic(System.String,System.Int32,System.Int32)">
+            <summary>创建主题</summary>
+            <param name="topic"></param>
+            <param name="queueNum"></param>
+            <param name="topicSysFlag"></param>
+        </member>
+        <member name="M:NewLife.RocketMQ.Producer.SelectQueue">
+            <summary>选择队列</summary>
+            <returns></returns>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.Command">
+            <summary>命令</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Command.Header">
+            <summary>头部</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Command.Payload">
+            <summary>主体</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Command.Reply">
+            <summary>是否响应</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Command.OneWay">
+            <summary></summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Command.Error">
+            <summary></summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.Command.Read(System.IO.Stream,System.Object)">
+            <summary>从数据流中读取</summary>
+            <param name="stream"></param>
+            <param name="context"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.Command.ReadBodyAsJson">
+            <summary>读取Body作为Json返回</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.Command.Write(System.IO.Stream,System.Object)">
+            <summary>写入命令到数据流</summary>
+            <param name="stream"></param>
+            <param name="context"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.Command.ToPacket">
+            <summary>命令转字节数组</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.Command.CreateReply">
+            <summary>创建响应</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.Command.ToString">
+            <summary>友好字符串</summary>
+            <returns></returns>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.Header">
+            <summary>头部</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Header.Code">
+            <summary>请求/响应码</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Header.ExtFields">
+            <summary>扩展字段</summary>
+            <remarks>
+            这个字段不通的请求/响应不一样，完全自定义。数据结构上是java的hashmap。
+            在Java的每个RemotingCammand中，其实都带有一个CommandCustomHeader的属性成员，可以认为他是一个强类型的extFields，
+            再最后传输的时候，这个CommandCustomHeader会被忽略，而传输前会把其中的所有字段全部都原封不动塞到extFields中，以作传输。
+            </remarks>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Header.Flag">
+            <summary>标识</summary>
+            <remarks>
+            第0位标识是这次通信是request还是response，0标识request, 1 标识response。
+            第1位标识是否是oneway请求，1标识oneway。应答方在处理oneway请求的时候，不会做出响应，请求方也无需等待应答方响应。
+            </remarks>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Header.Language">
+            <summary>由于要支持多语言，所以这一字段可以给通信双方知道对方通信层锁使用的开发语言</summary>
+            <remarks>这里必须是JAVA，不能是CSharp，甚至Java都不行</remarks>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Header.Opaque">
+            <summary>请求标识码。在Java版的通信层中，这个只是一个不断自增的整形，为了收到应答方响应的的时候找到对应的请求。</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Header.SerializeTypeCurrentRPC">
+            <summary>序列化类型</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Header.Version">
+            <summary>给通信层知道对方的版本号，响应方可以以此做兼容老版本等的特殊操作</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Header.Remark">
+            <summary>附带的文本信息。常见的如存放一些broker/nameserver返回的一些异常信息，方便开发人员定位问题。</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.Header.GetExtFields">
+            <summary>获取扩展字段。如果为空则创建</summary>
+            <returns></returns>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.HeartbeatData">
+            <summary>心跳数据</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.HeartbeatData.ClientID">
+            <summary>客户端编号</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.HeartbeatData.ConsumerDataSet">
+            <summary>消费数据集</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.HeartbeatData.ProducerDataSet">
+            <summary>生产者数据集</summary>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.ProducerData">
+            <summary>生产者数据</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.ProducerData.GroupName">
+            <summary>组名</summary>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.ConsumerData">
+            <summary>消费者数据</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.ConsumerData.ConsumeFromWhere">
+            <summary>从哪里开始消费</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.ConsumerData.ConsumeType">
+            <summary>消费类型</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.ConsumerData.GroupName">
+            <summary>组名</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.ConsumerData.MessageModel">
+            <summary>消息模型。广播/集群</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.ConsumerData.SubscriptionDataSet">
+            <summary>订阅数据集</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.ConsumerData.UnitMode">
+            <summary>单元模式</summary>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.SubscriptionData">
+            <summary>订阅者数据</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SubscriptionData.Topic">
+            <summary>主题</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SubscriptionData.ExpressionType">
+            <summary>表达式类型</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SubscriptionData.SubString">
+            <summary>子字符串</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SubscriptionData.TagsSet">
+            <summary>标签集合</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SubscriptionData.CodeSet">
+            <summary>代码集合</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SubscriptionData.ClassFilterMode">
+            <summary>过滤模式</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SubscriptionData.FilterClassSource">
+            <summary>过滤源</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SubscriptionData.SubVersion">
+            <summary>子版本</summary>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.Message">
+            <summary>消息</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Message.Topic">
+            <summary>主题</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Message.Tags">
+            <summary>标签</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Message.Keys">
+            <summary>键</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Message.Flag">
+            <summary>标记</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Message.Body">
+            <summary>消息体</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Message.BodyString">
+            <summary>消息体。字符串格式</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Message.WaitStoreMsgOK">
+            <summary>等待存储消息</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.Message.DelayTimeLevel">
+            <summary>延迟时间等级</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.Message.ToString">
+            <summary>友好字符串</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.Message.GetProperties">
+            <summary>获取属性</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.Message.SetProperties(System.String)">
+            <summary>设置数据</summary>
+            <param name="properties"></param>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.MessageExt">
+            <summary>消息扩展</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.QueueId">
+            <summary>队列编号</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.StoreSize">
+            <summary>存储大小</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.BodyCRC">
+            <summary>CRC校验</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.QueueOffset">
+            <summary>队列偏移</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.CommitLogOffset">
+            <summary>提交日志偏移</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.SysFlag">
+            <summary>系统标记</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.BornTimestamp">
+            <summary>生产时间</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.BornHost">
+            <summary>生产主机</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.StoreTimestamp">
+            <summary>存储时间</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.StoreHost">
+            <summary>存储主机</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.ReconsumeTimes">
+            <summary>重新消费次数</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.PreparedTransactionOffset">
+            <summary>准备事务偏移</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.Properties">
+            <summary>属性</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageExt.MsgId">
+            <summary>消息编号</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.MessageExt.ToString">
+            <summary>友好字符串</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.MessageExt.Read(System.IO.Stream,System.Object)">
+            <summary>从数据流中读取</summary>
+            <param name="stream"></param>
+            <param name="context"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.MessageExt.ReadAll(NewLife.Data.Packet)">
+            <summary>读取所有消息</summary>
+            <param name="body"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.MessageExt.Write(System.IO.Stream,System.Object)">
+            <summary>写入命令到数据流</summary>
+            <param name="stream"></param>
+            <param name="context"></param>
+            <returns></returns>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.MessageQueue">
+            <summary>消息队列</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageQueue.Topic">
+            <summary>主题</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageQueue.BrokerName">
+            <summary>代理名称</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.MessageQueue.QueueId">
+            <summary>队列编号</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.MessageQueue.Equals(System.Object)">
+            <summary>相等比较</summary>
+            <param name="obj"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.MessageQueue.GetHashCode">
+            <summary>计算哈希</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.MessageQueue.ToString">
+            <summary>友好字符串</summary>
+            <returns></returns>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.MqCodec">
+            <summary>编码器</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.MqCodec.#ctor">
+            <summary>实例化编码器</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.MqCodec.Encode(NewLife.Model.IHandlerContext,NewLife.RocketMQ.Protocol.Command)">
+            <summary>编码</summary>
+            <param name="context"></param>
+            <param name="msg"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.MqCodec.AddToQueue(NewLife.Model.IHandlerContext,NewLife.RocketMQ.Protocol.Command)">
+            <summary>加入队列</summary>
+            <param name="context"></param>
+            <param name="msg"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.MqCodec.Decode(NewLife.Model.IHandlerContext,NewLife.Data.Packet)">
+            <summary>解码</summary>
+            <param name="context"></param>
+            <param name="pk"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.MqCodec.Close(NewLife.Model.IHandlerContext,System.String)">
+            <summary>连接关闭时，清空粘包编码器</summary>
+            <param name="context"></param>
+            <param name="reason"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.MqCodec.IsMatch(System.Object,System.Object)">
+            <summary>是否匹配响应</summary>
+            <param name="request"></param>
+            <param name="response"></param>
+            <returns></returns>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.PullMessageRequestHeader">
+            <summary>拉取信息请求头</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullMessageRequestHeader.ConsumerGroup">
+            <summary>消费组</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullMessageRequestHeader.Topic">
+            <summary>主题</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullMessageRequestHeader.Subscription">
+            <summary>订阅表达式</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullMessageRequestHeader.SuspendTimeoutMillis">
+            <summary>挂起超时时间。默认20_000ms</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullMessageRequestHeader.SubVersion">
+            <summary>子版本</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullMessageRequestHeader.QueueId">
+            <summary>队列</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullMessageRequestHeader.QueueOffset">
+            <summary>队列偏移</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullMessageRequestHeader.MaxMsgNums">
+            <summary>最大消息数</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullMessageRequestHeader.CommitOffset">
+            <summary>提交偏移</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullMessageRequestHeader.SysFlag">
+            <summary>系统标记</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.PullMessageRequestHeader.GetProperties">
+            <summary>获取属性字典</summary>
+            <returns></returns>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.PullStatus">
+            <summary>拉取状态</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.PullStatus.Found">
+            <summary>已发现</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.PullStatus.NoNewMessage">
+            <summary>没有新的消息</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.PullStatus.NoMatchedMessage">
+            <summary>没有匹配消息</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.PullStatus.OffsetIllegal">
+            <summary>偏移量非法</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.PullStatus.Unknown">
+            <summary>未知类型</summary>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.PullResult">
+            <summary>拉取结果</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullResult.Status">
+            <summary>状态</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullResult.MinOffset">
+            <summary>最小偏移</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullResult.MaxOffset">
+            <summary>最大偏移</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullResult.NextBeginOffset">
+            <summary>下一轮拉取偏移</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.PullResult.Messages">
+            <summary>消息</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.PullResult.ToString">
+            <summary>友好字符串</summary>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.PullResult.Read(System.Collections.Generic.IDictionary{System.String,System.String})">
+            <summary>读取数据</summary>
+            <param name="dic"></param>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.QueryResult">
+            <summary>查询结果</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.QueryResult.IndexLastUpdateTimestamp">
+            <summary>最后更新时间</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.QueryResult.MessageList">
+            <summary>消息列表</summary>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.RequestCode">
+            <summary>请求代码</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.SEND_MESSAGE">
+            <summary>发消息</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.PULL_MESSAGE">
+            <summary>收消息</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.QUERY_CONSUMER_OFFSET">
+            <summary>查询消费偏移</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_ALL_TOPIC_CONFIG">
+            <summary>用于向brokers查询所有的topic和它们的配置</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_BROKER_CONFIG">
+            <summary>获取代理配置</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_BROKER_RUNTIME_INFO">
+            <summary>获取代理运行时信息,包括broker版本、磁盘容量、系统负载等</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_MAX_OFFSET">
+            <summary>获取topic/队列偏移量的最大值</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_MIN_OFFSET">
+            <summary>获取topic/队列偏移量的最小值</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.HEART_BEAT">
+            <summary>发送心跳</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.UNREGISTER_CLIENT">
+            <summary>注销</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.CONSUMER_SEND_MSG_BACK">
+            <summary>当consumer客户端无法处理消息时,将这些消息发送回brokers,以便将来将这些消息重新发送给consumers</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_CONSUMER_LIST_BY_GROUP">
+            <summary>查询每个consumer group的存活成员</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.NOTIFY_CONSUMER_IDS_CHANGED">
+            <summary>当broker得知一个consumer宕机时,它会通知其他工作的consumers尽快重新平衡</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_ALL_CONSUMER_OFFSET">
+            <summary>获取所有的消费的偏移量</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_ALL_DELAY_OFFSET">
+            <summary>获取延迟topic的偏移量</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_ROUTEINTO_BY_TOPIC">
+            <summary>获取topic路由信息</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_BROKER_CLUSTER_INFO">
+            <summary>获取群集信息</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.UPDATE_AND_CREATE_SUBSCRIPTIONGROUP">
+            <summary>创建新的consumer group或更新现有的consumer group以更改属性</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_ALL_SUBSCRIPTIONGROUP_CONFIG">
+            <summary>查询所有已知的consumer group配置</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_TOPIC_STATS_INFO">
+            <summary>查询topic相关的统计信息</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_ALL_TOPIC_LIST_FROM_NAMESERVER">
+            <summary>查询所有topic</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.INVOKE_BROKER_TO_RESET_OFFSET">
+            <summary>要求broker从consumer客户端按给定的时间戳重置偏移量</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.UPDATE_NAMESRV_CONFIG">
+            <summary>update the config of name server</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.GET_NAMESRV_CONFIG">
+            <summary>get config from name server</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.RequestCode.SEND_BATCH_MESSAGE">
+            <summary>批处理模式发送消息</summary>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.ResponseCode">
+            <summary>响应码</summary>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.ResponseException">
+            <summary>响应异常</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.ResponseException.Code">
+            <summary>响应代码</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.ResponseException.#ctor(System.Int32,System.String)">
+            <summary>实例化响应异常</summary>
+            <param name="code"></param>
+            <param name="message"></param>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.SendMessageRequestHeader">
+            <summary>发送消息请求头</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendMessageRequestHeader.ProducerGroup">
+            <summary>生产组</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendMessageRequestHeader.Topic">
+            <summary>主题</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendMessageRequestHeader.DefaultTopic">
+            <summary>默认主题</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendMessageRequestHeader.DefaultTopicQueueNums">
+            <summary>默认主题队列数</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendMessageRequestHeader.QueueId">
+            <summary>队列编号</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendMessageRequestHeader.SysFlag">
+            <summary>系统标记</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendMessageRequestHeader.BornTimestamp">
+            <summary>生产时间。毫秒</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendMessageRequestHeader.Flag">
+            <summary>标记</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendMessageRequestHeader.Properties">
+            <summary>属性。Tags/Keys等</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendMessageRequestHeader.ReconsumeTimes">
+            <summary>重新消费次数</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendMessageRequestHeader.UnitMode">
+            <summary>单元模式</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.SendMessageRequestHeader.GetProperties">
+            <summary>获取属性字典</summary>
+            <returns></returns>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.SendStatus">
+            <summary>发送状态</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.SendStatus.SendOK">
+            <summary>成功</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.SendStatus.FlushDiskTimeout">
+            <summary>刷盘超时</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.SendStatus.FlushSlaveTimeout">
+            <summary>刷从机超时</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.SendStatus.SlaveNotAvailable">
+            <summary>从机不可用</summary>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.SendResult">
+            <summary>发送结果</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendResult.Status">
+            <summary>状态</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendResult.MsgId">
+            <summary>消息编号</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendResult.Queue">
+            <summary>队列</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendResult.QueueOffset">
+            <summary>队列偏移</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendResult.TransactionId">
+            <summary>事务编号</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendResult.OffsetMsgId">
+            <summary>偏移消息编号</summary>
+        </member>
+        <member name="P:NewLife.RocketMQ.Protocol.SendResult.RegionId">
+            <summary>区域</summary>
+        </member>
+        <member name="M:NewLife.RocketMQ.Protocol.SendResult.Read(System.Collections.Generic.IDictionary{System.String,System.String})">
+            <summary>读取结果</summary>
+            <param name="dic"></param>
+        </member>
+        <member name="T:NewLife.RocketMQ.Protocol.ServiceState">
+            <summary>服务状态</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.ServiceState.CreateJust">
+            <summary>刚刚建立</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.ServiceState.Running">
+            <summary>运行中</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.ServiceState.ShutdownAlready">
+            <summary>已经关闭</summary>
+        </member>
+        <member name="F:NewLife.RocketMQ.Protocol.ServiceState.StartFailed">
+            <summary>启动失败</summary>
+        </member>
+    </members>
+</doc>

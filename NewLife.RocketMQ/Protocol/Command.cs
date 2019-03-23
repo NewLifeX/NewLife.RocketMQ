@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using NewLife.Collections;
 using NewLife.Data;
+using NewLife.Log;
 using NewLife.Messaging;
 using NewLife.Serialization;
 
@@ -61,7 +62,11 @@ namespace NewLife.RocketMQ.Protocol
                     Payload = bn.ReadBytes(len - 4 - hlen);
                 }
             }
-            catch { return false; }
+            catch
+            {
+                XTrace.WriteLine("序列化错误！");
+                return false;
+            }
 
             return true;
         }

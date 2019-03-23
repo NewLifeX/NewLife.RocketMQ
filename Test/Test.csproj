@@ -34,8 +34,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="NewLife.Core, Version=8.1.7018.41218, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\NewLife.Core.8.1.2019.320\lib\net45\NewLife.Core.dll</HintPath>
+    <Reference Include="NewLife.Core, Version=8.1.7021.23231, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\DLL\NewLife.Core.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -57,16 +58,16 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NewLife.RocketMQ\NewLife.RocketMQ.csproj">
-      <Project>{146b7192-0194-4924-8371-75ec83b05185}</Project>
-      <Name>NewLife.RocketMQ</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="data.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NewLife.RocketMQ\NewLife.RocketMQ.csproj">
+      <Project>{146b7192-0194-4924-8371-75ec83b05185}</Project>
+      <Name>NewLife.RocketMQ</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
