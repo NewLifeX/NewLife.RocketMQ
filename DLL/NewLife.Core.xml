@@ -4,199 +4,6 @@
         <name>NewLife.Core</name>
     </assembly>
     <members>
-        <member name="T:NewLife.Agent.AgentService">
-            <summary>代理服务例子。自定义服务程序可参照该类实现。</summary>
-        </member>
-        <member name="M:NewLife.Agent.AgentService.#ctor">
-            <summary>实例化一个代理服务</summary>
-        </member>
-        <member name="M:NewLife.Agent.AgentService.StartWork(System.String)">
-            <summary>开始工作</summary>
-            <param name="reason"></param>
-        </member>
-        <member name="M:NewLife.Agent.AgentService.StopWork(System.String)">
-            <summary>停止服务</summary>
-            <param name="reason"></param>
-        </member>
-        <member name="T:NewLife.Agent.AgentServiceBase`1">
-            <typeparam name="TService">服务类型</typeparam>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase`1.ServiceMain">
-            <summary>服务主函数</summary>
-        </member>
-        <member name="T:NewLife.Agent.AgentServiceBase">
-            <summary>服务程序基类</summary>
-        </member>
-        <member name="P:NewLife.Agent.AgentServiceBase.DisplayName">
-            <summary>显示名</summary>
-        </member>
-        <member name="P:NewLife.Agent.AgentServiceBase.Description">
-            <summary>描述</summary>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.#ctor">
-            <summary>初始化</summary>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.Main">
-            <summary>服务主函数</summary>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.ShowStatus">
-            <summary>显示状态</summary>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.ShowMenu">
-            <summary>显示菜单</summary>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.AddMenu(System.Char,System.String,System.Action)">
-            <summary>添加菜单</summary>
-            <param name="key"></param>
-            <param name="name"></param>
-            <param name="callbak"></param>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.StartWork(System.String)">
-            <summary>开始工作</summary>
-            <param name="reason"></param>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.StopWork(System.String)">
-            <summary>停止服务</summary>
-            <param name="reason"></param>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.DoCheck(System.Object)">
-            <summary>服务管理线程封装</summary>
-            <param name="data"></param>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.CheckMemory">
-            <summary>检查内存是否超标</summary>
-            <returns>是否超标重启</returns>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.CheckThread">
-            <summary>检查服务进程的总线程数是否超标</summary>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.CheckHandle">
-            <summary>检查服务进程的句柄数是否超标</summary>
-            <returns></returns>
-        </member>
-        <member name="F:NewLife.Agent.AgentServiceBase.Start">
-            <summary>服务开始时间</summary>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.CheckAutoRestart">
-            <summary>检查自动重启</summary>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.Restart(System.String)">
-            <summary>重启服务</summary>
-            <param name="reason"></param>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.OnStart(System.String[])">
-            <summary>服务启动事件</summary>
-            <param name="args"></param>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.OnStop">
-            <summary>服务停止事件</summary>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.OnShutdown">
-            <summary>在系统关闭时执行。 指定在系统关闭之前应该发生什么。</summary>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.OnPowerEvent(System.ServiceProcess.PowerBroadcastStatus)">
-            <summary>在计算机的电源状态已发生更改时执行。 这适用于便携式计算机，当他们进入挂起模式，这不是系统关闭相同。</summary>
-            <param name="powerStatus"></param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.OnSessionChange(System.ServiceProcess.SessionChangeDescription)">
-            <summary>在终端服务器会话中接收的更改事件时执行</summary>
-            <param name="changeDescription"></param>
-        </member>
-        <member name="P:NewLife.Agent.AgentServiceBase.WatchDogs">
-            <summary>看门狗要保护的服务</summary>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.CheckWatchDog">
-            <summary>检查看门狗。</summary>
-            <remarks>
-            XAgent看门狗功能由管理线程完成，每分钟一次。
-            检查指定的任务是否已经停止，如果已经停止，则启动它。
-            </remarks>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.Install(System.Boolean)">
-            <summary>安装、卸载 服务</summary>
-            <param name="isinstall">是否安装</param>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.GetBinPath(System.String)">
-            <summary>获取安装服务的命令参数</summary>
-            <param name="exe"></param>
-            <returns></returns>
-        </member>
-        <member name="P:NewLife.Agent.AgentServiceBase.Log">
-            <summary>日志</summary>
-        </member>
-        <member name="M:NewLife.Agent.AgentServiceBase.WriteLog(System.String,System.Object[])">
-            <summary>写日志</summary>
-            <param name="format"></param>
-            <param name="args"></param>
-        </member>
-        <member name="T:NewLife.Agent.ServiceHelper">
-            <summary>服务助手</summary>
-        </member>
-        <member name="P:NewLife.Agent.ServiceHelper.ExeName">
-            <summary>Exe程序名</summary>
-        </member>
-        <member name="M:NewLife.Agent.ServiceHelper.ControlService(NewLife.Agent.AgentServiceBase,System.Boolean)">
-            <summary>启动、停止 服务</summary>
-            <param name="service">服务对象</param>
-            <param name="isstart"></param>
-        </member>
-        <member name="M:NewLife.Agent.ServiceHelper.RunCmd(System.String,System.Boolean,System.Boolean)">
-            <summary>执行一个命令</summary>
-            <param name="cmd"></param>
-            <param name="showWindow"></param>
-            <param name="waitForExit"></param>
-        </member>
-        <member name="M:NewLife.Agent.ServiceHelper.RunSC(System.String)">
-            <summary>执行SC命令</summary>
-            <param name="cmd"></param>
-        </member>
-        <member name="M:NewLife.Agent.ServiceHelper.IsInstalled(System.String)">
-            <summary>是否已安装</summary>
-        </member>
-        <member name="M:NewLife.Agent.ServiceHelper.IsRunning(System.String)">
-            <summary>是否已启动</summary>
-        </member>
-        <member name="M:NewLife.Agent.ServiceHelper.IsServiceInstalled(System.String)">
-            <summary>是否已安装</summary>
-        </member>
-        <member name="M:NewLife.Agent.ServiceHelper.IsServiceRunning(System.String)">
-            <summary>是否已启动</summary>
-        </member>
-        <member name="M:NewLife.Agent.ServiceHelper.WriteLine(System.String,System.Object[])">
-            <summary>写日志</summary>
-            <param name="format"></param>
-            <param name="args"></param>
-        </member>
-        <member name="T:NewLife.Agent.Setting">
-            <summary>服务设置</summary>
-        </member>
-        <member name="P:NewLife.Agent.Setting.ServiceName">
-            <summary>服务名</summary>
-        </member>
-        <member name="P:NewLife.Agent.Setting.DisplayName">
-            <summary>显示名</summary>
-        </member>
-        <member name="P:NewLife.Agent.Setting.Description">
-            <summary>服务描述</summary>
-        </member>
-        <member name="P:NewLife.Agent.Setting.MaxMemory">
-            <summary>最大占用内存。超过最大占用时，整个服务进程将会重启，以释放资源。默认8096M</summary>
-        </member>
-        <member name="P:NewLife.Agent.Setting.MaxThread">
-            <summary>最大线程数。超过最大占用时，整个服务进程将会重启，以释放资源。默认1000个</summary>
-        </member>
-        <member name="P:NewLife.Agent.Setting.MaxHandle">
-            <summary>最大句柄数。超过最大占用时，整个服务进程将会重启，以释放资源。默认10000</summary>
-        </member>
-        <member name="P:NewLife.Agent.Setting.AutoRestart">
-            <summary>自动重启时间。到达自动重启时间时，整个服务进程将会重启，以释放资源。默认0分，表示无限</summary>
-        </member>
-        <member name="P:NewLife.Agent.Setting.WatchDog">
-            <summary>看门狗，保护其它服务，每分钟检查一次。多个服务名逗号分隔</summary>
-        </member>
         <member name="T:NewLife.IP.Ip">
             <summary>IP搜索</summary>
         </member>
@@ -3291,25 +3098,6 @@
             <param name="fileName"></param>
             <param name="reloadTime"></param>
         </member>
-        <member name="T:NewLife.Json.JsonConfigTest">
-            <summary>
-            测试Json配置文件功能
-            </summary>
-        </member>
-        <member name="M:NewLife.Json.JsonConfigTest.Start">
-            <summary>
-            开始测试
-            </summary>
-        </member>
-        <member name="P:NewLife.Json.TestJsonConfig.Title">
-            <summary>标题</summary>
-        </member>
-        <member name="P:NewLife.Json.TestJsonConfig.Width">
-            <summary>宽度</summary>
-        </member>
-        <member name="P:NewLife.Json.TestJsonConfig.Height">
-            <summary>高度</summary>
-        </member>
         <member name="T:NewLife.Log.ActionLog">
             <summary>依托于动作的日志类</summary>
         </member>
@@ -3695,28 +3483,6 @@
             <summary>已重载。输出统计信息</summary>
             <returns></returns>
         </member>
-        <member name="T:NewLife.Log.TextControlLog">
-            <summary>文本控件输出日志</summary>
-        </member>
-        <member name="P:NewLife.Log.TextControlLog.Control">
-            <summary>文本控件</summary>
-        </member>
-        <member name="P:NewLife.Log.TextControlLog.MaxLines">
-            <summary>最大行数，超过该行数讲清空文本控件。默认1000行</summary>
-        </member>
-        <member name="M:NewLife.Log.TextControlLog.OnWrite(NewLife.Log.LogLevel,System.String,System.Object[])">
-            <summary>写日志</summary>
-            <param name="level"></param>
-            <param name="format"></param>
-            <param name="args"></param>
-        </member>
-        <member name="M:NewLife.Log.TextControlLog.WriteLog(System.Windows.Forms.Control,System.String,System.Int32)">
-            <summary>在WinForm控件上输出日志，主要考虑非UI线程操作</summary>
-            <remarks>不是常用功能，为了避免干扰常用功能，保持UseWinForm开头</remarks>
-            <param name="control">要绑定日志输出的WinForm控件</param>
-            <param name="msg">日志</param>
-            <param name="maxLines">最大行数</param>
-        </member>
         <member name="T:NewLife.Log.TextFileLog">
             <summary>文本文件日志类。提供向文本文件写日志的能力</summary>
             <remarks>
@@ -4015,24 +3781,6 @@
             <summary>使用控制台输出日志，只能调用一次</summary>
             <param name="useColor">是否使用颜色，默认使用</param>
             <param name="useFileLog">是否同时使用文件日志，默认使用</param>
-        </member>
-        <member name="M:NewLife.Log.XTrace.UseWinForm(System.Boolean)">
-            <summary>拦截WinForm异常并记录日志，可指定是否用<see cref="T:System.Windows.Forms.MessageBox"/>显示。</summary>
-            <param name="showErrorMessage">发为捕获异常时，是否显示提示，默认显示</param>
-        </member>
-        <member name="M:NewLife.Log.XTrace.UseWinFormControl(System.Windows.Forms.Control,System.Boolean,System.Int32)">
-            <summary>在WinForm控件上输出日志，主要考虑非UI线程操作</summary>
-            <remarks>不是常用功能，为了避免干扰常用功能，保持UseWinForm开头</remarks>
-            <param name="control">要绑定日志输出的WinForm控件</param>
-            <param name="useFileLog">是否同时使用文件日志，默认使用</param>
-            <param name="maxLines">最大行数</param>
-        </member>
-        <member name="M:NewLife.Log.XTrace.Combine(System.Windows.Forms.Control,NewLife.Log.ILog,System.Int32)">
-            <summary>控件绑定到日志，生成混合日志</summary>
-            <param name="control"></param>
-            <param name="log"></param>
-            <param name="maxLines"></param>
-            <returns></returns>
         </member>
         <member name="P:NewLife.Log.XTrace.Debug">
             <summary>是否调试。</summary>
@@ -5926,181 +5674,6 @@
         <member name="P:NewLife.Net.ReceivedEventArgs.UserState">
             <summary>用户数据</summary>
         </member>
-        <member name="T:NewLife.Net.SerialPortConfig">
-            <summary>串口配置</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.PortName">
-            <summary>串口名</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.BaudRate">
-            <summary>波特率</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.DataBits">
-            <summary>数据位</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.StopBits">
-            <summary>停止位</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.Parity">
-            <summary>奇偶校验</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.Encoding">
-            <summary>文本编码</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.WebEncoding">
-            <summary>编码</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.HexShow">
-            <summary>十六进制显示</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.HexNewLine">
-            <summary>十六进制自动换行</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.HexSend">
-            <summary>十六进制发送</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.LastUpdate">
-            <summary>最后更新时间</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.Extend">
-            <summary>扩展数据</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.DtrEnable">
-            <summary>DtrEnable</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.RtsEnable">
-            <summary>RtsEnable</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialPortConfig.BreakState">
-            <summary>BreakState</summary>
-        </member>
-        <member name="T:NewLife.Net.SerialTransport">
-            <summary>串口传输</summary>
-            <example>
-            标准例程：
-            <code>
-            var st = new SerialTransport();
-            st.PortName = "COM65";  // 通讯口
-            st.FrameSize = 16;      // 数据帧大小
-            
-            st.Received += (s, e) =>
-            {
-                Console.WriteLine("收到 {0}", e.ToHex());
-            };
-            // 开始异步操作
-            st.Open();
-            
-            //var buf = "01080000801A".ToHex();
-            var buf = "0111C02C".ToHex();
-            for (int i = 0; i &lt; 100; i++)
-            {
-                Console.WriteLine("发送 {0}", buf.ToHex());
-                st.Send(buf);
-            
-                Thread.Sleep(1000);
-            }
-            </code>
-            </example>
-        </member>
-        <member name="P:NewLife.Net.SerialTransport.Serial">
-            <summary>串口对象</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialTransport.PortName">
-            <summary>端口名称。默认COM1</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialTransport.BaudRate">
-            <summary>波特率。默认115200</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialTransport.Parity">
-            <summary>奇偶校验位。默认None</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialTransport.DataBits">
-            <summary>数据位。默认8</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialTransport.StopBits">
-            <summary>停止位。默认One</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialTransport.Timeout">
-            <summary>超时时间。超过该大小未收到数据，说明是另一帧。默认10ms</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialTransport.Description">
-            <summary>描述信息</summary>
-        </member>
-        <member name="P:NewLife.Net.SerialTransport.ByteTimeout">
-            <summary>字节超时。数据包间隔，默认20ms</summary>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.#ctor">
-            <summary>串口传输</summary>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.OnDispose(System.Boolean)">
-            <summary>销毁</summary>
-            <param name="disposing"></param>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.EnsureCreate">
-            <summary>确保创建</summary>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.Open">
-            <summary>打开</summary>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.Close">
-            <summary>关闭</summary>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.Send(NewLife.Data.Packet)">
-            <summary>写入数据</summary>
-            <param name="pk">数据包</param>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.SendAsync(NewLife.Data.Packet)">
-            <summary>异步发送数据并等待响应</summary>
-            <param name="pk"></param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.Receive">
-            <summary>接收数据</summary>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.OnReceive(NewLife.Data.Packet)">
-            <summary>处理收到的数据。默认匹配同步接收委托</summary>
-            <param name="pk"></param>
-        </member>
-        <member name="E:NewLife.Net.SerialTransport.Received">
-            <summary>数据到达事件</summary>
-        </member>
-        <member name="E:NewLife.Net.SerialTransport.Disconnected">
-            <summary>断开时触发，可能是人为断开，也可能是串口链路断开</summary>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.CheckDisconnect(System.Object)">
-            <summary>检查串口是否已经断开</summary>
-            <remarks>
-            FX串口异步操作有严重的泄漏缺陷，如果外部硬件长时间断开，
-            SerialPort.IsOpen检测不到，并且会无限大占用内存。
-            </remarks>
-            <param name="state"></param>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.GetPortNames">
-            <summary>获取带有描述的串口名，没有时返回空数组</summary>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.GetNames">
-            <summary>获取串口列表，名称和描述</summary>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.Choose(System.String)">
-            <summary>从串口列表选择串口，支持自动选择关键字</summary>
-            <param name="keyWord">串口名称或者描述符的关键字</param>
-            <returns></returns>
-        </member>
-        <member name="P:NewLife.Net.SerialTransport.Log">
-            <summary>日志对象</summary>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.WriteLog(System.String,System.Object[])">
-            <summary>输出日志</summary>
-            <param name="format"></param>
-            <param name="args"></param>
-        </member>
-        <member name="M:NewLife.Net.SerialTransport.ToString">
-            <summary>已重载</summary>
-            <returns></returns>
-        </member>
         <member name="T:NewLife.Net.SessionBase">
             <summary>会话基类</summary>
         </member>
@@ -7028,12 +6601,6 @@
             <param name="path"></param>
             <returns></returns>
         </member>
-        <member name="M:NewLife.Reflection.AssemblyX.ReflectionOnlyLoadFrom(System.String,System.Version)">
-            <summary>只反射加载指定路径的所有程序集</summary>
-            <param name="file"></param>
-            <param name="ver"></param>
-            <returns></returns>
-        </member>
         <member name="M:NewLife.Reflection.AssemblyX.GetMyAssemblies">
             <summary>获取当前应用程序的所有程序集，不包括系统程序集，仅限本目录</summary>
             <returns></returns>
@@ -7609,6 +7176,16 @@
             <param name="type"></param>
             <returns></returns>
         </member>
+        <member name="M:NewLife.Reflection.Reflect.IsList(System.Type)">
+            <summary>是否泛型列表</summary>
+            <param name="type"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Reflection.Reflect.IsDictionary(System.Type)">
+            <summary>是否泛型字典</summary>
+            <param name="type"></param>
+            <returns></returns>
+        </member>
         <member name="M:NewLife.Reflection.Reflect.As(System.Type,System.Type)">
             <summary>是否能够转为指定基类</summary>
             <param name="type"></param>
@@ -7648,137 +7225,6 @@
             <typeparam name="TFunc"></typeparam>
             <param name="method"></param>
             <param name="target"></param>
-            <returns></returns>
-        </member>
-        <member name="T:NewLife.Reflection.ScriptEngine">
-            <summary>脚本引擎</summary>
-            <remarks>
-            三大用法：
-            1，单个表达式，根据参数计算表达式结果并返回
-            2，多个语句，最后有返回语句
-            3，多个方法，有一个名为Execute的静态方法作为入口方法
-            
-            脚本引擎禁止实例化，必须通过<see cref="M:NewLife.Reflection.ScriptEngine.Create(System.String,System.Boolean)"/>方法创建，以代码为键进行缓存，避免重复创建反复编译形成泄漏。
-            其中<see cref="M:NewLife.Reflection.ScriptEngine.Create(System.String,System.Boolean)"/>方法的第二个参数为true表示前两种用法，为false表示第三种用法。
-            </remarks>
-            <example>
-            最简单而完整的用法：
-            <code>
-            // 根据代码创建脚本实例，相同代码只编译一次
-            var se = ScriptEngine.Create("a+b");
-            // 如果Method为空说明未编译，可设置参数
-            if (se.Method == null)
-            {
-                se.Parameters.Add("a", typeof(Int32));
-                se.Parameters.Add("b", typeof(Int32));
-            }
-            // 脚本固定返回Object类型，需要自己转换
-            var n = (Int32)se.Invoke(2, 3);
-            Console.WriteLine("2+3={0}", n);
-            </code>
-            
-            无参数快速调用：
-            <code>
-            var n = (Int32)ScriptEngine.Execute("2*3");
-            </code>
-            
-            约定参数快速调用：
-            <code>
-            var n = (Int32)ScriptEngine.Execute("p0*p1", new Object[] { 2, 3 });
-            Console.WriteLine("2*3={0}", n);
-            </code>
-            </example>
-        </member>
-        <member name="P:NewLife.Reflection.ScriptEngine.Code">
-            <summary>代码</summary>
-        </member>
-        <member name="P:NewLife.Reflection.ScriptEngine.IsExpression">
-            <summary>是否表达式</summary>
-        </member>
-        <member name="P:NewLife.Reflection.ScriptEngine.Parameters">
-            <summary>参数集合。编译后就不可修改。</summary>
-        </member>
-        <member name="P:NewLife.Reflection.ScriptEngine.FinalCode">
-            <summary>最终代码</summary>
-        </member>
-        <member name="P:NewLife.Reflection.ScriptEngine.Type">
-            <summary>编译得到的类型</summary>
-        </member>
-        <member name="P:NewLife.Reflection.ScriptEngine.Method">
-            <summary>根据代码编译出来可供直接调用的入口方法，Eval/Main</summary>
-        </member>
-        <member name="P:NewLife.Reflection.ScriptEngine.NameSpaces">
-            <summary>命名空间集合</summary>
-        </member>
-        <member name="P:NewLife.Reflection.ScriptEngine.ReferencedAssemblies">
-            <summary>引用程序集集合</summary>
-        </member>
-        <member name="P:NewLife.Reflection.ScriptEngine.Log">
-            <summary>日志</summary>
-        </member>
-        <member name="P:NewLife.Reflection.ScriptEngine.WorkingDirectory">
-            <summary>工作目录。执行时，将会作为环境变量的当前目录和PathHelper目录，执行后还原</summary>
-        </member>
-        <member name="M:NewLife.Reflection.ScriptEngine.#ctor(System.String,System.Boolean)">
-            <summary>构造函数私有，禁止外部越过Create方法直接创建实例</summary>
-            <param name="code">代码片段</param>
-            <param name="isExpression">是否表达式，表达式将编译成为一个Main方法</param>
-        </member>
-        <member name="M:NewLife.Reflection.ScriptEngine.Create(System.String,System.Boolean)">
-            <summary>为指定代码片段创建脚本引擎实例。采用缓存，避免同一脚本重复创建引擎。</summary>
-            <param name="code">代码片段</param>
-            <param name="isExpression">是否表达式，表达式将编译成为一个Main方法</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Reflection.ScriptEngine.Execute(System.String)">
-            <summary>执行表达式，返回结果</summary>
-            <param name="code">代码片段</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Reflection.ScriptEngine.Execute(System.String,System.String[],System.Type[],System.Object[])">
-            <summary>执行表达式，返回结果</summary>
-            <param name="code">代码片段</param>
-            <param name="names">参数名称</param>
-            <param name="parameterTypes">参数类型</param>
-            <param name="parameters">参数值</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Reflection.ScriptEngine.Execute(System.String,System.Collections.Generic.IDictionary{System.String,System.Object})">
-            <summary>执行表达式，返回结果</summary>
-            <param name="code">代码片段</param>
-            <param name="parameters">参数名值对</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Reflection.ScriptEngine.Execute(System.String,System.Object[])">
-            <summary>执行表达式，返回结果。参数名默认为p0/p1/p2/pn</summary>
-            <param name="code"></param>
-            <param name="parameters">参数数组</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Reflection.ScriptEngine.GenerateCode">
-            <summary>生成代码。根据<see cref="P:NewLife.Reflection.ScriptEngine.Code"/>完善得到最终代码<see cref="P:NewLife.Reflection.ScriptEngine.FinalCode"/></summary>
-        </member>
-        <member name="M:NewLife.Reflection.ScriptEngine.GetFullCode">
-            <summary>获取完整源代码</summary>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Reflection.ScriptEngine.Compile">
-            <summary>编译</summary>
-        </member>
-        <member name="M:NewLife.Reflection.ScriptEngine.Compile(System.String,System.CodeDom.Compiler.CompilerParameters)">
-            <summary>编译</summary>
-            <param name="classCode"></param>
-            <param name="options"></param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Reflection.ScriptEngine.Invoke(System.Object[])">
-            <summary>按照传入参数执行代码</summary>
-            <param name="parameters">参数</param>
-            <returns>结果</returns>
-        </member>
-        <member name="M:NewLife.Reflection.ScriptEngine.ParseNameSpace(System.String)">
-            <summary>分析命名空间</summary>
-            <param name="code"></param>
             <returns></returns>
         </member>
         <member name="T:NewLife.Remoting.ApiAction">
@@ -8141,12 +7587,6 @@
         </member>
         <member name="P:NewLife.Remoting.ApiServer.StatPeriod">
             <summary>显示统计信息的周期。默认600秒，0表示不显示统计信息</summary>
-        </member>
-        <member name="T:NewLife.Remoting.ApiTest">
-            <summary>Rpc测试</summary>
-        </member>
-        <member name="M:NewLife.Remoting.ApiTest.Main">
-            <summary>测试主函数</summary>
         </member>
         <member name="T:NewLife.Remoting.ClientPoolCluster">
             <summary>客户端连接池负载均衡集群</summary>
@@ -9253,24 +8693,6 @@
             <param name="value"></param>
             <returns></returns>
         </member>
-        <member name="T:NewLife.Serialization.BinaryFont">
-            <summary>字体处理器。</summary>
-        </member>
-        <member name="M:NewLife.Serialization.BinaryFont.#ctor">
-            <summary>实例化</summary>
-        </member>
-        <member name="M:NewLife.Serialization.BinaryFont.Write(System.Object,System.Type)">
-            <summary>写入对象</summary>
-            <param name="value">目标对象</param>
-            <param name="type">类型</param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Serialization.BinaryFont.TryRead(System.Type,System.Object@)">
-            <summary>尝试读取指定类型对象</summary>
-            <param name="type"></param>
-            <param name="value"></param>
-            <returns></returns>
-        </member>
         <member name="T:NewLife.Serialization.BinaryGeneral">
             <summary>二进制基础类型处理器</summary>
         </member>
@@ -9553,12 +8975,6 @@
             <param name="type"></param>
             <param name="baseFirst"></param>
             <returns></returns>
-        </member>
-        <member name="T:NewLife.Serialization.BinaryTest">
-            <summary>Binary测试</summary>
-        </member>
-        <member name="M:NewLife.Serialization.BinaryTest.Start">
-            <summary>开始测试</summary>
         </member>
         <member name="T:NewLife.Serialization.BinaryUnknown">
             <summary>内部对象处理器。对于其它处理器无法支持的类型，一律由该处理器解决</summary>
@@ -10233,12 +9649,6 @@
             <param name="value"></param>
             <returns></returns>
         </member>
-        <member name="T:NewLife.Serialization.JsonTest">
-            <summary>Json测试</summary>
-        </member>
-        <member name="M:NewLife.Serialization.JsonTest.Start">
-            <summary>开始测试</summary>
-        </member>
         <member name="T:NewLife.Serialization.JsonWriter">
             <summary>Json写入器</summary>
         </member>
@@ -10748,70 +10158,6 @@
             <summary>已重载。</summary>
             <returns></returns>
         </member>
-        <member name="T:NewLife.Web.CompressionModule">
-            <summary>页面压缩模块</summary>
-        </member>
-        <member name="M:NewLife.Web.CompressionModule.System#Web#IHttpModule#Init(System.Web.HttpApplication)">
-            <summary>初始化模块，准备拦截请求。</summary>
-            <param name="context"></param>
-        </member>
-        <member name="P:NewLife.Web.CompressionModule.WebCompressFiles">
-            <summary>网页压缩文件</summary>
-        </member>
-        <member name="M:NewLife.Web.CompressionModule.CanCompress(System.String)">
-            <summary>是否可压缩文件</summary>
-            <param name="url"></param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Web.CompressionModule.IsEncodingAccepted(System.Web.HttpRequest,System.String)">
-            <summary>检查请求头，确认客户端是否支持压缩编码</summary>
-            <param name="req"></param>
-            <param name="encoding"></param>
-        </member>
-        <member name="M:NewLife.Web.CompressionModule.SetEncoding(System.Web.HttpResponse,System.String)">
-            <summary>添加压缩编码到响应头</summary>
-            <param name="res"></param>
-            <param name="encoding"></param>
-        </member>
-        <member name="T:NewLife.Web.ErrorModule">
-            <summary>全局错误处理模块</summary>
-        </member>
-        <member name="M:NewLife.Web.ErrorModule.System#Web#IHttpModule#Init(System.Web.HttpApplication)">
-            <summary>初始化模块，准备拦截请求。</summary>
-            <param name="context"></param>
-        </member>
-        <member name="M:NewLife.Web.ErrorModule.NeedProcess(System.Web.HttpRequest,System.Exception)">
-            <summary>是否需要处理</summary>
-            <param name="req"></param>
-            <param name="ex"></param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Web.ErrorModule.OnError(System.Object,System.EventArgs)">
-            <summary>错误处理方法</summary>
-            <param name="sender"></param>
-            <param name="e"></param>
-        </member>
-        <member name="T:NewLife.Web.RunTimeModule">
-            <summary>页面执行时间模块</summary>
-        </member>
-        <member name="M:NewLife.Web.RunTimeModule.System#Web#IHttpModule#Init(System.Web.HttpApplication)">
-            <summary>初始化模块，准备拦截请求。</summary>
-            <param name="context"></param>
-        </member>
-        <member name="M:NewLife.Web.RunTimeModule.OnInit(System.Web.HttpContext)">
-            <summary>初始化</summary>
-        </member>
-        <member name="P:NewLife.Web.RunTimeModule.RunTimeFormat">
-            <summary>执行时间字符串</summary>
-        </member>
-        <member name="M:NewLife.Web.RunTimeModule.WriteRunTime(System.Object,System.EventArgs)">
-            <summary>输出运行时间</summary>
-        </member>
-        <member name="M:NewLife.Web.RunTimeModule.Render(System.Web.HttpContext)">
-            <summary>输出</summary>
-            <param name="context"></param>
-            <returns></returns>
-        </member>
         <member name="T:NewLife.Web.OAuthClient">
             <summary>OAuth 2.0 客户端</summary>
         </member>
@@ -11303,125 +10649,6 @@
         </member>
         <member name="P:NewLife.Web.WebClientX.Log">
             <summary>日志</summary>
-        </member>
-        <member name="T:NewLife.Web.WebDownload">
-            <summary>提供网页下载支持，在服务端把一个数据流作为附件传给浏览器，带有断点续传和限速的功能</summary>
-        </member>
-        <member name="P:NewLife.Web.WebDownload.Stream">
-            <summary>数据流</summary>
-        </member>
-        <member name="P:NewLife.Web.WebDownload.FileName">
-            <summary>文件名</summary>
-        </member>
-        <member name="P:NewLife.Web.WebDownload.ContentType">
-            <summary>内容类型</summary>
-        </member>
-        <member name="P:NewLife.Web.WebDownload.Mode">
-            <summary>附件配置模式，是在浏览器直接打开，还是提示另存为</summary>
-        </member>
-        <member name="P:NewLife.Web.WebDownload.Speed">
-            <summary>速度，每秒传输字节数，根据包大小，每响应一个包后睡眠指定毫秒数，0表示不限制</summary>
-        </member>
-        <member name="P:NewLife.Web.WebDownload.BrowserCache">
-            <summary>是否启用浏览器缓存 默认禁用</summary>
-        </member>
-        <member name="P:NewLife.Web.WebDownload.BrowserCacheMaxAge">
-            <summary>浏览器最大缓存时间 默认30天。通过Cache-Control头控制max-age，直接使用浏览器缓存，不会发出Http请求，对F5无效</summary>
-        </member>
-        <member name="P:NewLife.Web.WebDownload.ModifyTime">
-            <summary>文件数据最后修改时间，浏览器缓存时用</summary>
-        </member>
-        <member name="T:NewLife.Web.WebDownload.DispositionMode">
-            <summary>附件配置模式</summary>
-        </member>
-        <member name="F:NewLife.Web.WebDownload.DispositionMode.None">
-            <summary>不设置</summary>
-        </member>
-        <member name="F:NewLife.Web.WebDownload.DispositionMode.Inline">
-            <summary>内联模式，在浏览器直接打开</summary>
-        </member>
-        <member name="F:NewLife.Web.WebDownload.DispositionMode.Attachment">
-            <summary>附件模式，提示另存为</summary>
-        </member>
-        <member name="M:NewLife.Web.WebDownload.ParseMode(System.String)">
-            <summary>分析模式</summary>
-            <param name="mode"></param>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Web.WebDownload.#ctor">
-            <summary>构造函数</summary>
-        </member>
-        <member name="M:NewLife.Web.WebDownload.#ctor(System.IO.Stream)">
-            <summary>构造函数</summary>
-            <param name="stream"></param>
-        </member>
-        <member name="M:NewLife.Web.WebDownload.#ctor(System.String,System.Text.Encoding)">
-            <summary>构造函数</summary>
-            <param name="html"></param>
-            <param name="encoding"></param>
-        </member>
-        <member name="M:NewLife.Web.WebDownload.CheckCache(System.Web.HttpContext)">
-            <summary>检查浏览器缓存是否依然有效，如果有效则跳过Render</summary>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Web.WebDownload.Render(System.Web.HttpContext)">
-            <summary>输出数据流</summary>
-        </member>
-        <member name="T:NewLife.Windows.SpeechRecognition">
-            <summary>语音识别</summary>
-        </member>
-        <member name="P:NewLife.Windows.SpeechRecognition.Name">
-            <summary>系统名称。用于引导前缀</summary>
-        </member>
-        <member name="F:NewLife.Windows.SpeechRecognition._Tip">
-            <summary>最后一次进入引导前缀的时间。</summary>
-        </member>
-        <member name="P:NewLife.Windows.SpeechRecognition.Enable">
-            <summary>是否可用</summary>
-        </member>
-        <member name="M:NewLife.Windows.SpeechRecognition.OnDispose(System.Boolean)">
-            <summary>销毁</summary>
-            <param name="disposing"></param>
-        </member>
-        <member name="P:NewLife.Windows.SpeechRecognition.Current">
-            <summary>当前实例</summary>
-        </member>
-        <member name="M:NewLife.Windows.SpeechRecognition.GetAllKeys">
-            <summary>获取已注册的所有键值</summary>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Windows.SpeechRecognition.Register(System.String,System.Action)">
-            <summary>注册要语音识别的关键字到委托</summary>
-            <param name="text"></param>
-            <param name="callback"></param>
-        </member>
-        <member name="T:NewLife.Windows.ISpeech">
-            <summary>语音接口</summary>
-        </member>
-        <member name="E:NewLife.Windows.ISpeech.SpeechRecognized">
-            <summary>语音识别事件</summary>
-        </member>
-        <member name="M:NewLife.Windows.ISpeech.Init">
-            <summary>初始化</summary>
-            <returns></returns>
-        </member>
-        <member name="M:NewLife.Windows.ISpeech.SetChoices(System.Collections.Generic.IEnumerable{System.String})">
-            <summary>设置识别短语</summary>
-            <param name="phrases"></param>
-        </member>
-        <member name="T:NewLife.Windows.RecognitionEventArgs">
-            <summary>识别事件参数</summary>
-        </member>
-        <member name="P:NewLife.Windows.RecognitionEventArgs.Confidence">
-            <summary>获取识别器分配的值，此值表示与给定输入匹配的可能性</summary>
-        </member>
-        <member name="P:NewLife.Windows.RecognitionEventArgs.Text">
-            <summary>获取语音识别器从识别的输入生成的规范化文本</summary>
-        </member>
-        <member name="M:NewLife.Windows.RecognitionEventArgs.#ctor(System.Single,System.String)">
-            <summary>实例化</summary>
-            <param name="conf"></param>
-            <param name="text"></param>
         </member>
         <member name="T:NewLife.Xml.SerializableDictionary`2">
             <summary>支持Xml序列化的泛型字典类 </summary>
@@ -13351,96 +12578,8 @@
             <param name="pass"></param>
             <returns></returns>
         </member>
-        <member name="T:System.Windows.Forms.ControlHelper">
-            <summary>控件助手</summary>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.Invoke(System.Windows.Forms.Control,System.Action)">
-            <summary>执行无参委托</summary>
-            <param name="control"></param>
-            <param name="method"></param>
-            <returns></returns>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.Invoke``1(System.Windows.Forms.Control,System.Action{``0},``0)">
-            <summary>执行单一参数无返回值的委托</summary>
-            <typeparam name="T"></typeparam>
-            <param name="control"></param>
-            <param name="method"></param>
-            <param name="arg"></param>
-            <returns></returns>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.Invoke``2(System.Windows.Forms.Control,System.Action{``0,``1},``0,``1)">
-            <summary>执行二参数无返回值的委托</summary>
-            <typeparam name="T"></typeparam>
-            <typeparam name="T2"></typeparam>
-            <param name="control"></param>
-            <param name="method"></param>
-            <param name="arg"></param>
-            <param name="arg2"></param>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.Append(System.Windows.Forms.TextBoxBase,System.String,System.Int32)">
-            <summary>附加文本到文本控件末尾。主要解决非UI线程以及滚动控件等问题</summary>
-            <param name="txt">控件</param>
-            <param name="msg">消息</param>
-            <param name="maxLines">最大行数。超过该行数讲清空控件</param>
-            <returns></returns>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.Scroll(System.Windows.Forms.TextBoxBase,System.Boolean)">
-            <summary>滚动控件的滚动条</summary>
-            <param name="txt">指定控件</param>
-            <param name="bottom">是否底端，或者顶端</param>
-            <returns></returns>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.ProcessReturn(System.Windows.Forms.TextBoxBase,System.String@)">
-            <summary>处理回车，移到行首</summary>
-            <param name="txt"></param>
-            <param name="m"></param>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.SetDefaultStyle(System.Windows.Forms.Control,System.Int32)">
-            <summary>设置默认样式，包括字体、前景色、背景色</summary>
-            <param name="control">控件</param>
-            <param name="size">字体大小</param>
-            <returns></returns>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.SetFontSize(System.Windows.Forms.Control,System.Int32)">
-            <summary>设置字体大小</summary>
-            <param name="control"></param>
-            <param name="size"></param>
-            <returns></returns>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.ColourDefault(System.Windows.Forms.RichTextBox,System.Int32)">
-            <summary>采用默认着色方案进行着色</summary>
-            <param name="rtb">文本控件</param>
-            <param name="start">开始位置</param>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.ChangeCppColor(System.Windows.Forms.RichTextBox,System.Int32)">
-            <summary>改变C++类名方法名颜色</summary>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.Colour(System.Windows.Forms.RichTextBox,System.Text.RegularExpressions.Regex,System.Int32,System.Drawing.Color[])">
-            <summary>着色文本控件的内容</summary>
-            <param name="rtb">文本控件</param>
-            <param name="reg">正则表达式</param>
-            <param name="start">开始位置</param>
-            <param name="colors">颜色数组</param>
-            <returns></returns>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.Colour(System.Windows.Forms.RichTextBox,System.String,System.Int32,System.Drawing.Color[])">
-            <summary>着色文本控件的内容</summary>
-            <param name="rtb">文本控件</param>
-            <param name="reg">正则表达式</param>
-            <param name="start">开始位置</param>
-            <param name="colors">颜色数组</param>
-            <returns></returns>
-        </member>
-        <member name="P:System.Windows.Forms.ControlHelper.Dpi">
-            <summary>当前Dpi</summary>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.FixDpi(System.Windows.Forms.ListView)">
-            <summary>修正ListView的Dpi</summary>
-            <param name="lv"></param>
-        </member>
-        <member name="M:System.Windows.Forms.ControlHelper.FixDpi(System.Windows.Forms.Form)">
-            <summary>修正窗体的Dpi</summary>
-            <param name="frm"></param>
+        <member name="T:System.Web.Script.Serialization.ScriptIgnoreAttribute">
+            <summary>忽略Json序列化</summary>
         </member>
     </members>
 </doc>
