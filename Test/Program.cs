@@ -33,7 +33,6 @@ namespace Test
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
                 Topic = "ntest",
-                Group = "abctestw",
                 NameServerAddress = "10.9.20.106:9876",
 
                 //Log = XTrace.Log,
@@ -47,14 +46,12 @@ namespace Test
 
             var entity = JsonHelper.ToJsonEntity<ProblemModel>(str);
 
-
             for (int i = 0; i < 10000; i++)
             {
                 entity.ScanDate = entity.ScanDate.AddSeconds(i);
                 var xtr = entity.ToJson();
                 var sr = mq.Publish(xtr, "TagA");
             }
-
 
             //for (var i = 0; i < 1000000; i++)
             //{
@@ -86,11 +83,11 @@ namespace Test
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "ott",
+                Topic = "ntest",
                 Group = "test",
                 NameServerAddress = "10.9.20.106:9876",
 
-                //FromLastOffset = true,
+                FromLastOffset = false,
                 BatchSize = 20,
 
                 Log = XTrace.Log,
@@ -102,9 +99,7 @@ namespace Test
 
                 foreach (var item in ms.ToList())
                 {
-                    //if (item.Tags != "OTTDetail") continue;
-
-                    Console.WriteLine("消息：" + item.Body.ToStr());
+                    Console.WriteLine($"消息：主键【{item.Keys}】，产生时间【{item.BornTimestamp.ToDateTime()}】，内容【{item.Body.ToStr()}】");
                 }
 
                 return true;

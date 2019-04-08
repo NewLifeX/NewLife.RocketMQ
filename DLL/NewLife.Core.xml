@@ -2270,6 +2270,10 @@
             <summary>返回数据段</summary>
             <returns></returns>
         </member>
+        <member name="M:NewLife.Data.Packet.ToSegments">
+            <summary>返回数据段集合</summary>
+            <returns></returns>
+        </member>
         <member name="M:NewLife.Data.Packet.GetStream">
             <summary>获取封包的数据流形式</summary>
             <returns></returns>
@@ -9898,10 +9902,12 @@
         <member name="T:NewLife.Serialization.IJsonHost">
             <summary>Json序列化接口</summary>
         </member>
-        <member name="M:NewLife.Serialization.IJsonHost.Write(System.Object,System.Boolean)">
+        <member name="M:NewLife.Serialization.IJsonHost.Write(System.Object,System.Boolean,System.Boolean,System.Boolean)">
             <summary>写入对象，得到Json字符串</summary>
             <param name="value"></param>
-            <param name="indented">是否缩进</param>
+            <param name="indented">是否缩进。默认false</param>
+            <param name="nullValue">是否写控制。默认true</param>
+            <param name="camelCase">是否驼峰命名。默认false</param>
             <returns></returns>
         </member>
         <member name="M:NewLife.Serialization.IJsonHost.Read(System.String,System.Type)">
@@ -9926,6 +9932,14 @@
             <summary>写入对象，得到Json字符串</summary>
             <param name="value"></param>
             <param name="indented">是否缩进</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Serialization.JsonHelper.ToJson(System.Object,System.Boolean,System.Boolean,System.Boolean)">
+            <summary>写入对象，得到Json字符串</summary>
+            <param name="value"></param>
+            <param name="indented">是否缩进。默认false</param>
+            <param name="nullValue">是否写控制。默认true</param>
+            <param name="camelCase">是否驼峰命名。默认false</param>
             <returns></returns>
         </member>
         <member name="M:NewLife.Serialization.JsonHelper.ToJsonEntity(System.String,System.Type)">
