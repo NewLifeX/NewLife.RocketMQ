@@ -33,7 +33,7 @@ namespace NewLife.RocketMQ.Protocol
         public override Int32 GetHashCode()
         {
             var obj = this;
-            return obj.Topic.GetHashCode() ^ obj.BrokerName.GetHashCode() ^ obj.BrokerName.GetHashCode();
+            return obj.Topic.GetHashCode() ^ obj.BrokerName.GetHashCode() ^ obj.QueueId;
         }
         #endregion
 
