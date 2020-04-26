@@ -87,7 +87,8 @@ namespace Test
                 Group = "test",
                 NameServerAddress = "10.9.20.106:9876",
 
-                FromLastOffset = false,
+                FromLastOffset = true,
+                SkipOverStoredMsgCount = 0,
                 BatchSize = 20,
 
                 Log = XTrace.Log,

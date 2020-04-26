@@ -36,6 +36,13 @@ namespace NewLife.RocketMQ
         /// <summary>从最后偏移开始消费。默认true</summary>
         public Boolean FromLastOffset { get; set; } = true;
 
+        /// <summary>
+        /// 【仅FromLastOffset设置为true时生效】
+        /// 跳过积压的消息数量，默认为10000，即积压消息超过10000后将强制从消费最大偏移量的位置消费
+        /// 若需要处理所有未消费消息，可将此值设置为0
+        /// </summary>
+        public UInt32 SkipOverStoredMsgCount { get; set; } = 10000;
+
         /// <summary>消费委托</summary>
         public Func<MessageQueue, MessageExt[], Boolean> OnConsume;
         #endregion
@@ -370,9 +377,19 @@ namespace NewLife.RocketMQ
                     if (st.Offset < 0 && FromLastOffset)
                     {
                         var p = QueryOffset(mq);
+                        if (SkipOverStoredMsgCount > 0)
+                        {
+                            // 设置了跳过积压的消息，此时判断积压的消息条数，若消息条数大于设定的数量，则强制从消费最大偏移量的位置消费
+                            var maxOffset = QueryMaxOffset(mq);
+                            if (maxOffset - p >= SkipOverStoredMsgCount)
+                            {
+                                p = maxOffset;
+                            }
+                        }
+
                         //if (p == -1) p = 0;
                         //第一次消费新的队列，强制从消费最大偏移量的位置消费（避免由于第一次从最小偏移量消费而导致的数据大量积压问题）
-                        if (p <= 0) p = QueryMaxOffset(mq);
+                        //if (p <= 0) p = QueryMaxOffset(mq);
 
                         st.Offset = st.CommitOffset = p;
 
