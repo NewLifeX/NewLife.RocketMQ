@@ -61,7 +61,6 @@
     <None Include="data.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NewLife.RocketMQ\NewLife.RocketMQ.csproj">
