@@ -47,9 +47,9 @@ namespace NewLife.RocketMQ
 
         /// <summary>销毁</summary>
         /// <param name="disposing"></param>
-        protected override void OnDispose(Boolean disposing)
+        protected override void Dispose(bool disposing)
         {
-            base.OnDispose(disposing);
+            base.Dispose(disposing);
 
             //_Pool.TryDispose();
             _Client.TryDispose();

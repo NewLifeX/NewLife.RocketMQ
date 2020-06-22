@@ -50,9 +50,9 @@ namespace NewLife.RocketMQ
         #region 构造
         /// <summary>销毁</summary>
         /// <param name="disposing"></param>
-        protected override void OnDispose(Boolean disposing)
+        protected override void Dispose(bool disposing)
         {
-            base.OnDispose(disposing);
+            base.Dispose(disposing);
 
             // 停止并保存偏移
             Stop();
