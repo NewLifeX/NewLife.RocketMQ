@@ -18,7 +18,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test1();
+            Test2();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -32,7 +32,7 @@ namespace Test
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "ntest",
+                Topic = "nx_test",
                 NameServerAddress = "127.0.0.1:9876",
 
                 //Log = XTrace.Log,
@@ -41,7 +41,7 @@ namespace Test
 
             mq.Start();
 
-            mq.CreateTopic("nx_test", 2);
+            //mq.CreateTopic("nx_test", 2);
 
             for (var i = 0; i < 1000_000; i++)
             {
@@ -69,7 +69,7 @@ namespace Test
                 //AccessKey = "LTAINsp1qKfO61c5",
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
-                Topic = "ntest",
+                Topic = "nx_test",
                 Group = "test",
                 NameServerAddress = "127.0.0.1:9876",
 
