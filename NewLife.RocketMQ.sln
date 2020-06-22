@@ -1,13 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27703.2035
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30204.135
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NewLife.RocketMQ", "NewLife.RocketMQ\NewLife.RocketMQ.csproj", "{146B7192-0194-4924-8371-75EC83B05185}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{8D0806BE-ED0A-4D11-847C-38A366A33474}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestCore", "TestCore\TestCore.csproj", "{7B90774C-827A-4CCC-A7C6-6E77D7FC2DCB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +21,6 @@ Global
 		{8D0806BE-ED0A-4D11-847C-38A366A33474}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8D0806BE-ED0A-4D11-847C-38A366A33474}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8D0806BE-ED0A-4D11-847C-38A366A33474}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7B90774C-827A-4CCC-A7C6-6E77D7FC2DCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7B90774C-827A-4CCC-A7C6-6E77D7FC2DCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7B90774C-827A-4CCC-A7C6-6E77D7FC2DCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7B90774C-827A-4CCC-A7C6-6E77D7FC2DCB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

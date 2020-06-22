@@ -18,7 +18,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test2();
+            Test1();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -33,7 +33,7 @@ namespace Test
                 //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
 
                 Topic = "ntest",
-                NameServerAddress = "10.9.20.106:9876",
+                NameServerAddress = "127.0.0.1:9876",
 
                 //Log = XTrace.Log,
             };
@@ -41,34 +41,20 @@ namespace Test
 
             mq.Start();
 
-            //mq.CreateTopic("nx_test", 2);
-            var str = File.ReadAllText("data.json".GetFullPath());
+            mq.CreateTopic("nx_test", 2);
 
-            var entity = JsonHelper.ToJsonEntity<ProblemModel>(str);
-
-            for (int i = 0; i < 10000; i++)
+            for (var i = 0; i < 1000_000; i++)
             {
-                entity.ScanDate = entity.ScanDate.AddSeconds(i);
-                var xtr = entity.ToJson();
-                var sr = mq.Publish(xtr, "TagA");
+                var str = "学无先后达者为师" + i;
+                //var str = Rand.NextString(1337);
+
+                var sr = mq.Publish(str, "TagA");
+
+                //Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
+
+                // 阿里云发送消息不能过快，否则报错“服务不可用”
+                //Thread.Sleep(100);
             }
-
-            //for (var i = 0; i < 1000000; i++)
-            //{
-            //    //var str = "学无先后达者为师" + i;
-            //    //var str = Rand.NextString(1337);
-
-            //    entity.ScanDate = entity.ScanDate.AddSeconds(i);
-            //    entity.Code = (entity.Code.ToInt() + 1) + "";
-            //    var xtr = entity.ToJson();
-
-            //    var sr = mq.Publish(xtr, "TagA");
-
-            //    //Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
-
-            //    // 阿里云发送消息不能过快，否则报错“服务不可用”
-            //    //Thread.Sleep(100);
-            //}
 
             Console.WriteLine("完成");
 
@@ -85,7 +71,7 @@ namespace Test
 
                 Topic = "ntest",
                 Group = "test",
-                NameServerAddress = "10.9.20.106:9876",
+                NameServerAddress = "127.0.0.1:9876",
 
                 FromLastOffset = true,
                 SkipOverStoredMsgCount = 0,
