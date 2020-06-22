@@ -109,11 +109,11 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 业务方法
-        /// <summary>创建主题</summary>
-        /// <param name="topic"></param>
-        /// <param name="queueNum"></param>
+        /// <summary>更新或创建主题。重复执行时为更新</summary>
+        /// <param name="topic">主题</param>
+        /// <param name="queueNum">队列数</param>
         /// <param name="topicSysFlag"></param>
-        public void CreateTopic(String topic, Int32 queueNum, Int32 topicSysFlag = 0)
+        public virtual void CreateTopic(String topic, Int32 queueNum, Int32 topicSysFlag = 0)
         {
             var header = new
             {

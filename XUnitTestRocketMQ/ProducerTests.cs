@@ -20,6 +20,7 @@ namespace XUnitTestRocketMQ
 
             mq.Start();
 
+            // 创建topic时，start前不能指定topic，让其使用默认TBW102
             Assert.Equal("TBW102", mq.Topic);
 
             mq.CreateTopic("nx_test", 2);
