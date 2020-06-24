@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using NewLife.Log;
+﻿using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Common;
-using NewLife.Security;
-using NewLife.Serialization;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 
 namespace Test
 {
@@ -18,7 +14,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test2();
+            Test1();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -28,17 +24,13 @@ namespace Test
         {
             var mq = new Producer
             {
-                //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
-                //AccessKey = "LTAINsp1qKfO61c5",
-                //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
-
                 Topic = "nx_test",
                 NameServerAddress = "127.0.0.1:9876",
 
-                //Log = XTrace.Log,
+                Log = XTrace.Log,
             };
-            // 105命令的数字签名是 NyRea4g3OHmd7RxEUoVJUz58lXc=
 
+            mq.Configure(MqSetting.Current);
             mq.Start();
 
             //mq.CreateTopic("nx_test", 2);
@@ -53,7 +45,7 @@ namespace Test
                 //Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
 
                 // 阿里云发送消息不能过快，否则报错“服务不可用”
-                //Thread.Sleep(100);
+                Thread.Sleep(100);
             }
 
             Console.WriteLine("完成");
@@ -65,10 +57,6 @@ namespace Test
         {
             var consumer = new Consumer
             {
-                //Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet",
-                //AccessKey = "LTAINsp1qKfO61c5",
-                //SecretKey = "BvX6DpQffUz8xKIQ0u13EMxBW6YJmp",
-
                 Topic = "nx_test",
                 Group = "test",
                 NameServerAddress = "127.0.0.1:9876",
@@ -92,6 +80,7 @@ namespace Test
                 return true;
             };
 
+            mq.Configure(MqSetting.Current);
             consumer.Start();
 
             //Thread.Sleep(3000);

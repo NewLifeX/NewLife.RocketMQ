@@ -115,6 +115,15 @@ namespace NewLife.RocketMQ.Client
         #endregion
 
         #region 基础方法
+        /// <summary>应用配置</summary>
+        /// <param name="setting"></param>
+        public virtual void Configure(MqSetting setting)
+        {
+            Server = setting.Server;
+            AccessKey = setting.AccessKey;
+            SecretKey = setting.SecretKey;
+        }
+
         /// <summary>开始</summary>
         /// <returns></returns>
         public virtual Boolean Start()
@@ -131,7 +140,7 @@ namespace NewLife.RocketMQ.Client
                 if (!html.IsNullOrWhiteSpace()) NameServerAddress = html.Trim();
             }
 
-            var client = new NameClient(ClientId, this);
+            var client = new NameClient(ClientId, this) { Log = Log };
             client.Start();
 
             var rs = client.GetRouteInfo(Topic);
