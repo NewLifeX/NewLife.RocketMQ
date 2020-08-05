@@ -29,6 +29,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSource>true</IncludeSource>
+    <PackageProjectUrl>https://github.com/NewLifeX/NewLife.RocketMQ</PackageProjectUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
