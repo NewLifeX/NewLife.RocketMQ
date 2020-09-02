@@ -1,4 +1,5 @@
-﻿using NewLife.Log;
+﻿using NewLife;
+using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Common;
 using System;
@@ -80,7 +81,7 @@ namespace Test
                 return true;
             };
 
-            mq.Configure(MqSetting.Current);
+            consumer.Configure(MqSetting.Current);
             consumer.Start();
 
             //Thread.Sleep(3000);
