@@ -54,6 +54,9 @@ namespace NewLife.RocketMQ.Client
         /// <summary>代理集合</summary>
         public IList<BrokerInfo> Brokers => _NameServer?.Brokers;
 
+        /// <summary>性能跟踪</summary>
+        public ITracer Tracer { get; set; }
+
         /// <summary>名称服务器</summary>
         protected NameClient _NameServer;
         #endregion
@@ -97,7 +100,7 @@ namespace NewLife.RocketMQ.Client
 
         /// <summary>销毁</summary>
         /// <param name="disposing"></param>
-        protected override void Dispose(bool disposing)
+        protected override void Dispose(Boolean disposing)
         {
             base.Dispose(disposing);
 

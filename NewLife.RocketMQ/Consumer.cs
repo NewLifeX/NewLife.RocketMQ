@@ -50,7 +50,7 @@ namespace NewLife.RocketMQ
         #region 构造
         /// <summary>销毁</summary>
         /// <param name="disposing"></param>
-        protected override void Dispose(bool disposing)
+        protected override void Dispose(Boolean disposing)
         {
             base.Dispose(disposing);
 
@@ -108,48 +108,59 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         public PullResult Pull(MessageQueue mq, Int64 offset, Int32 maxNums, Int32 msTimeout = -1)
         {
-            var header = new PullMessageRequestHeader
+            // 性能埋点
+            using var span = Tracer?.NewSpan($"mq:{Topic}:Consume");
+            try
             {
-                ConsumerGroup = Group,
-                Topic = Topic,
-                QueueId = mq.QueueId,
-                QueueOffset = offset,
-                MaxMsgNums = maxNums,
-                SysFlag = 6,
-                SubVersion = StartTime.ToLong(),
-            };
-            if (msTimeout >= 0) header.SuspendTimeoutMillis = msTimeout;
+                var header = new PullMessageRequestHeader
+                {
+                    ConsumerGroup = Group,
+                    Topic = Topic,
+                    QueueId = mq.QueueId,
+                    QueueOffset = offset,
+                    MaxMsgNums = maxNums,
+                    SysFlag = 6,
+                    SubVersion = StartTime.ToLong(),
+                };
+                if (msTimeout >= 0) header.SuspendTimeoutMillis = msTimeout;
 
-            var st = _Queues.FirstOrDefault(e => e.Queue == mq);
-            if (st != null) header.CommitOffset = st.CommitOffset;
+                var st = _Queues.FirstOrDefault(e => e.Queue == mq);
+                if (st != null) header.CommitOffset = st.CommitOffset;
 
-            var dic = header.GetProperties();
-            var bk = GetBroker(mq.BrokerName);
+                var dic = header.GetProperties();
+                var bk = GetBroker(mq.BrokerName);
 
-            var rs = bk.Invoke(RequestCode.PULL_MESSAGE, null, dic, true);
-            if (rs?.Header == null) return null;
+                var rs = bk.Invoke(RequestCode.PULL_MESSAGE, null, dic, true);
+                if (rs?.Header == null) return null;
 
-            var pr = new PullResult();
+                var pr = new PullResult();
 
-            if (rs.Header.Code == 0)
-                pr.Status = PullStatus.Found;
-            else if (rs.Header.Code == (Int32)ResponseCode.PULL_NOT_FOUND)
-                pr.Status = PullStatus.NoNewMessage;
-            else if (rs.Header.Code == (Int32)ResponseCode.PULL_OFFSET_MOVED || rs.Header.Code == (Int32)ResponseCode.PULL_RETRY_IMMEDIATELY)
-                pr.Status = PullStatus.OffsetIllegal;
-            else
-            {
-                pr.Status = PullStatus.Unknown;
-                Log.Warn("响应编号：{0} 响应备注：{1} 序列编号：{2} 序列偏移量：{3}", rs.Header.Code, rs.Header.Remark, mq.QueueId, offset);
+                if (rs.Header.Code == 0)
+                    pr.Status = PullStatus.Found;
+                else if (rs.Header.Code == (Int32)ResponseCode.PULL_NOT_FOUND)
+                    pr.Status = PullStatus.NoNewMessage;
+                else if (rs.Header.Code == (Int32)ResponseCode.PULL_OFFSET_MOVED || rs.Header.Code == (Int32)ResponseCode.PULL_RETRY_IMMEDIATELY)
+                    pr.Status = PullStatus.OffsetIllegal;
+                else
+                {
+                    pr.Status = PullStatus.Unknown;
+                    Log.Warn("响应编号：{0} 响应备注：{1} 序列编号：{2} 序列偏移量：{3}", rs.Header.Code, rs.Header.Remark, mq.QueueId, offset);
+                }
+
+                pr.Read(rs.Header?.ExtFields);
+
+                // 读取内容
+                var pk = rs.Payload;
+                if (pk != null) pr.Messages = MessageExt.ReadAll(pk).ToArray();
+
+                return pr;
             }
+            catch (Exception ex)
+            {
+                span?.SetError(ex, mq);
 
-            pr.Read(rs.Header?.ExtFields);
-
-            // 读取内容
-            var pk = rs.Payload;
-            if (pk != null) pr.Messages = MessageExt.ReadAll(pk).ToArray();
-
-            return pr;
+                throw;
+            }
         }
         #endregion
 
@@ -455,7 +466,7 @@ namespace NewLife.RocketMQ
         }
 
         private TimerX _persist;
-        private void DoPersist(Object state) { PersistAll(_Queues); }
+        private void DoPersist(Object state) => PersistAll(_Queues);
 
         private void PersistAll(IEnumerable<QueueStore> stores)
         {

@@ -7,7 +7,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NewLife.RocketMQ", "NewLife
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "Test\Test.csproj", "{8D0806BE-ED0A-4D11-847C-38A366A33474}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XUnitTestRocketMQ", "XUnitTestRocketMQ\XUnitTestRocketMQ.csproj", "{670E6004-4A15-4C91-AC70-FED96843B793}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XUnitTestRocketMQ", "XUnitTestRocketMQ\XUnitTestRocketMQ.csproj", "{670E6004-4A15-4C91-AC70-FED96843B793}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{AF932CB1-8F4D-4317-8028-62F2CACEA9BD}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

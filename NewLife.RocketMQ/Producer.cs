@@ -75,19 +75,30 @@ namespace NewLife.RocketMQ
                 UnitMode = UnitMode,
             };
 
-            // 根据队列获取Broker客户端
-            var bk = GetBroker(mq.BrokerName);
-            var rs = bk.Invoke(RequestCode.SEND_MESSAGE_V2, msg.Body, smrh.GetProperties());
-
-            // 包装结果
-            var sr = new SendResult
+            // 性能埋点
+            using var span = Tracer?.NewSpan($"mq:{Topic}:Publish");
+            try
             {
-                Status = SendStatus.SendOK,
-                Queue = mq
-            };
-            sr.Read(rs.Header?.ExtFields);
+                // 根据队列获取Broker客户端
+                var bk = GetBroker(mq.BrokerName);
+                var rs = bk.Invoke(RequestCode.SEND_MESSAGE_V2, msg.Body, smrh.GetProperties());
 
-            return sr;
+                // 包装结果
+                var sr = new SendResult
+                {
+                    Status = SendStatus.SendOK,
+                    Queue = mq
+                };
+                sr.Read(rs.Header?.ExtFields);
+
+                return sr;
+            }
+            catch (Exception ex)
+            {
+                span?.SetError(ex, msg);
+
+                throw;
+            }
         }
 
         /// <summary>发布消息</summary>
