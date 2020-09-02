@@ -55,7 +55,7 @@ namespace NewLife.RocketMQ.Client
         public IList<BrokerInfo> Brokers => _NameServer?.Brokers;
 
         /// <summary>性能跟踪</summary>
-        public ITracer Tracer { get; set; }
+        public ITracer Tracer { get; set; } = DefaultTracer.Instance;
 
         /// <summary>名称服务器</summary>
         protected NameClient _NameServer;
