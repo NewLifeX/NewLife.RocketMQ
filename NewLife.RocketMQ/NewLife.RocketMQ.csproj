@@ -7,8 +7,8 @@
     <Description>纯托管轻量级RocketMQ客户端，支持发布消息、消费消息、负载均衡等核心功能！</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2020 NewLife</Copyright>
-    <Version>1.4.2020.0902</Version>
-    <FileVersion>1.4.2020.0902</FileVersion>
+    <Version>1.4.2020.0912-beta</Version>
+    <FileVersion>1.4.2020.0912</FileVersion>
     <AssemblyVersion>1.4.*</AssemblyVersion>
     <Deterministic>false</Deterministic>
     <OutputPath>..\Bin</OutputPath>
@@ -35,7 +35,7 @@
     <PackageProjectUrl>https://github.com/NewLifeX/NewLife.RocketMQ</PackageProjectUrl>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0">
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.0-beta-20204-02">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -63,7 +63,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="8.10.2020.901" />
+    <PackageReference Include="NewLife.Core" Version="8.10.2020.912-beta" />
   </ItemGroup>
 
 </Project>
