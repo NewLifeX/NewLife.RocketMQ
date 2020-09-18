@@ -23,7 +23,7 @@
     <PackageId>$(AssemblyName)</PackageId>
     <Authors>$(Company)</Authors>
     <ProjectUrl>https://github.com/NewLifeX</ProjectUrl>
-    <PackageIconUrl>http://www.NewLifeX.com/favicon.ico</PackageIconUrl>
+    <PackageIcon>leaf.png</PackageIcon>
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.RocketMQ</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
@@ -60,6 +60,10 @@
 
   <ItemGroup>
     <Compile Remove="Protocol\SendStatus.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\Doc\leaf.png" Link="leaf.png" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>
