@@ -25,7 +25,15 @@ namespace NewLife.RocketMQ
         /// <summary>启动</summary>
         public override void Start()
         {
-            Servers = _Servers.Select(e => new NetUri(e)).ToArray();
+            //Servers = _Servers.Select(e => new NetUri(e)).ToArray();
+            var list = new List<NetUri>();
+            foreach (var item in _Servers)
+            {
+                var uri = new NetUri(item);
+                if (uri.Type == NetType.Unknown) uri.Type = NetType.Tcp;
+                list.Add(uri);
+            }
+            Servers = list.ToArray();
 
             base.Start();
 
@@ -38,11 +46,11 @@ namespace NewLife.RocketMQ
         /// <summary>注销客户端</summary>
         /// <param name="id"></param>
         /// <param name="group"></param>
-        public virtual void UnRegisterClient(String id, String group)
+        public virtual Command UnRegisterClient(String id, String group)
         {
             if (group.IsNullOrEmpty()) group = "CLIENT_INNER_PRODUCER";
 
-            var rs = Invoke(RequestCode.UNREGISTER_CLIENT, new
+            return Invoke(RequestCode.UNREGISTER_CLIENT, new
             {
                 ClientId = id,
                 ProducerGroup = group,
