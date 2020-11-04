@@ -220,9 +220,11 @@ namespace NewLife.RocketMQ
         /// <param name="header"></param>
         protected virtual void OnBuild(Header header)
         {
-            // 阿里云支持 CSharp
-            var cfg = Config;
-            if (!cfg.AccessKey.IsNullOrEmpty()) header.Language = "CSharp";
+            //// 阿里云支持 CSharp
+            //var cfg = Config;
+            //if (!cfg.AccessKey.IsNullOrEmpty()) header.Language = "CSharp";
+
+            header.Language = "DOTNET";
 
             //// 阿里云密钥
             //if (!cfg.AccessKey.IsNullOrEmpty())

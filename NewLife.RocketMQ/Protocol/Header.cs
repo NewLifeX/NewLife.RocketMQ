@@ -29,8 +29,8 @@ namespace NewLife.RocketMQ.Protocol
         [XmlElement("flag")]
         public Int32 Flag { get; set; }
 
-        /// <summary>由于要支持多语言，所以这一字段可以给通信双方知道对方通信层锁使用的开发语言</summary>
-        /// <remarks>这里必须是JAVA，不能是CSharp，甚至Java都不行</remarks>
+        /// <summary>由于要支持多语言，所以这一字段可以给通信双方知道对方通信层锁使用的开发语言。</summary>
+        /// <remarks>LanguageCode，JAVA/CPP/DOTNET/PYTHON/DELPHI/ERLANG/RUBY/OTHER/HTTP/GO/PHP/OMS</remarks>
         [XmlElement("language")]
         public String Language { get; set; } = "CPP";
 
