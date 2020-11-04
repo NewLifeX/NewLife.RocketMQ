@@ -37,7 +37,15 @@ namespace NewLife.RocketMQ
             var cfg = Config;
             var ss = cfg.NameServerAddress.Split(";");
 
-            Servers = ss.Select(e => new NetUri(e)).ToArray();
+            //Servers = ss.Select(e => new NetUri(e)).ToArray();
+            var list = new List<NetUri>();
+            foreach (var item in ss)
+            {
+                var uri = new NetUri(item);
+                if (uri.Type == NetType.Unknown) uri.Type = NetType.Tcp;
+                list.Add(uri);
+            }
+            Servers = list.ToArray();
 
             base.Start();
 

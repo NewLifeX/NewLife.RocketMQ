@@ -60,7 +60,7 @@ namespace NewLife.RocketMQ
         /// <summary>开始</summary>
         public virtual void Start()
         {
-            WriteLog("集群地址：{0}", Servers.Join(";", e => $"{e.Host}:{e.Port}"));
+            WriteLog("集群地址：{0}", Servers.Join(";"));
 
             EnsureCreate();
         }
@@ -128,7 +128,7 @@ namespace NewLife.RocketMQ
                 var rs = await client.SendMessageAsync(cmd);
 
 #if DEBUG
-            WriteLog("<= {0}", rs as Command);
+                WriteLog("<= {0}", rs as Command);
 #endif
 
                 return rs as Command;
@@ -211,20 +211,7 @@ namespace NewLife.RocketMQ
             var rs = SendAsync(cmd).Result;
 
             // 判断异常响应
-            if (!ignoreError && rs.Header != null && rs.Header.Code != 0)
-            {
-                // 优化异常输出
-                var err = rs.Header.Remark;
-                if (!err.IsNullOrEmpty())
-                {
-                    var p = err.IndexOf("Exception: ");
-                    if (p >= 0) err = err.Substring(p + "Exception: ".Length);
-                    p = err.IndexOf(", ");
-                    if (p > 0) err = err.Substring(0, p);
-                }
-
-                throw new ResponseException(rs.Header.Code, err);
-            }
+            if (!ignoreError && rs.Header != null && rs.Header.Code != 0) throw rs.Header.CreateException();
 
             return rs;
         }

@@ -133,17 +133,20 @@ namespace NewLife.RocketMQ.Client
         {
             if (Active) return true;
 
-            // 获取阿里云ONS的名称服务器地址
-            var addr = Server;
-            if (!addr.IsNullOrEmpty() && addr.StartsWithIgnoreCase("http"))
+            if (NameServerAddress.IsNullOrEmpty())
             {
-                var http = new TinyHttpClient();
-                var html = http.GetStringAsync(addr).Result;
+                // 获取阿里云ONS的名称服务器地址
+                var addr = Server;
+                if (!addr.IsNullOrEmpty() && addr.StartsWithIgnoreCase("http"))
+                {
+                    var http = new TinyHttpClient();
+                    var html = http.GetStringAsync(addr).Result;
 
-                if (!html.IsNullOrWhiteSpace()) NameServerAddress = html.Trim();
+                    if (!html.IsNullOrWhiteSpace()) NameServerAddress = html.Trim();
+                }
             }
 
-            var client = new NameClient(ClientId, this) { Log = Log };
+            var client = new NameClient(ClientId, this) { Name = "Name", Log = Log };
             client.Start();
 
             var rs = client.GetRouteInfo(Topic);

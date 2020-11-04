@@ -54,11 +54,27 @@ namespace NewLife.RocketMQ.Protocol
         #region 方法
         /// <summary>获取扩展字段。如果为空则创建</summary>
         /// <returns></returns>
-        public IDictionary<String,String> GetExtFields()
+        public IDictionary<String, String> GetExtFields()
         {
             if (ExtFields == null) ExtFields = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
 
             return ExtFields;
+        }
+
+        /// <summary>创建异常</summary>
+        /// <returns></returns>
+        public ResponseException CreateException()
+        {
+            var err = Remark;
+            if (!err.IsNullOrEmpty())
+            {
+                var p = err.IndexOf("Exception: ");
+                if (p >= 0) err = err.Substring(p + "Exception: ".Length);
+                p = err.IndexOf(", ");
+                if (p > 0) err = err.Substring(0, p);
+            }
+
+            return new ResponseException(Code, err);
         }
         #endregion
     }

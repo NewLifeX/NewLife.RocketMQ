@@ -81,13 +81,21 @@ namespace NewLife.RocketMQ
             {
                 // 根据队列获取Broker客户端
                 var bk = GetBroker(mq.BrokerName);
-                var rs = bk.Invoke(RequestCode.SEND_MESSAGE_V2, msg.Body, smrh.GetProperties());
+                var rs = bk.Invoke(RequestCode.SEND_MESSAGE_V2, msg.Body, smrh.GetProperties(), true);
 
                 // 包装结果
                 var sr = new SendResult
                 {
-                    Status = SendStatus.SendOK,
+                    //Status = SendStatus.SendOK,
                     Queue = mq
+                };
+                sr.Status = (ResponseCode)rs.Header.Code switch
+                {
+                    ResponseCode.SUCCESS => SendStatus.SendOK,
+                    ResponseCode.FLUSH_DISK_TIMEOUT => SendStatus.FlushDiskTimeout,
+                    ResponseCode.FLUSH_SLAVE_TIMEOUT => SendStatus.FlushSlaveTimeout,
+                    ResponseCode.SLAVE_NOT_AVAILABLE => SendStatus.SlaveNotAvailable,
+                    _ => throw rs.Header.CreateException(),
                 };
                 sr.Read(rs.Header?.ExtFields);
 
