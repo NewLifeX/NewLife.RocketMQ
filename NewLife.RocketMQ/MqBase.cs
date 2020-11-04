@@ -122,6 +122,10 @@ namespace NewLife.RocketMQ.Client
         /// <param name="setting"></param>
         public virtual void Configure(MqSetting setting)
         {
+            NameServerAddress = setting.NameServer;
+            Topic = setting.Topic;
+            Group = setting.Group;
+
             Server = setting.Server;
             AccessKey = setting.AccessKey;
             SecretKey = setting.SecretKey;
