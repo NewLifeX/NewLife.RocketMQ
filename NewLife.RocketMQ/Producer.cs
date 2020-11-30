@@ -108,13 +108,21 @@ namespace NewLife.RocketMQ
                 throw;
             }
         }
-
-        /// <summary>发布消息</summary>
+		
+		/// <summary>发布消息</summary>
         /// <param name="body"></param>
         /// <param name="tags"></param>
         /// <param name="timeout"></param>
         /// <returns></returns>
-        public virtual SendResult Publish(Object body, String tags = null, Int32 timeout = -1)
+        public virtual SendResult Publish(Object body, String tags = null, Int32 timeout = -1) => Publish(body, tags, null, timeout);
+
+        /// <summary>发布消息</summary>
+        /// <param name="body"></param>
+        /// <param name="tags">传null则为空</param>
+        /// <param name="keys">传null则为空</param>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        public virtual SendResult Publish(Object body, String tags, String keys, Int32 timeout = -1)
         {
             if (!(body is Byte[] buf))
             {
@@ -123,7 +131,7 @@ namespace NewLife.RocketMQ
                 buf = str.GetBytes();
             }
 
-            return Publish(new Message { Body = buf, Tags = tags }, timeout);
+            return Publish(new Message { Body = buf, Tags = tags, Keys = keys }, timeout);
         }
         #endregion
 
