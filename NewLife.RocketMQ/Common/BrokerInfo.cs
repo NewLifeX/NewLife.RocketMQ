@@ -44,7 +44,7 @@ namespace NewLife.RocketMQ
         public override Boolean Equals(Object obj)
         {
             var x = this;
-            if (!(obj is BrokerInfo y)) return false;
+            if (obj is not BrokerInfo y) return false;
 
             return x.Name == y.Name && (x.Addresses == y.Addresses || x.Addresses != null && y.Addresses != null && x.Addresses.SequenceEqual(y.Addresses))
                 && x.Permission == y.Permission && x.TopicSynFlag == y.TopicSynFlag

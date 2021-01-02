@@ -24,9 +24,6 @@ namespace NewLife.RocketMQ
         /// <summary>消费间隔。默认15_000ms</summary>
         public Int32 ConsumerInterval { get; set; } = 15_000;
 
-        /// <summary>持久化消费偏移间隔。默认5_000ms</summary>
-        public Int32 PersistConsumerOffsetInterval { get; set; } = 5_000;
-
         /// <summary>拉取的批大小。默认32</summary>
         public Int32 BatchSize { get; set; } = 32;
 
@@ -60,7 +57,6 @@ namespace NewLife.RocketMQ
 
             _timer.TryDispose();
             _threads.TryDispose();
-            _persist.TryDispose();
         }
         #endregion
 
@@ -344,13 +340,6 @@ namespace NewLife.RocketMQ
 
                 _threads[i] = th;
             }
-
-            // 定时保存偏移量
-            if (_persist == null)
-            {
-                var time = PersistConsumerOffsetInterval;
-                _persist = new TimerX(DoPersist, null, time, time) { Async = true };
-            }
         }
 
         private void Stop()
@@ -392,10 +381,7 @@ namespace NewLife.RocketMQ
                         {
                             // 设置了跳过积压的消息，此时判断积压的消息条数，若消息条数大于设定的数量，则强制从消费最大偏移量的位置消费
                             var maxOffset = QueryMaxOffset(mq);
-                            if (maxOffset - p >= SkipOverStoredMsgCount)
-                            {
-                                p = maxOffset;
-                            }
+                            if (maxOffset >= p + SkipOverStoredMsgCount) p = maxOffset;
                         }
 
                         //if (p == -1) p = 0;
@@ -421,7 +407,13 @@ namespace NewLife.RocketMQ
                                     var rs = Consume(mq, pr);
 
                                     // 更新偏移
-                                    if (rs) st.Offset = pr.NextBeginOffset;
+                                    if (rs)
+                                    {
+                                        st.Offset = pr.NextBeginOffset;
+
+                                        // 提交消费进度
+                                        UpdateOffset(mq, st.Offset);
+                                    }
                                 }
                                 break;
                             case PullStatus.NoNewMessage:
@@ -465,9 +457,6 @@ namespace NewLife.RocketMQ
             return true;
         }
 
-        private TimerX _persist;
-        private void DoPersist(Object state) => PersistAll(_Queues);
-
         private void PersistAll(IEnumerable<QueueStore> stores)
         {
             if (stores == null) return;
@@ -505,21 +494,11 @@ namespace NewLife.RocketMQ
             /// <summary>相等比较</summary>
             /// <param name="obj"></param>
             /// <returns></returns>
-            public override Boolean Equals(Object obj)
-            {
-                var x = this;
-                if (!(obj is QueueStore y)) return false;
-
-                return Equals(x.Queue, y.Queue) && x.Offset == y.Offset;
-            }
+            public override Boolean Equals(Object obj) => obj is QueueStore y && Equals(Queue, y.Queue) && Offset == y.Offset;
 
             /// <summary>计算哈希</summary>
             /// <returns></returns>
-            public override Int32 GetHashCode()
-            {
-                var obj = this;
-                return (obj.Queue == null ? 0 : obj.Queue.GetHashCode()) ^ obj.Offset.GetHashCode();
-            }
+            public override Int32 GetHashCode() => (Queue == null ? 0 : Queue.GetHashCode()) ^ Offset.GetHashCode();
             #endregion
         }
 
@@ -606,6 +585,8 @@ namespace NewLife.RocketMQ
         private TimerX _timer;
         private DateTime _nextCheck;
         private Boolean _checking;
+        /// <summary>检查消费组，如果消费者有变化，则需要重新平衡，重新分配各消费者所处理的队列</summary>
+        /// <param name="state"></param>
         private void CheckGroup(Object state = null)
         {
             if (_checking) return;
@@ -664,10 +645,7 @@ namespace NewLife.RocketMQ
             return null;
         }
 
-        private void NotifyConsumerIdsChanged(Command cmd)
-        {
-            ThreadPool.QueueUserWorkItem(s => CheckGroup());
-        }
+        private void NotifyConsumerIdsChanged(Command cmd) => ThreadPool.QueueUserWorkItem(s => CheckGroup());
 
         private void ResetOffset(Command cmd)
         {
@@ -687,10 +665,7 @@ namespace NewLife.RocketMQ
             }
         }
 
-        private void GetConsumeStatus(Command cmd)
-        {
-
-        }
+        private void GetConsumeStatus(Command cmd) { }
 
         private Command GetConsumerRunningInfo(Command cmd)
         {

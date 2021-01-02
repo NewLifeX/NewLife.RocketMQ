@@ -23,7 +23,7 @@ namespace NewLife.RocketMQ.Protocol
         public override Boolean Equals(Object obj)
         {
             var x = this;
-            if (!(obj is MessageQueue y)) return false;
+            if (obj is not MessageQueue y) return false;
 
             return x.Topic == y.Topic && x.BrokerName == y.BrokerName && x.QueueId == y.QueueId;
         }

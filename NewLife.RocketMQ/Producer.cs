@@ -124,9 +124,9 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         public virtual SendResult Publish(Object body, String tags, String keys, Int32 timeout = -1)
         {
-            if (!(body is Byte[] buf))
+            if (body is not Byte[] buf)
             {
-                if (!(body is String str)) str = body.ToJson();
+                if (body is not String str) str = body.ToJson();
 
                 buf = str.GetBytes();
             }
