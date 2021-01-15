@@ -1,3 +1,4 @@
+ï»¿using NewLife;
 using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Client;
@@ -29,7 +30,7 @@ namespace XUnitTestRocketMQ
 
             mq.Start();
 
-            // ´´½¨topicÊ±£¬startÇ°²»ÄÜÖ¸¶¨topic£¬ÈÃÆäÊ¹ÓÃÄ¬ÈÏTBW102
+            // åˆ›å»ºtopicæ—¶ï¼Œstartå‰ä¸èƒ½æŒ‡å®štopicï¼Œè®©å…¶ä½¿ç”¨é»˜è®¤TBW102
             Assert.Equal("TBW102", mq.Topic);
 
             mq.CreateTopic("nx_test", 2);
@@ -48,7 +49,7 @@ namespace XUnitTestRocketMQ
 
             for (var i = 0; i < 10; i++)
             {
-                var str = "Ñ§ÎŞÏÈºó´ïÕßÎªÊ¦" + i;
+                var str = "å­¦æ— å…ˆåè¾¾è€…ä¸ºå¸ˆ" + i;
                 //var str = Rand.NextString(1337);
 
                 var sr = mq.Publish(str, "TagA");
@@ -71,11 +72,11 @@ namespace XUnitTestRocketMQ
 
             mq.OnConsume = (q, ms) =>
             {
-                XTrace.WriteLine("[{0}@{1}]ÊÕµ½ÏûÏ¢[{2}]", q.BrokerName, q.QueueId, ms.Length);
+                XTrace.WriteLine("[{0}@{1}]æ”¶åˆ°æ¶ˆæ¯[{2}]", q.BrokerName, q.QueueId, ms.Length);
 
                 foreach (var item in ms.ToList())
                 {
-                    XTrace.WriteLine($"ÏûÏ¢£ºÖ÷¼ü¡¾{item.Keys}¡¿£¬²úÉúÊ±¼ä¡¾{item.BornTimestamp.ToDateTime()}¡¿£¬ÄÚÈİ¡¾{item.Body.ToStr()}¡¿");
+                    XTrace.WriteLine($"æ¶ˆæ¯ï¼šä¸»é”®ã€{item.Keys}ã€‘ï¼Œäº§ç”Ÿæ—¶é—´ã€{item.BornTimestamp.ToDateTime()}ã€‘ï¼Œå†…å®¹ã€{item.Body.ToStr()}ã€‘");
                 }
 
                 return true;

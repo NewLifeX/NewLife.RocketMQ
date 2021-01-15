@@ -1,3 +1,4 @@
+ï»¿using NewLife;
 using NewLife.Log;
 using NewLife.RocketMQ;
 using System;
@@ -27,11 +28,11 @@ namespace XUnitTestRocketMQ
 
             consumer.OnConsume = (q, ms) =>
             {
-                XTrace.WriteLine("[{0}@{1}]ÊÕµ½ÏûÏ¢[{2}]", q.BrokerName, q.QueueId, ms.Length);
+                XTrace.WriteLine("[{0}@{1}]æ”¶åˆ°æ¶ˆæ¯[{2}]", q.BrokerName, q.QueueId, ms.Length);
 
                 foreach (var item in ms.ToList())
                 {
-                    XTrace.WriteLine($"ÏûÏ¢£ºÖ÷¼ü¡¾{item.Keys}¡¿£¬²úÉúÊ±¼ä¡¾{item.BornTimestamp.ToDateTime()}¡¿£¬ÄÚÈİ¡¾{item.Body.ToStr()}¡¿");
+                    XTrace.WriteLine($"æ¶ˆæ¯ï¼šä¸»é”®ã€{item.Keys}ã€‘ï¼Œäº§ç”Ÿæ—¶é—´ã€{item.BornTimestamp.ToDateTime()}ã€‘ï¼Œå†…å®¹ã€{item.Body.ToStr()}ã€‘");
                 }
 
                 return true;
