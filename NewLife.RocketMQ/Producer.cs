@@ -135,42 +135,6 @@ namespace NewLife.RocketMQ
         }
         #endregion
 
-        #region 业务方法
-        /// <summary>更新或创建主题。重复执行时为更新</summary>
-        /// <param name="topic">主题</param>
-        /// <param name="queueNum">队列数</param>
-        /// <param name="topicSysFlag"></param>
-        public virtual void CreateTopic(String topic, Int32 queueNum, Int32 topicSysFlag = 0)
-        {
-            var header = new
-            {
-                topic,
-                defaultTopic = Topic,
-                readQueueNums = queueNum,
-                writeQueueNums = queueNum,
-                perm = 7,
-                topicFilterType = "SINGLE_TAG",
-                topicSysFlag,
-                order = false,
-            };
-
-            // 在所有Broker上创建Topic
-            foreach (var item in Brokers)
-            {
-                WriteLog("在Broker[{0}]上创建主题：{1}", item.Name, topic);
-                try
-                {
-                    var bk = GetBroker(item.Name);
-                    var rs = bk.Invoke(RequestCode.UPDATE_AND_CREATE_TOPIC, null, header);
-                }
-                catch (Exception ex)
-                {
-                    XTrace.WriteException(ex);
-                }
-            }
-        }
-        #endregion
-
         #region 选择Broker队列
         private IList<BrokerInfo> _brokers;
         private WeightRoundRobin _robin;
