@@ -13,7 +13,7 @@ namespace NewLife.RocketMQ
     {
         #region 属性
         /// <summary>Broker集合</summary>
-        public IList<BrokerInfo> Brokers { get; } = new List<BrokerInfo>();
+        public IList<BrokerInfo> Brokers { get; private set; } = new List<BrokerInfo>();
 
         /// <summary>代理改变时触发</summary>
         public event EventHandler OnBrokerChange;
@@ -97,8 +97,9 @@ namespace NewLife.RocketMQ
             // 如果完全相等，则直接返回。否则重新平衡队列
             if (Brokers.SequenceEqual(list)) return list;
 
-            Brokers.Clear();
-            if (Brokers is List<BrokerInfo> bks) bks.AddRange(list);
+            //Brokers.Clear();
+            //if (Brokers is List<BrokerInfo> bks) bks.AddRange(list);
+            Brokers = list;
 
             // 有改变，重新平衡队列
             //_brokers = null;

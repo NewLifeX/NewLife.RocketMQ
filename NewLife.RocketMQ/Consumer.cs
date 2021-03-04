@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
+using NewLife.Log;
 using NewLife.Reflection;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
@@ -608,6 +609,10 @@ namespace NewLife.RocketMQ
 
                     if (_timer != null) _timer.Period = 30_000;
                     _nextCheck = now.AddSeconds(3);
+                }
+                catch (Exception ex)
+                {
+                    XTrace.WriteException(ex);
                 }
                 finally
                 {
