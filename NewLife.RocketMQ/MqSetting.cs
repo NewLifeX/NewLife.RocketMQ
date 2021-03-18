@@ -20,9 +20,9 @@ namespace NewLife.RocketMQ
         [Description("消费组")]
         public String Group { get; set; }
 
-        /// <summary>获取名称服务器地址的http地址，阿里云专用</summary>
-        [Description("获取名称服务器地址的http地址，阿里云专用")]
-        public String Server { get; set; } = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet";
+        /// <summary>获取名称服务器地址的http地址，阿里云专用 http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet</summary>
+        [Description("获取名称服务器地址的http地址，阿里云专用 http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet")]
+        public String Server { get; set; }
 
         /// <summary>访问令牌，阿里云专用</summary>
         [Description("访问令牌，阿里云专用")]

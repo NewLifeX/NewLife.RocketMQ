@@ -100,7 +100,11 @@ namespace NewLife.RocketMQ.Protocol
             // 主体
             var len = bn.Read<Int32>();
             Body = bn.ReadBytes(len);
-            if ((SysFlag & 1) == 1) { /*uncompress*/}
+            if ((SysFlag & 1) == 1)
+            {
+                /*uncompress*/
+                Body = Body.Decompress();
+            }
 
             // 主题
             len = bn.Read<Byte>();
