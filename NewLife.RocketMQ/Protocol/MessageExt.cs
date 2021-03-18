@@ -103,7 +103,9 @@ namespace NewLife.RocketMQ.Protocol
             if ((SysFlag & 1) == 1)
             {
                 /*uncompress*/
-                Body = Body.Decompress();
+                //Body = Body.Decompress();
+                var gs = new MemoryStream(Body);
+                Body = gs.DecompressGZip().ReadBytes();
             }
 
             // 主题
