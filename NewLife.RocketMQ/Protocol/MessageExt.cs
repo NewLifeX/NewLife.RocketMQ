@@ -103,9 +103,10 @@ namespace NewLife.RocketMQ.Protocol
             if ((SysFlag & 1) == 1)
             {
                 /*uncompress*/
-                //Body = Body.Decompress();
-                var gs = new MemoryStream(Body);
-                Body = gs.DecompressGZip().ReadBytes();
+                // ZLIB格式RFC1950，要去掉头部两个字节
+                Body = Body.ReadBytes(2).Decompress();
+                //var gs = new MemoryStream(Body);
+                //Body = gs.DecompressGZip().ReadBytes();
             }
 
             // 主题

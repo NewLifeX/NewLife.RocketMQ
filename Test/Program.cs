@@ -4,6 +4,8 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Common;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 
@@ -15,7 +17,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test1();
+            Test4();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -149,6 +151,24 @@ namespace Test
                 var bk = list[idx];
                 Console.WriteLine("{0} {1} {2}", i, bk.Name, times - 1);
             }
+        }
+
+        static void Test4()
+        {
+            var a1 = File.ReadAllBytes("a1".GetFullPath());
+            var a2 = File.ReadAllBytes("a2".GetFullPath());
+
+            //var ms = new MemoryStream(a1);
+            //ms.Position += 2;
+            //var ds = new DeflateStream(ms, CompressionMode.Decompress);
+            //var buf = ds.ReadBytes();
+
+            var buf = a1.ReadBytes(2).Decompress();
+
+            var rs = a2.ToBase64() == buf.ToBase64();
+            Console.WriteLine(rs);
+
+            Console.WriteLine(buf.ToStr());
         }
     }
 }
