@@ -4,37 +4,45 @@ using System.Linq;
 namespace NewLife.RocketMQ.Common
 {
     /// <summary>带权重负载均衡算法</summary>
-    public class WeightRoundRobin
+    public class WeightRoundRobin : ILoadBalance
     {
         #region 属性
+        /// <summary>已就绪</summary>
+        public Boolean Ready { get; set; }
+
         /// <summary>权重集合</summary>
-        public Int32[] Weights { get; set; }
+        public Int32[] Weights { get; private set; }
 
         /// <summary>最小权重</summary>
-        private readonly Int32 minWeight;
+        private Int32 minWeight;
 
         /// <summary>状态值</summary>
-        private readonly Int32[] _states;
+        private Int32[] _states;
 
         /// <summary>次数</summary>
-        private readonly Int32[] _times;
+        private Int32[] _times;
         #endregion
 
-        #region 构造
-        /// <summary>实例化</summary>
-        public WeightRoundRobin(Int32[] weights)
+        #region 方法
+        /// <summary>设置每个选项的权重数据</summary>
+        /// <param name="weights"></param>
+        public void Set(Int32[] weights)
         {
+            if (weights == null) throw new ArgumentNullException(nameof(weights));
+            if (Weights != null && Weights.SequenceEqual(weights)) return;
+
             Weights = weights;
 
             minWeight = weights.Min();
 
             _states = new Int32[weights.Length];
             _times = new Int32[weights.Length];
-        }
-        #endregion
 
-        #region 方法
+            Ready = true;
+        }
+
         /// <summary>根据权重选择，并返回该项是第几次选中</summary>
+        /// <param name="times">第几次选中</param>
         /// <returns></returns>
         public Int32 Get(out Int32 times)
         {

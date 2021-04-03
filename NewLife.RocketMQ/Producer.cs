@@ -13,6 +13,9 @@ namespace NewLife.RocketMQ
     public class Producer : MqBase
     {
         #region 属性
+        /// <summary>负载均衡。发布消息时，分发到各个队列的负载均衡算法，默认使用带权重的轮询</summary>
+        public ILoadBalance LoadBalance { get; set; }
+
         //public Int32 DefaultTopicQueueNums { get; set; } = 4;
 
         //public Int32 SendMsgTimeout { get; set; } = 3_000;
@@ -35,12 +38,15 @@ namespace NewLife.RocketMQ
         {
             if (!base.Start()) return false;
 
+            if (LoadBalance == null) LoadBalance = new WeightRoundRobin();
+
             if (_NameServer != null)
             {
                 _NameServer.OnBrokerChange += (s, e) =>
                 {
                     _brokers = null;
-                    _robin = null;
+                    //_robin = null;
+                    LoadBalance.Ready = false;
                 };
             }
 
@@ -49,7 +55,7 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 发送消息
-        private static readonly DateTime _dt1970 = new DateTime(1970, 1, 1);
+        private static readonly DateTime _dt1970 = new(1970, 1, 1);
         /// <summary>发送消息</summary>
         /// <param name="msg"></param>
         /// <param name="timeout"></param>
@@ -137,12 +143,13 @@ namespace NewLife.RocketMQ
 
         #region 选择Broker队列
         private IList<BrokerInfo> _brokers;
-        private WeightRoundRobin _robin;
+        //private WeightRoundRobin _robin;
         /// <summary>选择队列</summary>
         /// <returns></returns>
-        public MessageQueue SelectQueue()
+        public virtual MessageQueue SelectQueue()
         {
-            if (_robin == null)
+            var lb = LoadBalance;
+            if (!lb.Ready)
             {
                 var list = Brokers.Where(e => e.Permission.HasFlag(Permissions.Write) && e.WriteQueueNums > 0).ToList();
                 if (list.Count == 0) return null;
@@ -151,11 +158,12 @@ namespace NewLife.RocketMQ
                 if (total <= 0) return null;
 
                 _brokers = list;
-                _robin = new WeightRoundRobin(list.Select(e => e.WriteQueueNums).ToArray());
+                //lb = new WeightRoundRobin();
+                lb.Set(list.Select(e => e.WriteQueueNums).ToArray());
             }
 
             // 构造排序列表。希望能够均摊到各Broker
-            var idx = _robin.Get(out var times);
+            var idx = lb.Get(out var times);
             var bk = _brokers[idx];
             return new MessageQueue { BrokerName = bk.Name, QueueId = (times - 1) % bk.WriteQueueNums };
         }

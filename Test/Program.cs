@@ -143,7 +143,8 @@ namespace Test
             Console.WriteLine(list[1].Equals(list2[1]));
             Console.WriteLine(list2.SequenceEqual(list));
 
-            var robin = new WeightRoundRobin(list.Select(e => e.WriteQueueNums).ToArray());
+            var robin = new WeightRoundRobin();
+            robin.Set(list.Select(e => e.WriteQueueNums).ToArray());
             var count = list.Sum(e => e.WriteQueueNums);
             for (var i = 0; i < count; i++)
             {

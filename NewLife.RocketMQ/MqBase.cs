@@ -166,7 +166,7 @@ namespace NewLife.RocketMQ.Client
         #endregion
 
         #region 收发信息
-        private readonly ConcurrentDictionary<String, BrokerClient> _Brokers = new ConcurrentDictionary<String, BrokerClient>();
+        private readonly ConcurrentDictionary<String, BrokerClient> _Brokers = new();
         /// <summary>获取代理客户端</summary>
         /// <param name="name"></param>
         /// <returns></returns>
