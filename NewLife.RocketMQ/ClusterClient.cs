@@ -10,6 +10,9 @@ using NewLife.Net;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
+#if !NET4
+using TaskEx = System.Threading.Tasks.Task;
+#endif
 
 namespace NewLife.RocketMQ
 {
@@ -207,8 +210,9 @@ namespace NewLife.RocketMQ
 
             OnBuild(header);
 
-            //var rs = TaskEx.Run(() => SendAsync(cmd)).Result;
-            var rs = SendAsync(cmd).Result;
+            // 避免UI死锁
+            var rs = TaskEx.Run(() => SendAsync(cmd)).Result;
+            //var rs = SendAsync(cmd).Result;
 
             // 判断异常响应
             if (!ignoreError && rs.Header != null && rs.Header.Code != 0) throw rs.Header.CreateException();
