@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using NewLife.Log;
+using System.Threading;
+using System.Threading.Tasks;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Common;
 using NewLife.RocketMQ.Protocol;
@@ -22,13 +23,15 @@ namespace NewLife.RocketMQ
 
         //public Int32 CompressMsgBodyOverHowmuch { get; set; } = 4096;
 
-        //public Int32 RetryTimesWhenSendFailed { get; set; } = 2;
+        /// <summary>发送消息失败时的重试次数。默认3次</summary>
+        public Int32 RetryTimesWhenSendFailed { get; set; } = 3;
 
         //public Int32 RetryTimesWhenSendAsyncFailed { get; set; } = 2;
 
         //public Boolean RetryAnotherBrokerWhenNotStoreOK { get; set; }
 
-        //public Int32 MaxMessageSize { get; set; } = 4 * 1024 * 1024;
+        /// <summary>最大消息大小。默认4*1024*1024</summary>
+        public Int32 MaxMessageSize { get; set; } = 4 * 1024 * 1024;
         #endregion
 
         #region 基础方法
@@ -62,6 +65,9 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         public virtual SendResult Publish(Message msg, Int32 timeout = -1)
         {
+            var max = MaxMessageSize;
+            if (max > 0 && msg.Body.Length > max) throw new InvalidOperationException($"主题[{Topic}]的数据包大小[{msg.Body.Length}]超过最大限制[{max}]，大key会拖累整个队列，可通过MaxMessageSize调节。");
+
             // 选择队列分片
             var mq = SelectQueue();
             mq.Topic = Topic;
@@ -81,41 +87,53 @@ namespace NewLife.RocketMQ
                 UnitMode = UnitMode,
             };
 
-            // 性能埋点
-            using var span = Tracer?.NewSpan($"mq:{Topic}:Publish");
-            try
+            for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
             {
-                // 根据队列获取Broker客户端
-                var bk = GetBroker(mq.BrokerName);
-                var rs = bk.Invoke(RequestCode.SEND_MESSAGE_V2, msg.Body, smrh.GetProperties(), true);
-
-                // 包装结果
-                var sr = new SendResult
+                // 性能埋点
+                using var span = Tracer?.NewSpan($"mq:{Topic}:Publish");
+                try
                 {
-                    //Status = SendStatus.SendOK,
-                    Queue = mq
-                };
-                sr.Status = (ResponseCode)rs.Header.Code switch
+                    // 根据队列获取Broker客户端
+                    var bk = GetBroker(mq.BrokerName);
+                    var rs = bk.Invoke(RequestCode.SEND_MESSAGE_V2, msg.Body, smrh.GetProperties(), true);
+
+                    // 包装结果
+                    var sr = new SendResult
+                    {
+                        //Status = SendStatus.SendOK,
+                        Queue = mq
+                    };
+                    sr.Status = (ResponseCode)rs.Header.Code switch
+                    {
+                        ResponseCode.SUCCESS => SendStatus.SendOK,
+                        ResponseCode.FLUSH_DISK_TIMEOUT => SendStatus.FlushDiskTimeout,
+                        ResponseCode.FLUSH_SLAVE_TIMEOUT => SendStatus.FlushSlaveTimeout,
+                        ResponseCode.SLAVE_NOT_AVAILABLE => SendStatus.SlaveNotAvailable,
+                        _ => throw rs.Header.CreateException(),
+                    };
+                    sr.Read(rs.Header?.ExtFields);
+
+                    return sr;
+                }
+                catch (Exception ex)
                 {
-                    ResponseCode.SUCCESS => SendStatus.SendOK,
-                    ResponseCode.FLUSH_DISK_TIMEOUT => SendStatus.FlushDiskTimeout,
-                    ResponseCode.FLUSH_SLAVE_TIMEOUT => SendStatus.FlushSlaveTimeout,
-                    ResponseCode.SLAVE_NOT_AVAILABLE => SendStatus.SlaveNotAvailable,
-                    _ => throw rs.Header.CreateException(),
-                };
-                sr.Read(rs.Header?.ExtFields);
+                    span?.SetError(ex, msg);
 
-                return sr;
-            }
-            catch (Exception ex)
-            {
-                span?.SetError(ex, msg);
+                    // 如果网络异常，则延迟重发
+                    if (ex is not ResponseException && i < RetryTimesWhenSendFailed)
+                    {
+                        Thread.Sleep(1000);
+                        continue;
+                    }
 
-                throw;
+                    throw;
+                }
             }
+
+            return null;
         }
-		
-		/// <summary>发布消息</summary>
+
+        /// <summary>发布消息</summary>
         /// <param name="body"></param>
         /// <param name="tags"></param>
         /// <param name="timeout"></param>
