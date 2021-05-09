@@ -220,6 +220,53 @@ namespace NewLife.RocketMQ
             return rs;
         }
 
+        /// <summary>发送指定类型的命令</summary>
+        internal virtual async Task<Command> InvokeAsync(RequestCode request, Object body, Object extFields = null,
+            Boolean ignoreError = false)
+        {
+            var header = new Header
+            {
+                Code = (Int32)request,
+                Remark = request.ToString(),
+            };
+
+            var cmd = new Command
+            {
+                Header = header,
+            };
+
+            // 主体
+            if (body is Byte[] buf)
+            {
+                cmd.Payload = buf;
+            }
+            else if (body != null)
+            {
+                cmd.Payload = JsonWriter.ToJson(body, indented: false, nullValue: false, camelCase: false).GetBytes();
+            }
+
+            if (extFields != null)
+            {
+                var dic = header.GetExtFields();
+                foreach (var item in extFields.ToDictionary())
+                {
+                    dic[item.Key] = item.Value + "";
+                }
+            }
+
+            OnBuild(header);
+
+            var rs = await SendAsync(cmd);
+
+            // 判断异常响应
+            if (!ignoreError && rs.Header != null && rs.Header.Code != 0)
+            {
+                throw rs.Header.CreateException();
+            }
+
+            return rs;
+        }
+
         /// <summary>建立命令时，处理头部</summary>
         /// <param name="header"></param>
         protected virtual void OnBuild(Header header)

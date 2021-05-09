@@ -57,6 +57,26 @@ namespace XUnitTestRocketMQ
         }
 
         [Fact]
+        static void ProduceAsyncTest()
+        {
+            using var mq = new Producer
+            {
+                Topic = "test1",
+            };
+            SetConfig(mq);
+
+            mq.Start();
+
+            for (var i = 0; i < 10; i++)
+            {
+                var str = "学无先后达者为师" + i;
+                //var str = Rand.NextString(1337);
+
+                var sr = mq.PublishAsync(str, "TagA").Result;
+            }
+        }
+
+        [Fact]
         static void ConsumeTest()
         {
             var mq = new Consumer
