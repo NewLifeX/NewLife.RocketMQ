@@ -50,11 +50,11 @@ namespace NewLife.RocketMQ
         /// <param name="disposing"></param>
         protected override void Dispose(Boolean disposing)
         {
-            base.Dispose(disposing);
-
             // 停止并保存偏移
             Stop();
             PersistAll(_Queues);
+
+            base.Dispose(disposing);
 
             _timer.TryDispose();
             _threads.TryDispose();
@@ -343,7 +343,8 @@ namespace NewLife.RocketMQ
             }
         }
 
-        private void Stop()
+        /// <summary>停止</summary>
+        public override void Stop()
         {
             var ts = _threads;
             if (ts != null && ts.Length > 0)
@@ -351,17 +352,24 @@ namespace NewLife.RocketMQ
                 WriteLog("停止调度线程[{0}]", ts.Length);
 
                 // 预留一点退出时间
+                _version++;
                 foreach (var item in ts)
                 {
                     try
                     {
                         if (item == null || item.ThreadState != ThreadState.Running) continue;
 
-                        if (item.Join(3_000)) item.Abort();
+                        if (!item.Join(3_000))
+                        {
+                            item.Interrupt();
+                            item.Abort();
+                        }
                     }
                     catch { }
                 }
             }
+
+            base.Stop();
         }
 
         private void DoPull(Object state)

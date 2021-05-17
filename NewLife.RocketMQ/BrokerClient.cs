@@ -44,15 +44,14 @@ namespace NewLife.RocketMQ
 
         #region 注销
         /// <summary>注销客户端</summary>
-        /// <param name="id"></param>
         /// <param name="group"></param>
-        public virtual Command UnRegisterClient(String id, String group)
+        public virtual Command UnRegisterClient(String group)
         {
             if (group.IsNullOrEmpty()) group = "CLIENT_INNER_PRODUCER";
 
             return Invoke(RequestCode.UNREGISTER_CLIENT, new
             {
-                ClientId = id,
+                ClientId = Id,
                 ProducerGroup = group,
                 ConsumerGroup = group,
             });

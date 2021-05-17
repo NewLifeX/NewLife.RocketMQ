@@ -106,10 +106,11 @@ namespace NewLife.RocketMQ.Client
 
             _NameServer.TryDispose();
 
-            foreach (var item in _Brokers)
-            {
-                item.Value.TryDispose();
-            }
+            //foreach (var item in _Brokers)
+            //{
+            //    item.Value.TryDispose();
+            //}
+            Stop();
         }
 
         /// <summary>友好字符串</summary>
@@ -162,6 +163,27 @@ namespace NewLife.RocketMQ.Client
             _NameServer = client;
 
             return Active = true;
+        }
+
+        /// <summary>停止</summary>
+        /// <returns></returns>
+        public virtual void Stop()
+        {
+            foreach (var item in _Brokers)
+            {
+                try
+                {
+                    item.Value.UnRegisterClient(Group);
+                    item.Value.TryDispose();
+                }
+                catch (Exception ex)
+                {
+                    XTrace.WriteException(ex);
+                }
+            }
+            _Brokers.Clear();
+
+            Active = false;
         }
         #endregion
 
