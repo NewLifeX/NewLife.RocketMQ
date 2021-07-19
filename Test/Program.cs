@@ -90,10 +90,10 @@ namespace Test
                 Group = "test",
                 NameServerAddress = "127.0.0.1:9876",
 
-                AccessKey= "appId",
+                AccessKey = "appId",
                 SecretKey = "appSecret",
 
-                FromLastOffset = false,
+                //FromLastOffset = true,
                 //SkipOverStoredMsgCount = 0,
                 //BatchSize = 20,
 
@@ -115,7 +115,7 @@ namespace Test
 
             foreach (var item in ms.ToList())
             {
-                Console.WriteLine($"消息：主键【{item.Keys}】，产生时间【{item.BornTimestamp.ToDateTime()}】，内容【{item.Body.ToStr()}】");
+                Console.WriteLine($"消息：主键【{item.Keys}】，产生时间【{item.BornTimestamp.ToDateTime()}】，内容【{item.Body.ToStr(null, 0, 64)}】");
             }
 
             return true;

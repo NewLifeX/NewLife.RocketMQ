@@ -68,6 +68,8 @@ namespace NewLife.RocketMQ
         {
             if (Active) return true;
 
+            WriteLog("正在准备消费 {0}", Topic);
+
             var list = Data;
             if (list == null)
             {
@@ -521,6 +523,8 @@ namespace NewLife.RocketMQ
              * 3，各消费者平均分配队列，不采用环形，减少消费者到Broker连接数
              */
 
+            if (_Queues == null) WriteLog("准备从所有Broker服务器上获取消费者列表，以确定当前消费者应该负责消费的queue分片");
+
             var cs = GetConsumers(Group);
             if (cs.Count == 0) return false;
 
@@ -583,7 +587,7 @@ namespace NewLife.RocketMQ
             }
 
             var dic = qs.GroupBy(e => e.BrokerName).ToDictionary(e => e.Key, e => e.Join(",", x => x.QueueId));
-            WriteLog("消费重新平衡：{0}", dic.Join(";", e => $"{e.Key}[{e.Value}]"));
+            WriteLog("消费重新平衡，当前消费者负责queue分片：{0}", dic.Join(";", e => $"{e.Key}[{e.Value}]"));
 
             _Queues = rs.ToArray();
             _Consumers = cs2.ToArray();
@@ -737,6 +741,7 @@ namespace NewLife.RocketMQ
             sb.Append('}');
 
             var rs = cmd.CreateReply() as Command;
+            rs.Header.Language = "DOTNET";
             rs.Payload = sb.ToString().GetBytes();
 
             return rs;

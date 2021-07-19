@@ -151,6 +151,8 @@ namespace NewLife.RocketMQ.Client
                 }
             }
 
+            WriteLog("正在从名称服务器[{0}]查找该Topic所在Broker服务器地址列表", NameServerAddress);
+
             var client = new NameClient(ClientId, this) { Name = "Name", Log = ClientLog };
             client.Start();
 
