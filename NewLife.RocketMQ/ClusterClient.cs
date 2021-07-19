@@ -117,10 +117,10 @@ namespace NewLife.RocketMQ
         {
             if (cmd.Header.Opaque == 0) cmd.Header.Opaque = Interlocked.Increment(ref g_id);
 
+            WriteLog("=> {0}", cmd);
+
             // 签名
             SetSignature(cmd);
-
-            WriteLog("=> {0}", cmd);
 
             EnsureCreate();
             var client = _Client;

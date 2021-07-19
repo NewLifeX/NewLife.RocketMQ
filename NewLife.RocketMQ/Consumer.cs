@@ -36,10 +36,10 @@ namespace NewLife.RocketMQ
 
         /// <summary>
         /// 【仅FromLastOffset设置为true时生效】
-        /// 跳过积压的消息数量，默认为10000，即积压消息超过10000后将强制从消费最大偏移量的位置消费
+        /// 跳过积压的消息数量，默认为0，即积压消息超过10000后将强制从消费最大偏移量的位置消费
         /// 若需要处理所有未消费消息，可将此值设置为0
         /// </summary>
-        public UInt32 SkipOverStoredMsgCount { get; set; } = 10000;
+        public UInt32 SkipOverStoredMsgCount { get; set; }
 
         /// <summary>消费委托</summary>
         public Func<MessageQueue, MessageExt[], Boolean> OnConsume;
@@ -105,7 +105,7 @@ namespace NewLife.RocketMQ
         /// <param name="maxNums"></param>
         /// <param name="msTimeout"></param>
         /// <returns></returns>
-        public PullResult Pull(MessageQueue mq, Int64 offset, Int32 maxNums, Int32 msTimeout = -1)
+        public async Task<PullResult> Pull(MessageQueue mq, Int64 offset, Int32 maxNums, Int32 msTimeout = -1)
         {
             // 性能埋点
             using var span = Tracer?.NewSpan($"mq:{Topic}:Consume");
@@ -129,7 +129,7 @@ namespace NewLife.RocketMQ
                 var dic = header.GetProperties();
                 var bk = GetBroker(mq.BrokerName);
 
-                var rs = bk.Invoke(RequestCode.PULL_MESSAGE, null, dic, true);
+                var rs = await bk.InvokeAsync(RequestCode.PULL_MESSAGE, null, dic, true);
                 if (rs?.Header == null) return null;
 
                 var pr = new PullResult();
@@ -167,10 +167,10 @@ namespace NewLife.RocketMQ
         /// <summary>查询指定队列的偏移量</summary>
         /// <param name="mq"></param>
         /// <returns></returns>
-        public Int64 QueryOffset(MessageQueue mq)
+        public async Task<Int64> QueryOffset(MessageQueue mq)
         {
             var bk = GetBroker(mq.BrokerName);
-            var rs = bk.Invoke(RequestCode.QUERY_CONSUMER_OFFSET, null, new
+            var rs = await bk.InvokeAsync(RequestCode.QUERY_CONSUMER_OFFSET, null, new
             {
                 consumerGroup = Group,
                 topic = Topic,
@@ -188,10 +188,10 @@ namespace NewLife.RocketMQ
         /// </summary>
         /// <param name="mq"></param>
         /// <returns></returns>
-        public Int64 QueryMaxOffset(MessageQueue mq)
+        public async Task<Int64> QueryMaxOffset(MessageQueue mq)
         {
             var bk = GetBroker(mq.BrokerName);
-            var rs = bk.Invoke(RequestCode.GET_MAX_OFFSET, null, new
+            var rs = await bk.InvokeAsync(RequestCode.GET_MAX_OFFSET, null, new
             {
                 consumerGroup = Group,
                 topic = Topic,
@@ -209,10 +209,10 @@ namespace NewLife.RocketMQ
         /// </summary>
         /// <param name="mq"></param>
         /// <returns></returns>
-        public Int64 QueryMinOffset(MessageQueue mq)
+        public async Task<Int64> QueryMinOffset(MessageQueue mq)
         {
             var bk = GetBroker(mq.BrokerName);
-            var rs = bk.Invoke(RequestCode.GET_MIN_OFFSET, null, new
+            var rs = await bk.InvokeAsync(RequestCode.GET_MIN_OFFSET, null, new
             {
                 consumerGroup = Group,
                 topic = Topic,
@@ -238,10 +238,10 @@ namespace NewLife.RocketMQ
         /// <param name="mq"></param>
         /// <param name="commitOffset"></param>
         /// <returns></returns>
-        public Boolean UpdateOffset(MessageQueue mq, Int64 commitOffset)
+        public async Task<Boolean> UpdateOffset(MessageQueue mq, Int64 commitOffset)
         {
             var bk = GetBroker(mq.BrokerName);
-            var rs = bk.Invoke(RequestCode.UPDATE_CONSUMER_OFFSET, null, new
+            var rs = await bk.InvokeAsync(RequestCode.UPDATE_CONSUMER_OFFSET, null, new
             {
                 commitOffset,
                 consumerGroup = Group,
@@ -364,7 +364,7 @@ namespace NewLife.RocketMQ
                         if (!item.Join(3_000))
                         {
                             item.Interrupt();
-                            item.Abort();
+                            //item.Abort();
                         }
                     }
                     catch { }
@@ -374,7 +374,7 @@ namespace NewLife.RocketMQ
             base.Stop();
         }
 
-        private void DoPull(Object state)
+        private async void DoPull(Object state)
         {
             var st = state as QueueStore;
             var mq = st.Queue;
@@ -387,11 +387,11 @@ namespace NewLife.RocketMQ
                     // 查询偏移量，可能首次启动-1
                     if (st.Offset < 0 && FromLastOffset)
                     {
-                        var p = QueryOffset(mq);
+                        var p = await QueryOffset(mq);
                         if (SkipOverStoredMsgCount > 0)
                         {
                             // 设置了跳过积压的消息，此时判断积压的消息条数，若消息条数大于设定的数量，则强制从消费最大偏移量的位置消费
-                            var maxOffset = QueryMaxOffset(mq);
+                            var maxOffset = await QueryMaxOffset(mq);
                             if (maxOffset >= p + SkipOverStoredMsgCount) p = maxOffset;
                         }
 
@@ -406,7 +406,7 @@ namespace NewLife.RocketMQ
 
                     // 拉取一批，阻塞等待
                     var offset = st.Offset >= 0 ? st.Offset : 0;
-                    var pr = Pull(mq, offset, BatchSize, ConsumerInterval);
+                    var pr = await Pull(mq, offset, BatchSize, ConsumerInterval);
                     if (pr != null)
                     {
                         switch (pr.Status)
@@ -423,7 +423,7 @@ namespace NewLife.RocketMQ
                                         st.Offset = pr.NextBeginOffset;
 
                                         // 提交消费进度
-                                        UpdateOffset(mq, st.Offset);
+                                        await UpdateOffset(mq, st.Offset);
                                     }
                                 }
                                 break;
@@ -454,7 +454,7 @@ namespace NewLife.RocketMQ
             }
 
             // 保存消费进度
-            if (st.Offset >= 0 && st.Offset != st.CommitOffset) UpdateOffset(mq, st.Offset);
+            if (st.Offset >= 0 && st.Offset != st.CommitOffset) await UpdateOffset(mq, st.Offset);
         }
 
         /// <summary>拉取到一批消息</summary>
@@ -479,7 +479,7 @@ namespace NewLife.RocketMQ
                     var mq = item.Queue;
                     WriteLog("队列[{0}@{1}]更新偏移[{2:n0}]", mq.BrokerName, mq.QueueId, item.Offset);
 
-                    UpdateOffset(item.Queue, item.Offset);
+                    _ = UpdateOffset(item.Queue, item.Offset);
 
                     item.CommitOffset = item.Offset;
                 }

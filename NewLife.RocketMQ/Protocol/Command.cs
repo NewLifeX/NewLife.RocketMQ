@@ -178,7 +178,7 @@ namespace NewLife.RocketMQ.Protocol
             if (pk != null && pk.Total > 0)
             {
                 sb.AppendFormat("[{0}]", pk.Total);
-                sb.Append(pk.ToStr(null, 0, 64));
+                sb.Append(pk.ToStr(null, 0, 256));
             }
 
             return sb.Put(true);
