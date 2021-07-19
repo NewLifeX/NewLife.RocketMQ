@@ -22,8 +22,8 @@ namespace NewLife.RocketMQ
         /// <summary>数据</summary>
         public IList<ConsumerData> Data { get; set; }
 
-        /// <summary>消费间隔。默认15_000ms</summary>
-        public Int32 ConsumerInterval { get; set; } = 15_000;
+        /// <summary>消费挂起超时。每次拉取消息，服务端如果没有消息时的挂起时间，默认15_000ms</summary>
+        public Int32 SuspendTimeout { get; set; } = 15_000;
 
         /// <summary>拉取的批大小。默认32</summary>
         public Int32 BatchSize { get; set; } = 32;
@@ -406,7 +406,7 @@ namespace NewLife.RocketMQ
 
                     // 拉取一批，阻塞等待
                     var offset = st.Offset >= 0 ? st.Offset : 0;
-                    var pr = await Pull(mq, offset, BatchSize, ConsumerInterval);
+                    var pr = await Pull(mq, offset, BatchSize, SuspendTimeout);
                     if (pr != null)
                     {
                         switch (pr.Status)

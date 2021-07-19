@@ -93,7 +93,7 @@ namespace Test
                 AccessKey = "appId",
                 SecretKey = "appSecret",
 
-                //FromLastOffset = true,
+                //FromLastOffset = false,
                 //SkipOverStoredMsgCount = 0,
                 //BatchSize = 20,
 
