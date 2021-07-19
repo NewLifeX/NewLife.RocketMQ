@@ -2,6 +2,7 @@
 using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Common;
+using NewLife.RocketMQ.Protocol;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -56,6 +57,7 @@ namespace Test
             mq.Dispose();
         }
 
+        private static Consumer _consumer;
         static void Test2()
         {
             var consumer = new Consumer
@@ -71,20 +73,12 @@ namespace Test
                 Log = XTrace.Log,
             };
 
-            consumer.OnConsume = (q, ms) =>
-            {
-                Console.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
-
-                foreach (var item in ms.ToList())
-                {
-                    Console.WriteLine($"消息：主键【{item.Keys}】，产生时间【{item.BornTimestamp.ToDateTime()}】，内容【{item.Body.ToStr()}】");
-                }
-
-                return true;
-            };
+            consumer.OnConsume = OnConsume;
 
             consumer.Configure(MqSetting.Current);
             consumer.Start();
+
+            _consumer = consumer;
 
             //Thread.Sleep(3000);
             //foreach (var item in consumer.Clients)
@@ -92,6 +86,18 @@ namespace Test
             //    var rs = item.GetRuntimeInfo();
             //    Console.WriteLine("{0}\t{1}", item.Name, rs["brokerVersionDesc"]);
             //}
+        }
+
+        private static Boolean OnConsume(MessageQueue q, MessageExt[] ms)
+        {
+            Console.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
+
+            foreach (var item in ms.ToList())
+            {
+                Console.WriteLine($"消息：主键【{item.Keys}】，产生时间【{item.BornTimestamp.ToDateTime()}】，内容【{item.Body.ToStr()}】");
+            }
+
+            return true;
         }
 
         static void Test3()
