@@ -120,9 +120,7 @@ namespace NewLife.RocketMQ
             // 签名
             SetSignature(cmd);
 
-#if DEBUG
             WriteLog("=> {0}", cmd);
-#endif
 
             EnsureCreate();
             var client = _Client;
@@ -130,9 +128,7 @@ namespace NewLife.RocketMQ
             {
                 var rs = await client.SendMessageAsync(cmd);
 
-#if DEBUG
                 WriteLog("<= {0}", rs as Command);
-#endif
 
                 return rs as Command;
             }
@@ -311,11 +307,9 @@ namespace NewLife.RocketMQ
         /// <param name="cmd"></param>
         protected virtual Command OnReceive(Command cmd)
         {
-#if DEBUG
             var code = (cmd.Header.Flag & 1) == 0 ? (RequestCode)cmd.Header.Code + "" : (ResponseCode)cmd.Header.Code + "";
 
             WriteLog("收到：Code={0} {1}", code, cmd.Header.ToJson());
-#endif
 
             if (Received == null) return null;
 
@@ -328,7 +322,7 @@ namespace NewLife.RocketMQ
 
         #region 日志
         /// <summary>日志</summary>
-        public ILog Log { get; set; } = Logger.Null;
+        public ILog Log { get; set; }
 
         /// <summary>写日志</summary>
         /// <param name="format"></param>

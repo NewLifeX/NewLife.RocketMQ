@@ -37,7 +37,6 @@ namespace NewLife.RocketMQ
             var cfg = Config;
             var ss = cfg.NameServerAddress.Split(";");
 
-            //Servers = ss.Select(e => new NetUri(e)).ToArray();
             var list = new List<NetUri>();
             foreach (var item in ss)
             {
@@ -97,13 +96,9 @@ namespace NewLife.RocketMQ
             // 如果完全相等，则直接返回。否则重新平衡队列
             if (Brokers.SequenceEqual(list)) return list;
 
-            //Brokers.Clear();
-            //if (Brokers is List<BrokerInfo> bks) bks.AddRange(list);
             Brokers = list;
 
             // 有改变，重新平衡队列
-            //_brokers = null;
-            //_robin = null;
             OnBrokerChange?.Invoke(this, EventArgs.Empty);
 
             return list;

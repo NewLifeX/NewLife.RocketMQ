@@ -709,32 +709,32 @@ namespace NewLife.RocketMQ
             ci.SubscriptionSet = new[] { sd };
 
             var sb = new StringBuilder();
-            sb.Append("{");
+            sb.Append('{');
             {
                 sb.Append("\"mqTable\":{");
                 for (var i = 0; i < _Queues.Length; i++)
                 {
-                    if (i > 0) sb.Append(",");
+                    if (i > 0) sb.Append(',');
 
                     var item = _Queues[i];
 
                     sb.Append(JsonWriter.ToJson(item.Queue, false, false, true));
-                    sb.Append(":");
+                    sb.Append(':');
                     sb.Append(JsonWriter.ToJson(item, false, false, true));
                 }
-                sb.Append("}");
+                sb.Append('}');
             }
             {
-                sb.Append(",");
+                sb.Append(',');
                 sb.Append("\"properties\":");
                 sb.Append(ci.Properties.ToJson());
             }
             {
-                sb.Append(",");
+                sb.Append(',');
                 sb.Append("\"subscriptionSet\":");
                 sb.Append(JsonWriter.ToJson(ci.SubscriptionSet, false, false, true));
             }
-            sb.Append("}");
+            sb.Append('}');
 
             var rs = cmd.CreateReply() as Command;
             rs.Payload = sb.ToString().GetBytes();

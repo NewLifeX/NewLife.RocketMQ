@@ -22,7 +22,7 @@ namespace NewLife.RocketMQ.Protocol
 
         #region 扩展属性
         /// <summary>是否响应</summary>
-        public Boolean Reply => Header == null ? false : ((Header.Flag & 1) == 1);
+        public Boolean Reply => Header != null && ((Header.Flag & 1) == 1);
 
         /// <summary></summary>
         public Boolean OneWay => throw new NotImplementedException();
@@ -161,7 +161,7 @@ namespace NewLife.RocketMQ.Protocol
             // 请求与响应
             if ((h.Flag & 1) == 1)
             {
-                sb.Append("#");
+                sb.Append('#');
                 sb.Append((ResponseCode)h.Code);
             }
             else
@@ -170,7 +170,16 @@ namespace NewLife.RocketMQ.Protocol
             }
 
             var pk = Payload;
-            sb.AppendFormat("({0})[{1}]", h.Opaque, pk == null ? 0 : pk.Total);
+            sb.AppendFormat("({0})", h.Opaque);
+
+            var ext = h.ExtFields;
+            if (ext != null && ext.Count > 0) sb.AppendFormat("<{0}>", ext.ToJson());
+
+            if (pk != null && pk.Total > 0)
+            {
+                sb.AppendFormat("[{0}]", pk.Total);
+                sb.Append(pk.ToStr(null, 0, 256));
+            }
 
             return sb.Put(true);
         }

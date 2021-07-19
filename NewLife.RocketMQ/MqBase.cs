@@ -62,16 +62,16 @@ namespace NewLife.RocketMQ.Client
         #endregion
 
         #region 阿里云属性
-        /// <summary>获取名称服务器地址的http地址</summary>
+        /// <summary>获取名称服务器地址的http地址。阿里云专用</summary>
         public String Server { get; set; }
 
-        /// <summary>访问令牌</summary>
+        /// <summary>访问令牌。阿里云专用</summary>
         public String AccessKey { get; set; }
 
-        /// <summary>访问密钥</summary>
+        /// <summary>访问密钥。阿里云专用</summary>
         public String SecretKey { get; set; }
 
-        /// <summary>阿里云MQ通道</summary>
+        /// <summary>阿里云MQ通道。阿里云专用</summary>
         public String OnsChannel { get; set; } = "ALIYUN";
         #endregion
 
@@ -151,7 +151,7 @@ namespace NewLife.RocketMQ.Client
                 }
             }
 
-            var client = new NameClient(ClientId, this) { Name = "Name", Log = Log };
+            var client = new NameClient(ClientId, this) { Name = "Name", Log = ClientLog };
             client.Start();
 
             var rs = client.GetRouteInfo(Topic);
@@ -209,7 +209,7 @@ namespace NewLife.RocketMQ.Client
                     Id = ClientId,
                     Name = bk.Name,
                     Config = this,
-                    Log = Log,
+                    Log = ClientLog,
                 };
 
                 client.Received += (s, e) =>
@@ -273,6 +273,9 @@ namespace NewLife.RocketMQ.Client
         #region 日志
         /// <summary>日志</summary>
         public ILog Log { get; set; } = Logger.Null;
+
+        /// <summary>客户端日志。详细的指令收发日志，仅用于调试</summary>
+        public ILog ClientLog { get; set; }
 
         /// <summary>写日志</summary>
         /// <param name="format"></param>

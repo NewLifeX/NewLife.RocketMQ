@@ -18,7 +18,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            Test4();
+            TestAliyun();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -66,11 +66,12 @@ namespace Test
                 Group = "test",
                 NameServerAddress = "127.0.0.1:9876",
 
-                FromLastOffset = true,
-                SkipOverStoredMsgCount = 0,
-                BatchSize = 20,
+                FromLastOffset = false,
+                //SkipOverStoredMsgCount = 0,
+                //BatchSize = 20,
 
                 Log = XTrace.Log,
+                ClientLog = XTrace.Log,
             };
 
             consumer.OnConsume = OnConsume;
@@ -79,13 +80,33 @@ namespace Test
             consumer.Start();
 
             _consumer = consumer;
+        }
 
-            //Thread.Sleep(3000);
-            //foreach (var item in consumer.Clients)
-            //{
-            //    var rs = item.GetRuntimeInfo();
-            //    Console.WriteLine("{0}\t{1}", item.Name, rs["brokerVersionDesc"]);
-            //}
+        static void TestAliyun()
+        {
+            var consumer = new Consumer
+            {
+                Topic = "nx_test",
+                Group = "test",
+                NameServerAddress = "127.0.0.1:9876",
+
+                AccessKey= "appId",
+                SecretKey = "appSecret",
+
+                FromLastOffset = false,
+                //SkipOverStoredMsgCount = 0,
+                //BatchSize = 20,
+
+                Log = XTrace.Log,
+                ClientLog = XTrace.Log,
+            };
+
+            consumer.OnConsume = OnConsume;
+
+            consumer.Configure(MqSetting.Current);
+            consumer.Start();
+
+            _consumer = consumer;
         }
 
         private static Boolean OnConsume(MessageQueue q, MessageExt[] ms)
