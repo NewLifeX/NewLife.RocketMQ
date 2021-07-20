@@ -67,7 +67,7 @@ namespace NewLife.RocketMQ
             {
                 var period = Config.HeartbeatBrokerInterval;
 
-                _timer = new TimerX(OnPing, null, 100, period);
+                _timer = new TimerX(OnPing, null, 100, period) { Async = true };
             }
         }
 
