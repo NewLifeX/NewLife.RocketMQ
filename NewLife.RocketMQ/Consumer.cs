@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
@@ -39,6 +40,10 @@ namespace NewLife.RocketMQ
         /// 跳过积压的消息数量，默认为0，即积压消息超过10000后将强制从消费最大偏移量的位置消费
         /// 若需要处理所有未消费消息，可将此值设置为0
         /// </summary>
+        [Obsolete("谨慎使用该配置，该配置会破坏ConsumeFromWhere的原始意图，具体表现为（在CONSUME_FROM_LAST_OFFSET模式下）：" +
+            "1.首次消费时如果队列中已有数据，但数据量未达到SkipOverStoredMsgCount设定值时，会从头部开始消费，而不是尾部；" +
+            "2.非首次消费时如果队列最大偏移量与当前偏移量差值大于SkipOverStoredMsgCount时，会直接从尾部开始消费，而不是继续消费；" +
+            "3.上述的两种情况都是在Consumer初始化后首次DoPull时执行的判断，也就是一般情况下与应用启动操作绑定")]
         public UInt32 SkipOverStoredMsgCount { get; set; }
 
         /// <summary>消费委托</summary>
@@ -384,28 +389,7 @@ namespace NewLife.RocketMQ
             {
                 try
                 {
-                    // 查询偏移量，可能首次启动-1
-                    if (st.Offset < 0 && FromLastOffset)
-                    {
-                        var p = await QueryOffset(mq);
-                        if (SkipOverStoredMsgCount > 0)
-                        {
-                            // 设置了跳过积压的消息，此时判断积压的消息条数，若消息条数大于设定的数量，则强制从消费最大偏移量的位置消费
-                            var maxOffset = await QueryMaxOffset(mq);
-                            if (maxOffset >= p + SkipOverStoredMsgCount) p = maxOffset;
-                        }
-
-                        //if (p == -1) p = 0;
-                        //第一次消费新的队列，强制从消费最大偏移量的位置消费（避免由于第一次从最小偏移量消费而导致的数据大量积压问题）
-                        //if (p <= 0) p = QueryMaxOffset(mq);
-
-                        st.Offset = st.CommitOffset = p;
-
-                        if (st.Offset >= 0) WriteLog("开始消费[{0}@{1}] Offset={2:n0}", mq.BrokerName, mq.QueueId, st.Offset);
-                    }
-
-                    // 拉取一批，阻塞等待
-                    var offset = st.Offset >= 0 ? st.Offset : 0;
+                    var offset = st.Offset;
                     var pr = await Pull(mq, offset, BatchSize, SuspendTimeout);
                     if (pr != null)
                     {
@@ -590,6 +574,7 @@ namespace NewLife.RocketMQ
             WriteLog("消费重新平衡，当前消费者负责queue分片：{0}", dic.Join(";", e => $"{e.Key}[{e.Value}]"));
 
             _Queues = rs.ToArray();
+            InitOffsetAsync().ConfigureAwait(false).GetAwaiter().GetResult();
             _Consumers = cs2.ToArray();
 
             return true;
@@ -629,6 +614,81 @@ namespace NewLife.RocketMQ
                 finally
                 {
                     _checking = false;
+                }
+            }
+        }
+
+        private async Task InitOffsetAsync()
+        {
+            if (_Queues == null || _Queues.Length == 0) return;
+
+            var broker = GetBroker(_Queues[0].Queue.BrokerName);
+            // 这指令需要group参数，然而查出来的数据是跟group无关的就离谱
+            //var command = broker.Invoke(RequestCode.QUERY_CONSUME_TIME_SPAN, null, new
+            //{
+            //    group = Group,
+            //    topic = Topic
+            //}, true);
+            var command = await broker.InvokeAsync(RequestCode.GET_CONSUME_STATS, null, new
+            {
+                consumerGroup = Group,
+                topic = Topic
+            }, true);
+
+            var regex = new Regex("\\{\"brokerName\":\"[^\"]+\",\"queueId\":(\\d+),\"topic\":\"[^\"]+\"\\}:\\{\"brokerOffset\":(\\d+),\"consumerOffset\":(\\d+),\"lastTimestamp\":(\\d+)\\}", RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
+            var json = command.Payload.ToStr();
+            var matches = regex.Matches(json);
+            // Dictionary<queueId, new[]{brokerOffset, consumerOffset}>
+            var queueOffsets = new Dictionary<Int32, Int64[]>();
+            var neverConsumed = true;
+            // 确认是否所有queue都没有消费过
+            foreach (Match match in matches)
+            {
+                var queueId = Int32.Parse(match.Groups[1].Value);
+                var brokerOffset = Int64.Parse(match.Groups[2].Value);
+                var consumerOffset = Int64.Parse(match.Groups[3].Value);
+                var lastTimestamp = Int64.Parse(match.Groups[4].Value);
+                queueOffsets[queueId] = new[] { brokerOffset, consumerOffset };
+                neverConsumed &= lastTimestamp == 0;
+            }
+
+            foreach (var store in _Queues)
+            {
+                if (store.Offset >= 0) continue;
+
+                if (neverConsumed)
+                {
+                    //var maxOffset = await QueryMaxOffset(store.Queue);
+                    var maxOffset = queueOffsets[store.Queue.QueueId][0];
+                    var offset = FromLastOffset ? maxOffset : 0L;
+                    /**
+                     * 下面这个判断是专门为SkipOverStoredMsgCount设置的，根据SkipOverStoredMsgCount，
+                     * 根据SkipOverStoredMsgCount的原始定义，只有在积压量超过了SkipOverStoredMsgCount
+                     * 设定值才会遵从FromLastOffset规则，在没有达到SkipOverStoredMsgCount设定值还是会
+                     * 从头开始消费，以后在确定删除SkipOverStoredMsgCount时直接删除下面if代码段即可
+                     */
+                    if (FromLastOffset && SkipOverStoredMsgCount > 0 && maxOffset < SkipOverStoredMsgCount)
+                    {
+                        offset = 0L;
+                    }
+                    store.Offset = store.CommitOffset = offset;
+                    await UpdateOffset(store.Queue, offset);
+                }
+                else
+                {
+                    // var offset = await QueryOffset(store.Queue);
+                    var offset = queueOffsets[store.Queue.QueueId][1];
+                    /**
+                     * 下面这个判断是专门为SkipOverStoredMsgCount设置的，根据SkipOverStoredMsgCount，
+                     * 根据SkipOverStoredMsgCount的原始定义，在当前积压量大于SkipOverStoredMsgCount
+                     * 设定值时，直接从最大偏移量开始消费，以后在确定删除SkipOverStoredMsgCount时
+                     * 直接删除下面if代码段即可
+                     */
+                    if (FromLastOffset && SkipOverStoredMsgCount > 0 && offset + SkipOverStoredMsgCount <= queueOffsets[store.Queue.QueueId][0])
+                    {
+                        offset = queueOffsets[store.Queue.QueueId][0];
+                    }
+                    store.Offset = store.CommitOffset = offset;
                 }
             }
         }
