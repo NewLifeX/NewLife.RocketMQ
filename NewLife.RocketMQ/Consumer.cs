@@ -32,8 +32,8 @@ namespace NewLife.RocketMQ
         /// <summary>启动时间</summary>
         private DateTime StartTime { get; set; } = DateTime.Now;
 
-        /// <summary>从最后偏移开始消费。默认true</summary>
-        public Boolean FromLastOffset { get; set; } = true;
+        /// <summary>首次消费时的消费策略，默认值false，表示从头开始收，等同于Java版的COMSUME_FROM_FIRST_OFFSET</summary>
+        public Boolean FromLastOffset { get; set; } = false;
 
         /// <summary>
         /// 【仅FromLastOffset设置为true时生效】
@@ -416,7 +416,11 @@ namespace NewLife.RocketMQ
                             case PullStatus.NoMatchedMessage:
                                 break;
                             case PullStatus.OffsetIllegal:
-                                if (pr.NextBeginOffset > 0) st.Offset = pr.NextBeginOffset;
+                                if (pr.NextBeginOffset >= 0)
+                                {
+                                    WriteLog("无效的offset，可能历史消息已过期 [{0}@{1}] Offset={2:n0}, NextOffset={3:n0}", mq.BrokerName, mq.QueueId, st.Offset, pr.NextBeginOffset);
+                                    st.Offset = pr.NextBeginOffset;
+                                }
                                 break;
                             case PullStatus.Unknown:
                                 Log.Error("未知响应类型消息序列[{1}]偏移量{0}", st.Offset, st.Queue.QueueId);
@@ -690,6 +694,7 @@ namespace NewLife.RocketMQ
                     }
                     store.Offset = store.CommitOffset = offset;
                 }
+                WriteLog("初始化offset[{0}@{1}] Offset={2:n0}", store.Queue.BrokerName, store.Queue.QueueId, store.Offset);
             }
         }
         #endregion
