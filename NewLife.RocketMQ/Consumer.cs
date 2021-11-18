@@ -663,7 +663,12 @@ namespace NewLife.RocketMQ
                 if (neverConsumed)
                 {
                     //var maxOffset = await QueryMaxOffset(store.Queue);
-                    var maxOffset = queueOffsets[store.Queue.QueueId][0];
+                    var maxOffset = 0L;
+                    if (queueOffsets.ContainsKey(store.Queue.QueueId))
+                    {
+                        maxOffset = queueOffsets[store.Queue.QueueId][0];
+                    }
+                    
                     var offset = FromLastOffset ? maxOffset : 0L;
                     /**
                      * 下面这个判断是专门为SkipOverStoredMsgCount设置的，根据SkipOverStoredMsgCount，
