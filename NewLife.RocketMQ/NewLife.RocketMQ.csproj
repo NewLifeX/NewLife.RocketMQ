@@ -7,8 +7,8 @@
     <Description>纯托管轻量级RocketMQ客户端，支持发布消息、消费消息、负载均衡等核心功能！</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2021 NewLife</Copyright>
-    <Version>1.5.2021.1001</Version>
-    <FileVersion>1.5.2021.1001</FileVersion>
+    <Version>1.5.2021.1118</Version>
+    <FileVersion>1.5.2021.1118</FileVersion>
     <AssemblyVersion>1.5.*</AssemblyVersion>
     <Deterministic>false</Deterministic>
     <OutputPath>..\Bin</OutputPath>
@@ -31,6 +31,7 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.0-beta-20204-02">

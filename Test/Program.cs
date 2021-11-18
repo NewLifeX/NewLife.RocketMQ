@@ -18,7 +18,9 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            TestAliyun();
+            Test5();
+
+            //TestAliyun();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -115,7 +117,7 @@ namespace Test
 
             foreach (var item in ms.ToList())
             {
-                Console.WriteLine($"消息：主键【{item.Keys}】，产生时间【{item.BornTimestamp.ToDateTime()}】，内容【{item.Body.ToStr(null, 0, 64)}】");
+                Console.WriteLine($"消息：主键【{item.Keys}】 Topic 【{item.Topic}】，产生时间【{item.BornTimestamp.ToDateTime()}】，内容【{item.Body.ToStr(null, 0, 64)}】");
             }
 
             return true;
@@ -197,6 +199,31 @@ namespace Test
             Console.WriteLine(rs);
 
             Console.WriteLine(buf.ToStr());
+        }
+
+        static void Test5()
+        {
+            var _consumers =new List<Consumer> ();
+            var topics = new List<string>() { "flow", "flow2" };
+
+            for (int i = 0; i < 2; i++)
+            {
+                var consumer = new Consumer
+                {
+                    Topic = topics[i],
+                    //Group = "test",
+                    NameServerAddress = "172.19.177.185:9876",
+
+                    BatchSize = 1,
+                    Log = XTrace.Log,
+                };
+
+                consumer.OnConsume = OnConsume;
+                consumer.Start();
+
+                _consumers.Add(consumer);
+
+            }
         }
     }
 }
