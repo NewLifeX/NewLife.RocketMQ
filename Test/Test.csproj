@@ -2,12 +2,12 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net45;net5.0</TargetFrameworks>
+    <TargetFrameworks>net6.0</TargetFrameworks>
     <OutputPath>..\BinTest</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="8.11.2021.1225" />
+    <PackageReference Include="NewLife.Core" Version="9.0.2022.101" />
   </ItemGroup>
 
   <ItemGroup>
