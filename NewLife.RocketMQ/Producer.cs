@@ -188,6 +188,7 @@ namespace NewLife.RocketMQ
                 Properties = message.GetProperties(),
                 ReconsumeTimes = 0,
                 UnitMode = UnitMode,
+				DefaultTopic = "TBW102"
             };
 
             for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
