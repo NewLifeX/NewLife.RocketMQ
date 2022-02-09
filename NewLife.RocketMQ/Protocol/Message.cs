@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using NewLife.Collections;
-using NewLife.Log;
+using NewLife.Data;
+using NewLife.Serialization;
 
 namespace NewLife.RocketMQ.Protocol
 {
@@ -25,8 +24,9 @@ namespace NewLife.RocketMQ.Protocol
         /// <summary>消息体</summary>
         public Byte[] Body { get; set; }
 
+        private String _BodyString;
         /// <summary>消息体。字符串格式</summary>
-        public String BodyString { get => Body?.ToStr(); set => Body = value?.GetBytes(); }
+        public String BodyString => _BodyString ??= Body?.ToStr();
 
         /// <summary>等待存储消息</summary>
         public Boolean WaitStoreMsgOK { get; set; } = true;
@@ -42,6 +42,29 @@ namespace NewLife.RocketMQ.Protocol
         #endregion
 
         #region 方法
+        /// <summary>
+        /// 设置消息体
+        /// </summary>
+        /// <param name="body"></param>
+        public void SetBody(Object body)
+        {
+            if (body is Packet pk)
+                Body = pk.ReadBytes();
+            else if (body is Byte[] buf)
+                Body = buf;
+            else if (body is String str)
+            {
+                _BodyString = str;
+                Body = str.GetBytes();
+            }
+            else
+            {
+                str = body.ToJson();
+                _BodyString = str;
+                Body = str.GetBytes();
+            }
+        }
+
         /// <summary>获取属性</summary>
         /// <returns></returns>
         public String GetProperties()

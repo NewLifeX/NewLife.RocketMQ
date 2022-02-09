@@ -46,7 +46,7 @@ namespace Test
                 var str = "学无先后达者为师" + i;
                 //var str = Rand.NextString(1337);
 
-                var sr = mq.Publish(str, "TagA");
+                var sr = mq.Publish(str, "TagA", null);
 
                 //Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
 
@@ -203,7 +203,7 @@ namespace Test
 
         static void Test5()
         {
-            var _consumers =new List<Consumer> ();
+            var _consumers = new List<Consumer>();
             var topics = new List<string>() { "flow", "flow2" };
 
             for (int i = 0; i < 2; i++)

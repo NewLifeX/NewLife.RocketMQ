@@ -1,4 +1,4 @@
-using NewLife.Log;
+ï»¿using NewLife.Log;
 using NewLife.RocketMQ;
 using System;
 using System.Linq;
@@ -21,7 +21,7 @@ namespace XUnitTestRocketMQ
 
             mq.Start();
 
-            // ´´½¨topicÊ±£¬startÇ°²»ÄÜÖ¸¶¨topic£¬ÈÃÆäÊ¹ÓÃÄ¬ÈÏTBW102
+            // åˆ›å»ºtopicæ—¶ï¼Œstartå‰ä¸èƒ½æŒ‡å®štopicï¼Œè®©å…¶ä½¿ç”¨é»˜è®¤TBW102
             Assert.Equal("TBW102", mq.Topic);
 
             mq.CreateTopic("nx_test", 2);
@@ -42,10 +42,10 @@ namespace XUnitTestRocketMQ
 
             for (var i = 0; i < 10; i++)
             {
-                var str = "Ñ§ÎŞÏÈºó´ïÕßÎªÊ¦" + i;
+                var str = "å­¦æ— å…ˆåè¾¾è€…ä¸ºå¸ˆ" + i;
                 //var str = Rand.NextString(1337);
 
-                var sr = mq.Publish(str, "TagA");
+                var sr = mq.Publish(str, "TagA", null);
             }
         }
     }

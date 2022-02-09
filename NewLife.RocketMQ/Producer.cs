@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using NewLife.Data;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Common;
 using NewLife.RocketMQ.Protocol;
@@ -61,48 +62,29 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 发送消息
-        /// <summary>
-        /// 用于计算 UnixTime 的辅助，在 .NET 4.5 或之前，不存在 DateTimeOffset.Now.ToUnixTimeMilliseconds() 方法
-        /// </summary>
-        private static readonly DateTime _dt1970 = new(1970, 1, 1);
         /// <summary>发送消息</summary>
-        /// <param name="msg"></param>
+        /// <param name="message"></param>
         /// <param name="timeout"></param>
         /// <returns></returns>
-        public virtual SendResult Publish(Message msg, Int32 timeout = -1)
+        public virtual SendResult Publish(Message message, Int32 timeout = -1)
         {
-            var max = MaxMessageSize;
-            if (max > 0 && msg.Body.Length > max) throw new InvalidOperationException($"主题[{Topic}]的数据包大小[{msg.Body.Length}]超过最大限制[{max}]，大key会拖累整个队列，可通过MaxMessageSize调节。");
-
             // 选择队列分片
             var mq = SelectQueue();
             mq.Topic = Topic;
 
             // 构造请求头
-            var ts = DateTime.Now - _dt1970;
-            var smrh = new SendMessageRequestHeader
-            {
-                ProducerGroup = Group,
-                Topic = Topic,
-                QueueId = mq.QueueId,
-                SysFlag = 0,
-                BornTimestamp = (Int64)ts.TotalMilliseconds,
-                Flag = msg.Flag,
-                Properties = msg.GetProperties(),
-                ReconsumeTimes = 0,
-                UnitMode = UnitMode,
-                DefaultTopic = "TBW102"
-            };
+            var header = CreateHeader(message);
+            header.QueueId = mq.QueueId;
 
             for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
             {
                 // 性能埋点
-                using var span = Tracer?.NewSpan($"mq:{Topic}:Publish");
+                using var span = Tracer?.NewSpan($"mq:{Topic}:Publish", message.BodyString);
                 try
                 {
                     // 根据队列获取Broker客户端
                     var bk = GetBroker(mq.BrokerName);
-                    var rs = bk.Invoke(RequestCode.SEND_MESSAGE_V2, msg.Body, smrh.GetProperties(), true);
+                    var rs = bk.Invoke(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties(), true);
 
                     // 包装结果
                     var sr = new SendResult
@@ -124,7 +106,7 @@ namespace NewLife.RocketMQ
                 }
                 catch (Exception ex)
                 {
-                    span?.SetError(ex, msg);
+                    span?.SetError(ex, message);
 
                     // 如果网络异常，则延迟重发
                     if (ex is not ResponseException && i < RetryTimesWhenSendFailed)
@@ -142,10 +124,9 @@ namespace NewLife.RocketMQ
 
         /// <summary>发布消息</summary>
         /// <param name="body"></param>
-        /// <param name="tags"></param>
         /// <param name="timeout"></param>
         /// <returns></returns>
-        public virtual SendResult Publish(Object body, String tags = null, Int32 timeout = -1) => Publish(body, tags, null, timeout);
+        public virtual SendResult Publish(Object body, Int32 timeout = -1) => Publish(CreateMessage(body), timeout);
 
         /// <summary>发布消息</summary>
         /// <param name="body"></param>
@@ -155,56 +136,39 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         public virtual SendResult Publish(Object body, String tags, String keys, Int32 timeout = -1)
         {
-            if (body is not Byte[] buf)
-            {
-                if (body is not String str) str = body.ToJson();
+            var message = CreateMessage(body);
+            message.Tags = tags;
+            message.Keys = keys;
 
-                buf = str.GetBytes();
-            }
-
-            return Publish(new Message { Body = buf, Tags = tags, Keys = keys }, timeout);
+            return Publish(message, timeout);
         }
 
         /// <summary>发布消息</summary>
         public virtual async Task<SendResult> PublishAsync(Message message)
         {
-            var max = MaxMessageSize;
-            if (max > 0 && message.Body.Length > max) throw new InvalidOperationException($"主题[{Topic}]的数据包大小[{message.Body.Length}]超过最大限制[{max}]，大key会拖累整个队列，可通过{nameof(MaxMessageSize)}调节最大允许发送数据包大小。");
-
             // 选择队列分片
             var mq = SelectQueue();
             mq.Topic = Topic;
 
             // 构造请求头
-            var ts = DateTime.Now - _dt1970;
-            var sendMessageRequestHeader = new SendMessageRequestHeader
-            {
-                ProducerGroup = Group,
-                Topic = Topic,
-                QueueId = mq.QueueId,
-                SysFlag = 0,
-                BornTimestamp = (Int64)ts.TotalMilliseconds,
-                Flag = message.Flag,
-                Properties = message.GetProperties(),
-                ReconsumeTimes = 0,
-                UnitMode = UnitMode,
-            };
+            var header = CreateHeader(message);
+            header.QueueId = mq.QueueId;
 
             for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
             {
                 // 性能埋点
-                using var span = Tracer?.NewSpan($"mq:{Topic}:Publish");
+                using var span = Tracer?.NewSpan($"mq:{Topic}:PublishAsync", message.BodyString);
                 try
                 {
                     // 根据队列获取Broker客户端
                     var bk = GetBroker(mq.BrokerName);
-                    var rs = await bk.InvokeAsync(RequestCode.SEND_MESSAGE_V2, message.Body, sendMessageRequestHeader.GetProperties(), ignoreError: true);
+                    var rs = await bk.InvokeAsync(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties(), ignoreError: true);
 
                     // 包装结果
                     var sendResult = new SendResult
                     {
                         Queue = mq,
-                        Status = (ResponseCode) rs.Header.Code switch
+                        Status = (ResponseCode)rs.Header.Code switch
                         {
                             ResponseCode.SUCCESS => SendStatus.SendOK,
                             ResponseCode.FLUSH_DISK_TIMEOUT => SendStatus.FlushDiskTimeout,
@@ -237,9 +201,8 @@ namespace NewLife.RocketMQ
 
         /// <summary>发布消息</summary>
         /// <param name="body"></param>
-        /// <param name="tags">传null则为空</param>
         /// <returns></returns>
-        public virtual Task<SendResult> PublishAsync(Object body, String tags = null) => PublishAsync(body, tags, keys: null);
+        public virtual Task<SendResult> PublishAsync(Object body) => PublishAsync(CreateMessage(body));
 
         /// <summary>发布消息</summary>
         /// <param name="body"></param>
@@ -248,15 +211,100 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         public virtual Task<SendResult> PublishAsync(Object body, String tags, String keys)
         {
-            if (body is not Byte[] buf)
-            {
-                if (body is not String str) str = body.ToJson();
+            var message = CreateMessage(body);
+            message.Tags = tags;
+            message.Keys = keys;
 
-                buf = str.GetBytes();
-            }
-
-            var message = new Message { Body = buf, Tags = tags, Keys = keys };
             return PublishAsync(message);
+        }
+
+        /// <summary>发送消息，不等结果</summary>
+        /// <param name="message"></param>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        public virtual void PublishOneway(Message message, Int32 timeout = -1)
+        {
+            // 选择队列分片
+            var mq = SelectQueue();
+            mq.Topic = Topic;
+
+            // 构造请求头
+            var header = CreateHeader(message);
+            header.QueueId = mq.QueueId;
+
+            for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
+            {
+                // 性能埋点
+                using var span = Tracer?.NewSpan($"mq:{Topic}:PublishOneway", message.BodyString);
+                try
+                {
+                    // 根据队列获取Broker客户端
+                    var bk = GetBroker(mq.BrokerName);
+                    bk.InvokeOneway(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties());
+                }
+                catch (Exception ex)
+                {
+                    span?.SetError(ex, message);
+
+                    // 如果网络异常，则延迟重发
+                    if (ex is not ResponseException && i < RetryTimesWhenSendFailed)
+                    {
+                        Thread.Sleep(1000);
+                        continue;
+                    }
+
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>发布消息，不等结果</summary>
+        /// <param name="body"></param>
+        /// <param name="tags"></param>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        public virtual void PublishOneway(Object body, String tags = null, Int32 timeout = -1)
+        {
+            var message = CreateMessage(body);
+            message.Tags = tags;
+
+            PublishOneway(message, timeout);
+        }
+
+        /// <summary>
+        /// 创建消息，设计于支持用户重载以改变消息序列化行为
+        /// </summary>
+        /// <param name="body"></param>
+        /// <returns></returns>
+        protected virtual Message CreateMessage(Object body)
+        {
+            var msg = new Message();
+            msg.SetBody(body);
+
+            return msg;
+        }
+
+        private SendMessageRequestHeader CreateHeader(Message message)
+        {
+            var max = MaxMessageSize;
+            if (max > 0 && message.Body.Length > max) throw new InvalidOperationException($"主题[{Topic}]的数据包大小[{message.Body.Length}]超过最大限制[{max}]，大key会拖累整个队列，可通过MaxMessageSize调节。");
+
+            // 构造请求头
+            var smrh = new SendMessageRequestHeader
+            {
+                ProducerGroup = Group,
+                Topic = Topic,
+                //QueueId = mq.QueueId,
+                SysFlag = 0,
+                BornTimestamp = DateTime.Now.ToLong(),
+                Flag = message.Flag,
+                Properties = message.GetProperties(),
+                ReconsumeTimes = 0,
+                UnitMode = UnitMode,
+                DefaultTopic = "TBW102"
+            };
+
+            return smrh;
         }
         #endregion
 

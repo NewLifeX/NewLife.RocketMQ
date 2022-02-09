@@ -6,6 +6,7 @@ using NewLife.RocketMQ.Protocol;
 using System;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace XUnitTestRocketMQ
@@ -53,12 +54,12 @@ namespace XUnitTestRocketMQ
                 var str = "学无先后达者为师" + i;
                 //var str = Rand.NextString(1337);
 
-                var sr = mq.Publish(str, "TagA");
+                var sr = mq.Publish(str, "TagA", null);
             }
         }
 
         [Fact]
-        static void ProduceAsyncTest()
+        static async Task ProduceAsyncTest()
         {
             using var mq = new Producer
             {
@@ -73,7 +74,7 @@ namespace XUnitTestRocketMQ
                 var str = "学无先后达者为师" + i;
                 //var str = Rand.NextString(1337);
 
-                var sr = mq.PublishAsync(str, "TagA").Result;
+                var sr = await mq.PublishAsync(str, "TagA", null);
             }
         }
 

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using NewLife.Data;
 using NewLife.Log;
 using NewLife.Net;
 using NewLife.RocketMQ.Client;
@@ -112,8 +113,9 @@ namespace NewLife.RocketMQ
         private Int32 g_id;
         /// <summary>发送命令</summary>
         /// <param name="cmd"></param>
+        /// <param name="waitResult"></param>
         /// <returns></returns>
-        protected virtual async Task<Command> SendAsync(Command cmd)
+        protected virtual async Task<Command> SendAsync(Command cmd, Boolean waitResult)
         {
             if (cmd.Header.Opaque == 0) cmd.Header.Opaque = Interlocked.Increment(ref g_id);
 
@@ -126,11 +128,20 @@ namespace NewLife.RocketMQ
             var client = _Client;
             try
             {
-                var rs = await client.SendMessageAsync(cmd);
+                if (waitResult)
+                {
+                    var rs = await client.SendMessageAsync(cmd);
 
-                WriteLog("<= {0}", rs as Command);
+                    WriteLog("<= {0}", rs as Command);
 
-                return rs as Command;
+                    return rs as Command;
+                }
+                else
+                {
+                    client.SendMessage(cmd);
+
+                    return null;
+                }
             }
             catch
             {
@@ -178,6 +189,48 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         internal virtual Command Invoke(RequestCode request, Object body, Object extFields = null, Boolean ignoreError = false)
         {
+            var cmd = CreateCommand(request, body, extFields);
+
+            // 避免UI死锁
+            var rs = TaskEx.Run(() => SendAsync(cmd, true)).Result;
+
+            // 判断异常响应
+            if (!ignoreError && rs.Header != null && rs.Header.Code != 0) throw rs.Header.CreateException();
+
+            return rs;
+        }
+
+        /// <summary>发送指定类型的命令</summary>
+        internal virtual async Task<Command> InvokeAsync(RequestCode request, Object body, Object extFields = null,
+            Boolean ignoreError = false)
+        {
+            var cmd = CreateCommand(request, body, extFields);
+
+            var rs = await SendAsync(cmd, true);
+
+            // 判断异常响应
+            if (!ignoreError && rs.Header != null && rs.Header.Code != 0)
+            {
+                throw rs.Header.CreateException();
+            }
+
+            return rs;
+        }
+
+        /// <summary>发送指定类型的命令</summary>
+        /// <param name="request"></param>
+        /// <param name="body"></param>
+        /// <param name="extFields"></param>
+        /// <returns></returns>
+        internal virtual void InvokeOneway(RequestCode request, Object body, Object extFields = null)
+        {
+            var cmd = CreateCommand(request, body, extFields);
+
+            _ = SendAsync(cmd, false);
+        }
+
+        private Command CreateCommand(RequestCode request, Object body, Object extFields)
+        {
             var header = new Header
             {
                 Code = (Int32)request,
@@ -190,7 +243,9 @@ namespace NewLife.RocketMQ
             };
 
             // 主体
-            if (body is Byte[] buf)
+            if (body is Packet pk)
+                cmd.Payload = pk;
+            else if (body is Byte[] buf)
                 cmd.Payload = buf;
             else if (body != null)
                 cmd.Payload = JsonWriter.ToJson(body, false, false, false).GetBytes();
@@ -206,61 +261,7 @@ namespace NewLife.RocketMQ
 
             OnBuild(header);
 
-            // 避免UI死锁
-            var rs = TaskEx.Run(() => SendAsync(cmd)).Result;
-            //var rs = SendAsync(cmd).Result;
-
-            // 判断异常响应
-            if (!ignoreError && rs.Header != null && rs.Header.Code != 0) throw rs.Header.CreateException();
-
-            return rs;
-        }
-
-        /// <summary>发送指定类型的命令</summary>
-        internal virtual async Task<Command> InvokeAsync(RequestCode request, Object body, Object extFields = null,
-            Boolean ignoreError = false)
-        {
-            var header = new Header
-            {
-                Code = (Int32)request,
-                Remark = request.ToString(),
-            };
-
-            var cmd = new Command
-            {
-                Header = header,
-            };
-
-            // 主体
-            if (body is Byte[] buf)
-            {
-                cmd.Payload = buf;
-            }
-            else if (body != null)
-            {
-                cmd.Payload = JsonWriter.ToJson(body, indented: false, nullValue: false, camelCase: false).GetBytes();
-            }
-
-            if (extFields != null)
-            {
-                var dic = header.GetExtFields();
-                foreach (var item in extFields.ToDictionary())
-                {
-                    dic[item.Key] = item.Value + "";
-                }
-            }
-
-            OnBuild(header);
-
-            var rs = await SendAsync(cmd);
-
-            // 判断异常响应
-            if (!ignoreError && rs.Header != null && rs.Header.Code != 0)
-            {
-                throw rs.Header.CreateException();
-            }
-
-            return rs;
+            return cmd;
         }
 
         /// <summary>建立命令时，处理头部</summary>
@@ -289,8 +290,7 @@ namespace NewLife.RocketMQ
         #region 接收数据
         private void Client_Received(Object sender, ReceivedEventArgs e)
         {
-            var cmd = e.Message as Command;
-            if (cmd == null || cmd.Reply) return;
+            if (e.Message is not Command cmd || cmd.Reply) return;
 
             var rs = OnReceive(cmd);
             if (rs != null)
