@@ -57,12 +57,8 @@ namespace NewLife.RocketMQ
         {
             // 停止并保存偏移
             Stop();
-            PersistAll(_Queues);
 
             base.Dispose(disposing);
-
-            _timer.TryDispose();
-            _threads.TryDispose();
         }
         #endregion
 
@@ -100,6 +96,22 @@ namespace NewLife.RocketMQ
             if (AutoSchedule) StartSchedule();
 
             return true;
+        }
+
+        /// <summary>
+        /// 停止
+        /// </summary>
+        public override void Stop()
+        {
+            // 停止并保存偏移
+            StopSchedule();
+
+            base.Stop();
+
+            PersistAll(_Queues);
+
+            _timer.TryDispose();
+            _threads.TryDispose();
         }
         #endregion
 
@@ -351,7 +363,7 @@ namespace NewLife.RocketMQ
         }
 
         /// <summary>停止</summary>
-        public override void Stop()
+        public void StopSchedule()
         {
             var ts = _threads;
             if (ts != null && ts.Length > 0)
@@ -375,8 +387,6 @@ namespace NewLife.RocketMQ
                     catch { }
                 }
             }
-
-            base.Stop();
         }
 
         private async void DoPull(Object state)
@@ -668,7 +678,7 @@ namespace NewLife.RocketMQ
                     {
                         maxOffset = queueOffsets[store.Queue.QueueId][0];
                     }
-                    
+
                     var offset = FromLastOffset ? maxOffset : 0L;
                     /**
                      * 下面这个判断是专门为SkipOverStoredMsgCount设置的，根据SkipOverStoredMsgCount，
