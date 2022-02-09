@@ -15,7 +15,7 @@ namespace XUnitTestRocketMQ
     {
         private static void SetConfig(MqBase mq)
         {
-            mq.Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet";
+            //mq.Server = "http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet";
             mq.Configure(MqSetting.Current);
 
             mq.Log = XTrace.Log;

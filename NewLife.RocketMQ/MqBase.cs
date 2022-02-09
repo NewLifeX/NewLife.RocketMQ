@@ -54,25 +54,14 @@ namespace NewLife.RocketMQ.Client
         /// <summary>代理集合</summary>
         public IList<BrokerInfo> Brokers => _NameServer?.Brokers;
 
+        /// <summary>阿里云选项</summary>
+        public AliyunOptions Aliyun { get; set; }
+
         /// <summary>性能跟踪</summary>
         public ITracer Tracer { get; set; } = DefaultTracer.Instance;
 
         /// <summary>名称服务器</summary>
         protected NameClient _NameServer;
-        #endregion
-
-        #region 阿里云属性
-        /// <summary>获取名称服务器地址的http地址。阿里云专用</summary>
-        public String Server { get; set; }
-
-        /// <summary>访问令牌。阿里云专用</summary>
-        public String AccessKey { get; set; }
-
-        /// <summary>访问密钥。阿里云专用</summary>
-        public String SecretKey { get; set; }
-
-        /// <summary>阿里云MQ通道。阿里云专用</summary>
-        public String OnsChannel { get; set; } = "ALIYUN";
         #endregion
 
         #region 扩展属性
@@ -127,9 +116,12 @@ namespace NewLife.RocketMQ.Client
             Topic = setting.Topic;
             Group = setting.Group;
 
-            Server = setting.Server;
-            AccessKey = setting.AccessKey;
-            SecretKey = setting.SecretKey;
+            Aliyun = new AliyunOptions
+            {
+                Server = setting.Server,
+                AccessKey = setting.AccessKey,
+                SecretKey = setting.SecretKey,
+            };
         }
 
         /// <summary>开始</summary>
@@ -141,7 +133,7 @@ namespace NewLife.RocketMQ.Client
             if (NameServerAddress.IsNullOrEmpty())
             {
                 // 获取阿里云ONS的名称服务器地址
-                var addr = Server;
+                var addr = Aliyun?.Server;
                 if (!addr.IsNullOrEmpty() && addr.StartsWithIgnoreCase("http"))
                 {
                     var http = new TinyHttpClient();

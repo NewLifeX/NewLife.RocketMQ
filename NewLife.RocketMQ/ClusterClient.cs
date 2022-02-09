@@ -155,7 +155,7 @@ namespace NewLife.RocketMQ
         private void SetSignature(Command cmd)
         {
             // 签名。阿里云ONS需要反射消息具体字段，把值转字符串后拼起来，再加上body后，取HmacSHA1
-            var cfg = Config;
+            var cfg = Config.Aliyun;
             if (cfg.AccessKey.IsNullOrEmpty()) return;
 
             var sha = new HMACSHA1(cfg.SecretKey.GetBytes());

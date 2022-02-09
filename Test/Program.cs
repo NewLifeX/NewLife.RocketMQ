@@ -92,8 +92,11 @@ namespace Test
                 Group = "test",
                 NameServerAddress = "127.0.0.1:9876",
 
-                AccessKey = "appId",
-                SecretKey = "appSecret",
+                Aliyun = new AliyunOptions
+                {
+                    AccessKey = "appId",
+                    SecretKey = "appSecret",
+                },
 
                 //FromLastOffset = false,
                 //SkipOverStoredMsgCount = 0,
