@@ -133,6 +133,19 @@ namespace NewLife.RocketMQ
 
         /// <summary>发布消息</summary>
         /// <param name="body"></param>
+        /// <param name="tags"></param>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        public virtual SendResult Publish(Object body, String tags, Int32 timeout = -1)
+        {
+            var message = CreateMessage(body);
+            message.Tags = tags;
+
+            return Publish(message, timeout);
+        }
+
+        /// <summary>发布消息</summary>
+        /// <param name="body"></param>
         /// <param name="tags">传null则为空</param>
         /// <param name="keys">传null则为空</param>
         /// <param name="timeout"></param>
