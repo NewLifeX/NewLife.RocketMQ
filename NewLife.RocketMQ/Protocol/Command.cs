@@ -24,11 +24,11 @@ namespace NewLife.RocketMQ.Protocol
         /// <summary>是否响应</summary>
         public Boolean Reply => Header != null && ((Header.Flag & 1) == 1);
 
-        /// <summary></summary>
-        public Boolean OneWay => throw new NotImplementedException();
+        /// <summary>是否单向</summary>
+        public Boolean OneWay { get; set; }
 
-        /// <summary></summary>
-        public Boolean Error { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        /// <summary>是否异常</summary>
+        Boolean IMessage.Error { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         #endregion
 
         #region 读写

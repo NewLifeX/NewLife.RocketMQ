@@ -225,6 +225,7 @@ namespace NewLife.RocketMQ
         internal virtual void InvokeOneway(RequestCode request, Object body, Object extFields = null)
         {
             var cmd = CreateCommand(request, body, extFields);
+            cmd.OneWay = true;
 
             _ = SendAsync(cmd, false);
         }

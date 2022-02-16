@@ -16,7 +16,7 @@ namespace NewLife.RocketMQ.Protocol
         /// <remarks>
         /// 这个字段不通的请求/响应不一样，完全自定义。数据结构上是java的hashmap。
         /// 在Java的每个RemotingCammand中，其实都带有一个CommandCustomHeader的属性成员，可以认为他是一个强类型的extFields，
-        /// 再最后传输的时候，这个CommandCustomHeader会被忽略，而传输前会把其中的所有字段全部都原封不动塞到extFields中，以作传输。
+        /// 在最后传输的时候，这个CommandCustomHeader会被忽略，而传输前会把其中的所有字段全部都原封不动塞到extFields中，以作传输。
         /// </remarks>
         [XmlElement("extFields")]
         public IDictionary<String, String> ExtFields { get; set; }
@@ -29,7 +29,7 @@ namespace NewLife.RocketMQ.Protocol
         [XmlElement("flag")]
         public Int32 Flag { get; set; }
 
-        /// <summary>由于要支持多语言，所以这一字段可以给通信双方知道对方通信层锁使用的开发语言。</summary>
+        /// <summary>由于要支持多语言，所以这一字段可以给通信双方知道对方通信层所使用的开发语言。</summary>
         /// <remarks>LanguageCode，JAVA/CPP/DOTNET/PYTHON/DELPHI/ERLANG/RUBY/OTHER/HTTP/GO/PHP/OMS</remarks>
         [XmlElement("language")]
         public String Language { get; set; } = "CPP";

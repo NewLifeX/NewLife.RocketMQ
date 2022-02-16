@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Data;
+using NewLife.Log;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Common;
 using NewLife.RocketMQ.Protocol;
@@ -87,12 +88,12 @@ namespace NewLife.RocketMQ
                     var rs = bk.Invoke(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties(), true);
 
                     // 包装结果
-                    var sr = new SendResult
+                    var result = new SendResult
                     {
                         //Status = SendStatus.SendOK,
                         Queue = mq
                     };
-                    sr.Status = (ResponseCode)rs.Header.Code switch
+                    result.Status = (ResponseCode)rs.Header.Code switch
                     {
                         ResponseCode.SUCCESS => SendStatus.SendOK,
                         ResponseCode.FLUSH_DISK_TIMEOUT => SendStatus.FlushDiskTimeout,
@@ -100,9 +101,11 @@ namespace NewLife.RocketMQ
                         ResponseCode.SLAVE_NOT_AVAILABLE => SendStatus.SlaveNotAvailable,
                         _ => throw rs.Header.CreateException(),
                     };
-                    sr.Read(rs.Header?.ExtFields);
+                    result.Read(rs.Header?.ExtFields);
 
-                    return sr;
+                    if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("{0}", result);
+
+                    return result;
                 }
                 catch (Exception ex)
                 {

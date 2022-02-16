@@ -55,10 +55,18 @@ namespace NewLife.RocketMQ.Protocol
             var dic2 = dic.ToNullable(StringComparer.OrdinalIgnoreCase);
 
             if (dic2.TryGetValue(nameof(MsgId), out var str)) MsgId = str;
+            if (dic2.TryGetValue(nameof(OffsetMsgId), out  str)) OffsetMsgId = str;
             if (dic2.TryGetValue(nameof(QueueOffset), out str)) QueueOffset = str.ToLong();
+            if (dic2.TryGetValue(nameof(TransactionId), out str)) TransactionId = str;
             if (dic2.TryGetValue(nameof(RegionId), out str)) RegionId = str;
             if (dic2.TryGetValue("MSG_REGION", out str)) RegionId = str;
         }
+
+        /// <summary>
+        /// 已重载。友好显示
+        /// </summary>
+        /// <returns></returns>
+        public override String ToString() => $"SendStatus={Status} MsgId={MsgId} OffsetMsgId={OffsetMsgId} QueueOffset={QueueOffset} Queue={Queue}";
         #endregion
     }
 }

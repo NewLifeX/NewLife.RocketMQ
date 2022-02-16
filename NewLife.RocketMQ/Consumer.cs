@@ -461,6 +461,8 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         protected virtual Boolean Consume(MessageQueue queue, PullResult result)
         {
+            if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("{0}", result);
+
             if (OnConsume != null) return OnConsume(queue, result.Messages);
 
             return true;

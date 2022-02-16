@@ -40,7 +40,7 @@ namespace NewLife.RocketMQ.Protocol
         #region 辅助
         /// <summary>友好字符串</summary>
         /// <returns></returns>
-        public override String ToString() => $"MessageQueue [Topic={Topic}, BrokerName={BrokerName}, QueueId={QueueId}]";
+        public override String ToString() => $"MessageQueue[Topic={Topic}, BrokerName={BrokerName}, QueueId={QueueId}]";
         #endregion
     }
 }
