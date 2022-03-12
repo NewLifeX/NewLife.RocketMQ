@@ -1,8 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1</TargetFrameworks>
-    <AssemblyName>NewLife.RocketMQ</AssemblyName>
-    <RootNamespace>NewLife.RocketMQ</RootNamespace>
     <AssemblyTitle>RocketMQ客户端</AssemblyTitle>
     <Description>纯托管轻量级RocketMQ客户端，支持发布消息、消费消息、负载均衡等核心功能！旧版NET45请找2021年</Description>
     <Company>新生命开发团队</Company>
@@ -13,8 +11,9 @@
     <FileVersion>$(Version)</FileVersion>
     <AssemblyVersion>$(VersionPrefix).*</AssemblyVersion>
     <Deterministic>false</Deterministic>
-    <OutputPath>..\Bin</OutputPath>
-    <DocumentationFile>$(OutputPath)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    <OutputPath>..\..\Bin</OutputPath>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
@@ -33,7 +32,6 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageProjectUrl>https://www.yuque.com/smartstone/nx/rocketmq</PackageProjectUrl>
   </PropertyGroup>
   <ItemGroup>
@@ -42,15 +40,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(TargetFramework)'=='net40'">
-    <DefineConstants>$(DefineConstants);__WIN__;NET4</DefineConstants>
-  </PropertyGroup>
 
   <ItemGroup>
     <Compile Remove="Protocol\SendStatus.cs" />
