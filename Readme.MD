@@ -1,4 +1,14 @@
+# NewLife.RocketMQ - RocketMQ客户端组件
+
+![GitHub top language](https://img.shields.io/github/languages/top/newlifex/newlife.rocketmq?logo=github)
+![GitHub License](https://img.shields.io/github/license/newlifex/newlife.rocketmq?logo=github)
+![Nuget Downloads](https://img.shields.io/nuget/dt/newlife.rocketmq?logo=nuget)
+![Nuget](https://img.shields.io/nuget/v/newlife.rocketmq?logo=nuget)
+![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/newlife.rocketmq?label=dev%20nuget&logo=nuget)
+
 RocketMQ，支持`.Net Framework/.netstandard/Mono`。
+
+教程：[https://www.yuque.com/smartstone/nx/rocketmq](https://www.yuque.com/smartstone/nx/rocketmq)  
 
 ## 新生命项目矩阵
 各项目默认支持net6.0/netstandard2.1，旧版（2021.1225）支持net5.0/netstandard2.0/net4.5/net4.0/net2.0  
