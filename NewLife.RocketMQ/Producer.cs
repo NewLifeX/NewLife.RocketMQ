@@ -312,7 +312,7 @@ namespace NewLife.RocketMQ
                 Topic = Topic,
                 //QueueId = mq.QueueId,
                 SysFlag = 0,
-                BornTimestamp = DateTime.Now.ToLong(),
+                BornTimestamp = DateTime.UtcNow.ToLong(),
                 Flag = message.Flag,
                 Properties = message.GetProperties(),
                 ReconsumeTimes = 0,
