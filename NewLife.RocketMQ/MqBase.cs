@@ -16,11 +16,37 @@ namespace NewLife.RocketMQ.Client
         /// <summary>名称服务器地址</summary>
         public String NameServerAddress { get; set; }
 
+        private String _group = "DEFAULT_PRODUCER";
         /// <summary>消费组</summary>
-        public String Group { get; set; } = "DEFAULT_PRODUCER";
+        public String Group
+        {
+            get
+            {
+                // 阿里云目前需要在Group前面带上实例ID并用【%】连接,组成路由Group[用来路由到实例Group]
+                if (Aliyun == null || String.IsNullOrWhiteSpace(Aliyun.InstanceId)) return _group;
+                return String.Join('%', Aliyun.InstanceId, _group);
+            }
+            set
+            {
+                _group = value;
+            }
+        }
 
+        private String _topic = "TBW102";
         /// <summary>主题</summary>
-        public String Topic { get; set; } = "TBW102";
+        public String Topic
+        {
+            get
+            {
+                // 阿里云目前需要在Topic前面带上实例ID并用【%】连接,组成路由Topic[用来路由到实例Topic]
+                if (Aliyun == null || String.IsNullOrWhiteSpace(Aliyun.InstanceId)) return _topic;
+                return String.Join('%', Aliyun.InstanceId, _topic);
+            }
+            set
+            {
+                _topic = value;
+            }
+        }
 
         /// <summary>本地IP地址</summary>
         public String ClientIP { get; set; } = NetHelper.MyIP() + "";
