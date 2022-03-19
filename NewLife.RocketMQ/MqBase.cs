@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Linq;
 using NewLife.Http;
 using NewLife.Log;
 using NewLife.RocketMQ.Protocol;
@@ -82,6 +79,9 @@ namespace NewLife.RocketMQ.Client
 
         /// <summary>阿里云选项</summary>
         public AliyunOptions Aliyun { get; set; }
+
+        /// <summary> Apache RocketMQ ACL 客户端配置。在Borker服务器配置设置为AclEnable = true 时配置生效。</summary>
+        public AclOptions AclOptions { get; set; }
 
         /// <summary>性能跟踪</summary>
         public ITracer Tracer { get; set; } = DefaultTracer.Instance;

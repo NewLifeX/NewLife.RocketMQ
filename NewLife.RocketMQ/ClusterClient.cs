@@ -154,31 +154,54 @@ namespace NewLife.RocketMQ
 
         private void SetSignature(Command cmd)
         {
-            // 签名。阿里云ONS需要反射消息具体字段，把值转字符串后拼起来，再加上body后，取HmacSHA1
-            var cfg = Config.Aliyun;
-            if (cfg == null || cfg.AccessKey.IsNullOrEmpty()) return;
+            // 阿里签名。阿里云ONS需要反射消息具体字段，把值转字符串后拼起来，再加上body后，取HmacSHA1
+            // Apache RocketMQ ACL 签名机制跟阿里一致，需要排序然后再加上body后，取HmacSHA1
 
-            var sha = new HMACSHA1(cfg.SecretKey.GetBytes());
+            String accessKey;
+            String secretKey;
+            String onsChannel;
 
+            // 根据配置判断是阿里版本还是Apache开源版本
+            if (Config.Aliyun == null || Config.Aliyun.AccessKey.IsNullOrEmpty())
+            {
+                // Apache RocketMQ:如果未配置签名AccessKey信息直接返回，不加密
+                if (Config.AclOptions == null || Config.AclOptions.AccessKey.IsNullOrEmpty()) return;
+                
+                accessKey = Config.AclOptions.AccessKey;
+                secretKey = Config.AclOptions.SecretKey;
+                onsChannel = Config.AclOptions.OnsChannel;
+            }
+            else
+            {
+                // 阿里版本RocketMQ
+                accessKey = Config.Aliyun.AccessKey;
+                secretKey = Config.Aliyun.SecretKey;
+                onsChannel = Config.Aliyun.OnsChannel;
+            }
+            
+            var sha = new HMACSHA1(secretKey.GetBytes());
             var ms = new MemoryStream();
+            
             // AccessKey + OnsChannel
-            ms.Write(cfg.AccessKey.GetBytes());
-            ms.Write(cfg.OnsChannel.GetBytes());
+            ms.Write(accessKey.GetBytes());
+            ms.Write(onsChannel.GetBytes());
+            
             // ExtFields
             var dic = cmd.Header.GetExtFields();
-            //var dic2 = dic.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
-            foreach (var item in dic)
+            var extFieldsDic = dic.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
+            
+            foreach (var extFields in extFieldsDic)
             {
-                if (item.Value != null) ms.Write(item.Value.GetBytes());
+                if (extFields.Value != null) ms.Write(extFields.Value.GetBytes());
             }
+            
             // Body
             cmd.Payload?.CopyTo(ms);
 
             var sign = sha.ComputeHash(ms.ToArray());
-
             dic["Signature"] = sign.ToBase64();
-            dic["AccessKey"] = cfg.AccessKey;
-            dic["OnsChannel"] = cfg.OnsChannel;
+            dic["AccessKey"] = accessKey;
+            dic["OnsChannel"] = onsChannel;
         }
 
         /// <summary>发送指定类型的命令</summary>
