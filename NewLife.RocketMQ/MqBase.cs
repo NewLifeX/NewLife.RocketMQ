@@ -75,7 +75,7 @@ namespace NewLife.RocketMQ.Client
         public Boolean Active { get; private set; }
 
         /// <summary>代理集合</summary>
-        public IList<BrokerInfo> Brokers => _NameServer?.Brokers;
+        public IList<BrokerInfo> Brokers => _NameServer?.Brokers.OrderBy(t => t.Name).ToList();
 
         /// <summary>阿里云选项</summary>
         public AliyunOptions Aliyun { get; set; }

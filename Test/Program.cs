@@ -6,7 +6,6 @@ using NewLife.RocketMQ.Protocol;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 
@@ -16,11 +15,10 @@ namespace Test
     {
         static void Main(String[] args)
         {
-            XTrace.UseConsole();
+           //XTrace.UseConsole();
 
-            Test5();
-
-            //TestAliyun();
+            // Test5();
+            TestAliyun();
 
             Console.WriteLine("OK!");
             Console.ReadKey();
@@ -88,19 +86,20 @@ namespace Test
         {
             var consumer = new Consumer
             {
-                Topic = "nx_test",
-                Group = "test",
-                NameServerAddress = "127.0.0.1:9876",
+                Topic = "skyline_test_02",
+                Group = "GID_Skyline_Group02",
+                NameServerAddress = "http://MQ_INST_1827694722767531_BXxCwUhm.mq-internet-access.mq-internet.aliyuncs.com:80",
 
                 Aliyun = new AliyunOptions
                 {
-                    AccessKey = "appId",
-                    SecretKey = "appSecret",
+                    AccessKey = "LTAI5tKTGShu31C61xRARVC4",
+                    SecretKey = "a9oPwph1IcMGanWckzUOwOf3Ork8LO",
+                    InstanceId = "MQ_INST_1827694722767531_BXxCwUhm",
                 },
 
-                //FromLastOffset = false,
+                FromLastOffset = true,
                 //SkipOverStoredMsgCount = 0,
-                //BatchSize = 20,
+                BatchSize = 1,
 
                 Log = XTrace.Log,
                 ClientLog = XTrace.Log,
@@ -108,7 +107,7 @@ namespace Test
 
             consumer.OnConsume = OnConsume;
 
-            consumer.Configure(MqSetting.Current);
+            //consumer.Configure(MqSetting.Current);
             consumer.Start();
 
             _consumer = consumer;

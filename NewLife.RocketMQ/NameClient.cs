@@ -12,14 +12,17 @@ namespace NewLife.RocketMQ
     public class NameClient : ClusterClient
     {
         #region 属性
+
         /// <summary>Broker集合</summary>
         public IList<BrokerInfo> Brokers { get; private set; } = new List<BrokerInfo>();
 
         /// <summary>代理改变时触发</summary>
         public event EventHandler OnBrokerChange;
+
         #endregion
 
         #region 构造
+
         /// <summary>实例化</summary>
         /// <param name="id"></param>
         /// <param name="config"></param>
@@ -28,9 +31,11 @@ namespace NewLife.RocketMQ
             Id = id;
             Config = config;
         }
+
         #endregion
 
         #region 方法
+
         /// <summary>启动</summary>
         public override void Start()
         {
@@ -44,15 +49,18 @@ namespace NewLife.RocketMQ
                 if (uri.Type == NetType.Unknown) uri.Type = NetType.Tcp;
                 list.Add(uri);
             }
+
             Servers = list.ToArray();
 
             base.Start();
 
             if (_timer == null) _timer = new TimerX(DoWork, null, cfg.PollNameServerInterval, cfg.PollNameServerInterval);
         }
+
         #endregion
 
         #region 命令
+
         private TimerX _timer;
         private void DoWork(Object state) => GetRouteInfo(Config.Topic);
 
@@ -62,7 +70,7 @@ namespace NewLife.RocketMQ
         public IList<BrokerInfo> GetRouteInfo(String topic)
         {
             // 发送命令
-            var rs = Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
+            var rs = Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new {topic});
             var js = rs.ReadBodyAsJson();
 
             var list = new List<BrokerInfo>();
@@ -73,9 +81,10 @@ namespace NewLife.RocketMQ
                 {
                     var name = item["brokerName"] + "";
                     if (item["brokerAddrs"] is IDictionary<String, Object> addrs)
-                        list.Add(new BrokerInfo { Name = name, Addresses = addrs.Select(e => e.Value + "").ToArray() });
+                        list.Add(new BrokerInfo {Name = name, Addresses = addrs.Select(e => e.Value + "").ToArray()});
                 }
             }
+
             // 解析队列集合
             if (js["queueDatas"] is IList<Object> bs2)
             {
@@ -84,9 +93,9 @@ namespace NewLife.RocketMQ
                     var name = item["brokerName"] + "";
 
                     var bk = list.FirstOrDefault(e => e.Name == name);
-                    if (bk == null) list.Add(bk = new BrokerInfo { Name = name });
+                    if (bk == null) list.Add(bk = new BrokerInfo {Name = name});
 
-                    bk.Permission = (Permissions)item["perm"].ToInt();
+                    bk.Permission = (Permissions) item["perm"].ToInt();
                     bk.ReadQueueNums = item["readQueueNums"].ToInt();
                     bk.WriteQueueNums = item["writeQueueNums"].ToInt();
                     bk.TopicSynFlag = item["topicSynFlag"].ToInt();
@@ -94,15 +103,16 @@ namespace NewLife.RocketMQ
             }
 
             // 如果完全相等，则直接返回。否则重新平衡队列
-            if (Brokers.SequenceEqual(list)) return list;
+            if (Brokers.SequenceEqual(list)) return list.OrderBy(t => t.Name).ToList();
 
             Brokers = list;
 
             // 有改变，重新平衡队列
             OnBrokerChange?.Invoke(this, EventArgs.Empty);
 
-            return list;
+            return list.OrderBy(t => t.Name).ToList();
         }
+
         #endregion
     }
 }
