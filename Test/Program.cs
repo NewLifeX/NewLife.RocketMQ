@@ -86,8 +86,8 @@ namespace Test
         {
             var consumer = new Consumer
             {
-                Topic = "skyline_test_02",
-                Group = "GID_Skyline_Group02",
+                Topic = "newlife_test_02",
+                Group = "GID_newlife_Group02",
                 NameServerAddress = "http://MQ_INST_1827694722767531_BXxCwUhm.mq-internet-access.mq-internet.aliyuncs.com:80",
 
                 Aliyun = new AliyunOptions

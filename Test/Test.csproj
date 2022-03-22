@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="9.0.2022.320-beta0140" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\NewLife.RocketMQ\NewLife.RocketMQ.csproj" />
   </ItemGroup>
 

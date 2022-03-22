@@ -408,7 +408,6 @@ namespace NewLife.RocketMQ
                                     if (rs)
                                     {
                                         st.Offset = pr.NextBeginOffset;
-                                        Console.WriteLine($"BrokerName：{mq.BrokerName},QueueId:{mq.QueueId}跟新 {st.Offset}");
                                         // 提交消费进度
                                         await UpdateOffset(mq, st.Offset);
                                     }
