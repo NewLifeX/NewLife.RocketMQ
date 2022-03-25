@@ -61,10 +61,10 @@ namespace NewLife.RocketMQ
 
         protected override void Dispose(Boolean disposing)
         {
-            base.Dispose(disposing);
-
             if (disposing)
                 _timer?.Dispose();
+
+            base.Dispose(disposing);
         }
         #endregion
 

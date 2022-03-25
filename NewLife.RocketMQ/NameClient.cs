@@ -35,10 +35,10 @@ namespace NewLife.RocketMQ
         /// <inheritdoc/>
         protected override void Dispose(Boolean disposing)
         {
-            base.Dispose(disposing);
-
             if (disposing)
                 _timer?.Dispose();
+
+            base.Dispose(disposing);
         }
 
         /// <summary>启动</summary>
