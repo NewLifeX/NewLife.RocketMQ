@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using NewLife.Net;
+﻿using NewLife.Net;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Threading;
@@ -31,10 +28,18 @@ namespace NewLife.RocketMQ
             Id = id;
             Config = config;
         }
-
         #endregion
 
         #region 方法
+
+        /// <inheritdoc/>
+        protected override void Dispose(Boolean disposing)
+        {
+            base.Dispose(disposing);
+
+            if (disposing)
+                _timer?.Dispose();
+        }
 
         /// <summary>启动</summary>
         public override void Start()
@@ -70,7 +75,7 @@ namespace NewLife.RocketMQ
         public IList<BrokerInfo> GetRouteInfo(String topic)
         {
             // 发送命令
-            var rs = Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new {topic});
+            var rs = Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
             var js = rs.ReadBodyAsJson();
 
             var list = new List<BrokerInfo>();
@@ -81,7 +86,7 @@ namespace NewLife.RocketMQ
                 {
                     var name = item["brokerName"] + "";
                     if (item["brokerAddrs"] is IDictionary<String, Object> addrs)
-                        list.Add(new BrokerInfo {Name = name, Addresses = addrs.Select(e => e.Value + "").ToArray()});
+                        list.Add(new BrokerInfo { Name = name, Addresses = addrs.Select(e => e.Value + "").ToArray() });
                 }
             }
 
@@ -93,9 +98,9 @@ namespace NewLife.RocketMQ
                     var name = item["brokerName"] + "";
 
                     var bk = list.FirstOrDefault(e => e.Name == name);
-                    if (bk == null) list.Add(bk = new BrokerInfo {Name = name});
+                    if (bk == null) list.Add(bk = new BrokerInfo { Name = name });
 
-                    bk.Permission = (Permissions) item["perm"].ToInt();
+                    bk.Permission = (Permissions)item["perm"].ToInt();
                     bk.ReadQueueNums = item["readQueueNums"].ToInt();
                     bk.WriteQueueNums = item["writeQueueNums"].ToInt();
                     bk.TopicSynFlag = item["topicSynFlag"].ToInt();
