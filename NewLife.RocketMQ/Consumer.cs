@@ -10,6 +10,7 @@ using System.Xml.Serialization;
 using NewLife.Log;
 using NewLife.Reflection;
 using NewLife.RocketMQ.Client;
+using NewLife.RocketMQ.Models;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
 using NewLife.Threading;
@@ -48,6 +49,12 @@ namespace NewLife.RocketMQ
 
         /// <summary>消费委托</summary>
         public Func<MessageQueue, MessageExt[], Boolean> OnConsume;
+
+        /// <summary>异步消费委托</summary>
+        public Func<MessageQueue, MessageExt[], Task<Boolean>> OnConsumeAsync;
+
+        /// <summary>消费事件</summary>
+        public event EventHandler<ConsumeEventArgs> Consumed;
         #endregion
 
         #region 构造
@@ -409,7 +416,7 @@ namespace NewLife.RocketMQ
                                 if (pr.Messages != null && pr.Messages.Length > 0)
                                 {
                                     // 触发消费
-                                    var rs = Consume(mq, pr);
+                                    var rs = await Consume(mq, pr);
 
                                     // 更新偏移
                                     if (rs)
@@ -459,11 +466,14 @@ namespace NewLife.RocketMQ
         /// <param name="queue"></param>
         /// <param name="result"></param>
         /// <returns></returns>
-        protected virtual Boolean Consume(MessageQueue queue, PullResult result)
+        protected virtual async Task<Boolean> Consume(MessageQueue queue, PullResult result)
         {
             if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("{0}", result);
 
+            Consumed?.Invoke(this, new ConsumeEventArgs { Queue = queue, Messages = result.Messages, Result = result });
+
             if (OnConsume != null) return OnConsume(queue, result.Messages);
+            if (OnConsumeAsync != null) return await OnConsumeAsync(queue, result.Messages);
 
             return true;
         }
