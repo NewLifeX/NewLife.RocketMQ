@@ -1,17 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml.Serialization;
+using NewLife.Data;
 using NewLife.Log;
 using NewLife.Reflection;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Models;
 using NewLife.RocketMQ.Protocol;
+using NewLife.RocketMQ.Protocol.ConsumerStates;
 using NewLife.Serialization;
 using NewLife.Threading;
 
@@ -21,6 +17,7 @@ namespace NewLife.RocketMQ
     public class Consumer : MqBase
     {
         #region 属性
+
         /// <summary>数据</summary>
         public IList<ConsumerData> Data { get; set; }
 
@@ -42,9 +39,9 @@ namespace NewLife.RocketMQ
         /// 若需要处理所有未消费消息，可将此值设置为0
         /// </summary>
         [Obsolete("谨慎使用该配置，该配置会破坏ConsumeFromWhere的原始意图，具体表现为（在CONSUME_FROM_LAST_OFFSET模式下）：" +
-            "1.首次消费时如果队列中已有数据，但数据量未达到SkipOverStoredMsgCount设定值时，会从头部开始消费，而不是尾部；" +
-            "2.非首次消费时如果队列最大偏移量与当前偏移量差值大于SkipOverStoredMsgCount时，会直接从尾部开始消费，而不是继续消费；" +
-            "3.上述的两种情况都是在Consumer初始化后首次DoPull时执行的判断，也就是一般情况下与应用启动操作绑定")]
+                  "1.首次消费时如果队列中已有数据，但数据量未达到SkipOverStoredMsgCount设定值时，会从头部开始消费，而不是尾部；" +
+                  "2.非首次消费时如果队列最大偏移量与当前偏移量差值大于SkipOverStoredMsgCount时，会直接从尾部开始消费，而不是继续消费；" +
+                  "3.上述的两种情况都是在Consumer初始化后首次DoPull时执行的判断，也就是一般情况下与应用启动操作绑定")]
         public UInt32 SkipOverStoredMsgCount { get; set; }
 
         /// <summary>消费委托</summary>
@@ -58,6 +55,7 @@ namespace NewLife.RocketMQ
         #endregion
 
         #region 构造
+
         /// <summary>销毁</summary>
         /// <param name="disposing"></param>
         protected override void Dispose(Boolean disposing)
@@ -67,9 +65,11 @@ namespace NewLife.RocketMQ
 
             base.Dispose(disposing);
         }
+
         #endregion
 
         #region 方法
+
         /// <summary>启动</summary>
         /// <returns></returns>
         public override Boolean Start()
@@ -82,17 +82,10 @@ namespace NewLife.RocketMQ
             if (list == null)
             {
                 // 建立消费者数据，用于心跳
-                var sd = new SubscriptionData
-                {
-                    Topic = Topic,
-                };
-                var cd = new ConsumerData
-                {
-                    GroupName = Group,
-                    SubscriptionDataSet = new[] { sd },
-                };
+                var sd = new SubscriptionData {Topic = Topic,};
+                var cd = new ConsumerData {GroupName = Group, SubscriptionDataSet = new[] {sd},};
 
-                list = new List<ConsumerData> { cd };
+                list = new List<ConsumerData> {cd};
 
                 Data = list;
             }
@@ -120,9 +113,11 @@ namespace NewLife.RocketMQ
             _timer.TryDispose();
             _threads.TryDispose();
         }
+
         #endregion
 
         #region 拉取消息
+
         /// <summary>从指定队列拉取消息</summary>
         /// <param name="mq"></param>
         /// <param name="offset"></param>
@@ -160,9 +155,9 @@ namespace NewLife.RocketMQ
 
                 if (rs.Header.Code == 0)
                     pr.Status = PullStatus.Found;
-                else if (rs.Header.Code == (Int32)ResponseCode.PULL_NOT_FOUND)
+                else if (rs.Header.Code == (Int32) ResponseCode.PULL_NOT_FOUND)
                     pr.Status = PullStatus.NoNewMessage;
-                else if (rs.Header.Code == (Int32)ResponseCode.PULL_OFFSET_MOVED || rs.Header.Code == (Int32)ResponseCode.PULL_RETRY_IMMEDIATELY)
+                else if (rs.Header.Code == (Int32) ResponseCode.PULL_OFFSET_MOVED || rs.Header.Code == (Int32) ResponseCode.PULL_RETRY_IMMEDIATELY)
                     pr.Status = PullStatus.OffsetIllegal;
                 else
                 {
@@ -185,9 +180,11 @@ namespace NewLife.RocketMQ
                 throw;
             }
         }
+
         #endregion
 
         #region 业务方法
+
         /// <summary>查询指定队列的偏移量</summary>
         /// <param name="mq"></param>
         /// <returns></returns>
@@ -196,7 +193,7 @@ namespace NewLife.RocketMQ
             var bk = GetBroker(mq.BrokerName);
             var rs = await bk.InvokeAsync(RequestCode.QUERY_CONSUMER_OFFSET, null, new
             {
-                consumerGroup = Group,
+                consumerGroup = Group, 
                 topic = Topic,
                 queueId = mq.QueueId,
             }, true);
@@ -217,8 +214,8 @@ namespace NewLife.RocketMQ
             var bk = GetBroker(mq.BrokerName);
             var rs = await bk.InvokeAsync(RequestCode.GET_MAX_OFFSET, null, new
             {
-                consumerGroup = Group,
-                topic = Topic,
+                consumerGroup = Group, 
+                topic = Topic, 
                 queueId = mq.QueueId,
             }, true);
 
@@ -238,8 +235,8 @@ namespace NewLife.RocketMQ
             var bk = GetBroker(mq.BrokerName);
             var rs = await bk.InvokeAsync(RequestCode.GET_MIN_OFFSET, null, new
             {
-                consumerGroup = Group,
-                topic = Topic,
+                consumerGroup = Group, 
+                topic = Topic, 
                 queueId = mq.QueueId,
             }, true);
 
@@ -268,11 +265,11 @@ namespace NewLife.RocketMQ
             var rs = await bk.InvokeAsync(RequestCode.UPDATE_CONSUMER_OFFSET, null, new
             {
                 commitOffset,
-                consumerGroup = Group,
+                consumerGroup = Group, 
                 queueId = mq.QueueId,
                 topic = Topic,
             });
-
+            
             var dic = rs?.Header?.ExtFields;
             if (dic == null) return false;
 
@@ -285,10 +282,7 @@ namespace NewLife.RocketMQ
         {
             if (group.IsNullOrEmpty()) group = Group;
 
-            var header = new
-            {
-                consumerGroup = group,
-            };
+            var header = new {consumerGroup = group,};
 
             var cs = new HashSet<String>();
 
@@ -319,9 +313,11 @@ namespace NewLife.RocketMQ
 
             return cs;
         }
+
         #endregion
 
         #region 消费调度
+
         private Thread[] _threads;
         private volatile Int32 _version;
 
@@ -337,7 +333,7 @@ namespace NewLife.RocketMQ
                 if (_timer != null) return;
 
                 // 快速检查消费组，均衡成功后改为30秒一次
-                _timer = new TimerX(CheckGroup, null, 100, 1_000) { Async = true };
+                _timer = new TimerX(CheckGroup, null, 100, 1_000) {Async = true};
             }
         }
 
@@ -358,11 +354,7 @@ namespace NewLife.RocketMQ
             _threads = new Thread[qs.Length];
             for (var i = 0; i < qs.Length; i++)
             {
-                var th = new Thread(DoPull)
-                {
-                    Name = "CT" + i,
-                    IsBackground = true,
-                };
+                var th = new Thread(DoPull) {Name = "CT" + i, IsBackground = true,};
                 th.Start(qs[i]);
 
                 _threads[i] = th;
@@ -422,11 +414,11 @@ namespace NewLife.RocketMQ
                                     if (rs)
                                     {
                                         st.Offset = pr.NextBeginOffset;
-
                                         // 提交消费进度
                                         await UpdateOffset(mq, st.Offset);
                                     }
                                 }
+
                                 break;
                             case PullStatus.NoNewMessage:
                                 break;
@@ -438,6 +430,7 @@ namespace NewLife.RocketMQ
                                     WriteLog("无效的offset，可能历史消息已过期 [{0}@{1}] Offset={2:n0}, NextOffset={3:n0}", mq.BrokerName, mq.QueueId, st.Offset, pr.NextBeginOffset);
                                     st.Offset = pr.NextBeginOffset;
                                 }
+
                                 break;
                             case PullStatus.Unknown:
                                 Log.Error("未知响应类型消息序列[{1}]偏移量{0}", st.Offset, st.Queue.QueueId);
@@ -495,9 +488,11 @@ namespace NewLife.RocketMQ
                 }
             }
         }
+
         #endregion
 
         #region 消费端负载均衡
+
         /// <summary>当前所需要消费的队列。由均衡算法产生</summary>
         public MessageQueue[] Queues => _Queues.Select(e => e.Queue).ToArray();
 
@@ -506,12 +501,12 @@ namespace NewLife.RocketMQ
 
         class QueueStore
         {
-            [XmlIgnore]
-            public MessageQueue Queue { get; set; }
+            [XmlIgnore] public MessageQueue Queue { get; set; }
             public Int64 Offset { get; set; } = -1;
             public Int64 CommitOffset { get; set; } = -1;
 
             #region 相等
+
             /// <summary>相等比较</summary>
             /// <param name="obj"></param>
             /// <returns></returns>
@@ -520,6 +515,7 @@ namespace NewLife.RocketMQ
             /// <summary>计算哈希</summary>
             /// <returns></returns>
             public override Int32 GetHashCode() => (Queue == null ? 0 : Queue.GetHashCode()) ^ Offset.GetHashCode();
+
             #endregion
         }
 
@@ -545,12 +541,7 @@ namespace NewLife.RocketMQ
                 {
                     for (var i = 0; i < br.ReadQueueNums; i++)
                     {
-                        qs.Add(new MessageQueue
-                        {
-                            Topic = Topic,
-                            BrokerName = br.Name,
-                            QueueId = i,
-                        });
+                        qs.Add(new MessageQueue {Topic = Topic, BrokerName = br.Name, QueueId = i,});
                     }
                 }
             }
@@ -563,6 +554,7 @@ namespace NewLife.RocketMQ
             {
                 if (cs2[idx] == cid) break;
             }
+
             if (idx >= cs2.Count) return false;
 
             // 先分糖，每人多少个
@@ -573,6 +565,7 @@ namespace NewLife.RocketMQ
 
                 if (k >= ds.Length) k = 0;
             }
+
             // 我的前面分了多少
             var start = ds.Take(idx).Sum();
             // 跳过前面，取我的糖
@@ -581,7 +574,7 @@ namespace NewLife.RocketMQ
             var rs = new List<QueueStore>();
             foreach (var item in qs)
             {
-                rs.Add(new QueueStore { Queue = item });
+                rs.Add(new QueueStore {Queue = item});
             }
 
             // 如果序列相等则返回false
@@ -602,13 +595,13 @@ namespace NewLife.RocketMQ
             _Queues = rs.ToArray();
             InitOffsetAsync().ConfigureAwait(false).GetAwaiter().GetResult();
             _Consumers = cs2.ToArray();
-
             return true;
         }
 
         private TimerX _timer;
         private DateTime _nextCheck;
         private Boolean _checking;
+
         /// <summary>检查消费组，如果消费者有变化，则需要重新平衡，重新分配各消费者所处理的队列</summary>
         /// <param name="state"></param>
         private void CheckGroup(Object state = null)
@@ -648,49 +641,26 @@ namespace NewLife.RocketMQ
         {
             if (_Queues == null || _Queues.Length == 0) return;
 
-            var broker = GetBroker(_Queues[0].Queue.BrokerName);
-            // 这指令需要group参数，然而查出来的数据是跟group无关的就离谱
-            //var command = broker.Invoke(RequestCode.QUERY_CONSUME_TIME_SPAN, null, new
-            //{
-            //    group = Group,
-            //    topic = Topic
-            //}, true);
-            var command = await broker.InvokeAsync(RequestCode.GET_CONSUME_STATS, null, new
+            var offsetTables = new Dictionary<MessageQueueModel, OffsetWrapperModel>();
+            var queueBrokers = _Queues.Select(t => t.Queue.BrokerName).Distinct().ToList();//获取当前消费这分配到的服务器及服务器队列
+            foreach (var brokerName in queueBrokers)
             {
-                consumerGroup = Group,
-                topic = Topic
-            }, true);
-
-            var regex = new Regex("\\{\"brokerName\":\"[^\"]+\",\"queueId\":(\\d+),\"topic\":\"[^\"]+\"\\}:\\{\"brokerOffset\":(\\d+),\"consumerOffset\":(\\d+),\"lastTimestamp\":(\\d+)\\}", RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
-            var json = command.Payload.ToStr();
-            var matches = regex.Matches(json);
-            // Dictionary<queueId, new[]{brokerOffset, consumerOffset}>
-            var queueOffsets = new Dictionary<Int32, Int64[]>();
-            var neverConsumed = true;
-            // 确认是否所有queue都没有消费过
-            foreach (Match match in matches)
-            {
-                var queueId = Int32.Parse(match.Groups[1].Value);
-                var brokerOffset = Int64.Parse(match.Groups[2].Value);
-                var consumerOffset = Int64.Parse(match.Groups[3].Value);
-                var lastTimestamp = Int64.Parse(match.Groups[4].Value);
-                queueOffsets[queueId] = new[] { brokerOffset, consumerOffset };
-                neverConsumed &= lastTimestamp == 0;
+                var broker = GetBroker(brokerName);
+                var command = await broker.InvokeAsync(RequestCode.GET_CONSUME_STATS, null, new {consumerGroup = Group, topic = Topic}, true);
+                var consumerStates = ConsumerStatesSpecialJsonHandler(command.Payload);
+                foreach (var (key, value) in consumerStates.OffsetTable) offsetTables.Add(key, value);
             }
+
+            var neverConsumed = offsetTables.All(t => t.Value.LastTimestamp == 0); //表示没消费过
 
             foreach (var store in _Queues)
             {
                 if (store.Offset >= 0) continue;
 
+                var (_, offsetTable) = offsetTables.FirstOrDefault(t => t.Key.BrokerName == store.Queue.BrokerName && t.Key.QueueId == store.Queue.QueueId);
                 if (neverConsumed)
                 {
-                    //var maxOffset = await QueryMaxOffset(store.Queue);
-                    var maxOffset = 0L;
-                    if (queueOffsets.ContainsKey(store.Queue.QueueId))
-                    {
-                        maxOffset = queueOffsets[store.Queue.QueueId][0];
-                    }
-
+                    var maxOffset = offsetTable.BrokerOffset;
                     var offset = FromLastOffset ? maxOffset : 0L;
                     /**
                      * 下面这个判断是专门为SkipOverStoredMsgCount设置的，根据SkipOverStoredMsgCount，
@@ -702,38 +672,101 @@ namespace NewLife.RocketMQ
                     {
                         offset = 0L;
                     }
+
                     store.Offset = store.CommitOffset = offset;
                     await UpdateOffset(store.Queue, offset);
                 }
                 else
                 {
                     // var offset = await QueryOffset(store.Queue);
-                    var offset = queueOffsets[store.Queue.QueueId][1];
+                    var offset = offsetTable.ConsumerOffset;
                     /**
                      * 下面这个判断是专门为SkipOverStoredMsgCount设置的，根据SkipOverStoredMsgCount，
                      * 根据SkipOverStoredMsgCount的原始定义，在当前积压量大于SkipOverStoredMsgCount
                      * 设定值时，直接从最大偏移量开始消费，以后在确定删除SkipOverStoredMsgCount时
                      * 直接删除下面if代码段即可
                      */
-                    if (FromLastOffset && SkipOverStoredMsgCount > 0 && offset + SkipOverStoredMsgCount <= queueOffsets[store.Queue.QueueId][0])
+                    if (FromLastOffset && SkipOverStoredMsgCount > 0 && offset + SkipOverStoredMsgCount <= offsetTable.BrokerOffset)
                     {
-                        offset = queueOffsets[store.Queue.QueueId][0];
+                        offset = offsetTable.BrokerOffset;
                     }
+
                     store.Offset = store.CommitOffset = offset;
                 }
+
                 WriteLog("初始化offset[{0}@{1}] Offset={2:n0}", store.Queue.BrokerName, store.Queue.QueueId, store.Offset);
             }
         }
+
+        /// <summary>
+        /// 消费者状态信息特殊Json处理
+        /// </summary>
+        /// <param name="payload">负载数据</param>
+        /// <returns></returns>
+        private ConsumerStatesModel ConsumerStatesSpecialJsonHandler(Packet payload)
+        {
+            #region <cmd formate/>
+
+            // Apache RocketMQ 获取Consumer_States返回结果
+            // 返回消息格式不是正常的JSON需要特殊处理
+            // {
+            //     "consumeTps":0.0,
+            //     "offsetTable":{
+            //         {"brokerName":"wh-sr-11-26","queueId":0,"topic":"mip_topic_0"}:{"brokerOffset":5,"consumerOffset":35,"lastTimestamp":0},
+            //         {"brokerName":"wh-sr-11-26","queueId":1,"topic":"mip_topic_0"}:{"brokerOffset":5,"consumerOffset":35,"lastTimestamp":0}
+            //     }
+            // }
+
+            // 阿里版本 RocketMQ 获取Consumer_States返回结果
+            // 返回消息格式不是正常的JSON需要特殊处理
+            // {
+            //     "consumeTps":0.0,
+            //     "offsetTable":{
+            //         { "brokerName":"cn-qingdao-public-share-05-2","mainQueue":false,"queueGroupId":-1,"queueId":5,"topic":"mip_topic_0"}:
+            //         { "brokerOffset":4,"consumerOffset":4,"earliestUnPulledTimestamp":0,"earliestUnconsumedTimestamp":0,
+            //         "inFlightMsgCountEstimatedAccumulation":0,"lagEstimatedAccumulation":0,"lastTimestamp":1647746454641,"pullOffset":4}
+            //     }
+            // }
+
+            #endregion
+
+            var cmdStr = payload.ToStr();
+            cmdStr = cmdStr[1..^1];
+
+            var indexOf = cmdStr.IndexOf('{') + 1;
+            var lastIndexOf = cmdStr.LastIndexOf('}');
+            cmdStr = cmdStr[indexOf..lastIndexOf];
+
+            var offsetArr = cmdStr.Split('}');
+            var offsetNew = (from offset in offsetArr
+                where !String.IsNullOrWhiteSpace(offset)
+                select String.Concat(offset.Trim(',').Trim(':'), "}")).ToList();
+
+            var consumerStatesModel = new ConsumerStatesModel() {OffsetTable = new Dictionary<MessageQueueModel, OffsetWrapperModel>()};
+
+            for (var i = 0; i < offsetNew.Count / 2; i++)
+            {
+                var list = offsetNew.Skip(i * 2).Take(2).ToList();
+
+                var messageQueue = list[0].ToJsonEntity<MessageQueueModel>();
+                var offsetWrapper = list[1].ToJsonEntity<OffsetWrapperModel>();
+                consumerStatesModel.OffsetTable.Add(messageQueue, offsetWrapper);
+            }
+
+            return consumerStatesModel;
+        }
+
         #endregion
 
         #region 下行指令
+
         /// <summary>收到命令</summary>
         /// <param name="cmd"></param>
         protected override Command OnReceive(Command cmd)
         {
             if (cmd?.Header != null && (cmd.Header.Flag & 1) == 0)
             {
-                switch ((RequestCode)cmd.Header.Code)
+                switch ((RequestCode) cmd.Header.Code)
                 {
                     case RequestCode.NOTIFY_CONSUMER_IDS_CHANGED:
                         NotifyConsumerIdsChanged(cmd);
@@ -788,6 +821,7 @@ namespace NewLife.RocketMQ
                 var val = pi.GetValue(this, null);
                 if (val != null) dic[pi.Name] = val + "";
             }
+
             var asm = Assembly.GetExecutingAssembly();
             dic["PROP_CLIENT_VERSION"] = asm.GetName().Version + "";
             dic["PROP_CONSUMEORDERLY"] = "false";
@@ -798,11 +832,8 @@ namespace NewLife.RocketMQ
             dic["messageModel"] = "CLUSTERING";
             ci.Properties = dic;
 
-            var sd = new SubscriptionData
-            {
-                Topic = Topic,
-            };
-            ci.SubscriptionSet = new[] { sd };
+            var sd = new SubscriptionData {Topic = Topic,};
+            ci.SubscriptionSet = new[] {sd};
 
             var sb = new StringBuilder();
             sb.Append('{');
@@ -818,6 +849,7 @@ namespace NewLife.RocketMQ
                     sb.Append(':');
                     sb.Append(JsonWriter.ToJson(item, false, false, true));
                 }
+
                 sb.Append('}');
             }
             {
@@ -838,6 +870,7 @@ namespace NewLife.RocketMQ
 
             return rs;
         }
+
         #endregion
     }
 }

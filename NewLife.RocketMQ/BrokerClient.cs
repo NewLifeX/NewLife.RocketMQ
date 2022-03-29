@@ -56,6 +56,16 @@ namespace NewLife.RocketMQ
                 ConsumerGroup = group,
             });
         }
+
+        /// <inheritdoc/>
+
+        protected override void Dispose(Boolean disposing)
+        {
+            base.Dispose(disposing);
+
+            if (disposing)
+                _timer?.Dispose();
+        }
         #endregion
 
         #region 心跳

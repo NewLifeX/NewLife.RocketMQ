@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Security.Cryptography;
 using NewLife.Data;
 using NewLife.Log;
 using NewLife.Net;
@@ -188,9 +182,8 @@ namespace NewLife.RocketMQ
             
             // ExtFields
             var dic = cmd.Header.GetExtFields();
-            var extFieldsDic = dic.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
-            
-            foreach (var extFields in extFieldsDic)
+            //var extFieldsDic = dic.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
+            foreach (var extFields in dic)
             {
                 if (extFields.Value != null) ms.Write(extFields.Value.GetBytes());
             }
@@ -292,22 +285,7 @@ namespace NewLife.RocketMQ
         /// <param name="header"></param>
         protected virtual void OnBuild(Header header)
         {
-            //// 阿里云支持 CSharp
-            //var cfg = Config;
-            //if (!cfg.AccessKey.IsNullOrEmpty()) header.Language = "CSharp";
-
             header.Language = "DOTNET";
-
-            //// 阿里云密钥
-            //if (!cfg.AccessKey.IsNullOrEmpty())
-            //{
-            //    var dic = header.ExtFields;
-
-            //    dic["AccessKey"] = cfg.AccessKey;
-            //    dic["SecretKey"] = cfg.SecretKey;
-
-            //    if (!cfg.OnsChannel.IsNullOrEmpty()) dic["OnsChannel"] = cfg.OnsChannel;
-            //}
         }
         #endregion
 
