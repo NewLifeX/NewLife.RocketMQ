@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using NewLife.Data;
+﻿using NewLife.Data;
 using NewLife.Messaging;
 using NewLife.Model;
 using NewLife.Net.Handlers;
@@ -41,8 +38,8 @@ namespace NewLife.RocketMQ.Protocol
         protected override IList<Command> Decode(IHandlerContext context, Packet pk)
         {
             var ss = context.Owner as IExtend;
-            var pc = ss["Codec"] as PacketCodec;
-            if (pc == null) ss["Codec"] = pc = new PacketCodec { GetLength = p => GetLength(p, 0, -4) };
+            if (ss["Codec"] is not PacketCodec pc) 
+                ss["Codec"] = pc = new PacketCodec { GetLength = p => GetLength(p, 0, -4) };
 
             var pks = pc.Parse(pk);
             var list = pks.Select(e =>
