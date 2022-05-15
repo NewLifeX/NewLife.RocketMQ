@@ -156,30 +156,32 @@ namespace NewLife.RocketMQ
             String onsChannel;
 
             // 根据配置判断是阿里版本还是Apache开源版本
-            if (Config.Aliyun == null || Config.Aliyun.AccessKey.IsNullOrEmpty())
+            var aliyun = Config.Aliyun;
+            if (aliyun == null || aliyun.AccessKey.IsNullOrEmpty())
             {
                 // Apache RocketMQ:如果未配置签名AccessKey信息直接返回，不加密
-                if (Config.AclOptions == null || Config.AclOptions.AccessKey.IsNullOrEmpty()) return;
-                
-                accessKey = Config.AclOptions.AccessKey;
-                secretKey = Config.AclOptions.SecretKey;
-                onsChannel = Config.AclOptions.OnsChannel;
+                var acl = Config.AclOptions;
+                if (acl == null || acl.AccessKey.IsNullOrEmpty()) return;
+
+                accessKey = acl.AccessKey;
+                secretKey = acl.SecretKey;
+                onsChannel = acl.OnsChannel;
             }
             else
             {
                 // 阿里版本RocketMQ
-                accessKey = Config.Aliyun.AccessKey;
-                secretKey = Config.Aliyun.SecretKey;
-                onsChannel = Config.Aliyun.OnsChannel;
+                accessKey = aliyun.AccessKey;
+                secretKey = aliyun.SecretKey;
+                onsChannel = aliyun.OnsChannel;
             }
-            
+
             var sha = new HMACSHA1(secretKey.GetBytes());
             var ms = new MemoryStream();
-            
+
             // AccessKey + OnsChannel
             ms.Write(accessKey.GetBytes());
             ms.Write(onsChannel.GetBytes());
-            
+
             // ExtFields
             var dic = cmd.Header.GetExtFields();
             //var extFieldsDic = dic.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
@@ -187,7 +189,7 @@ namespace NewLife.RocketMQ
             {
                 if (extFields.Value != null) ms.Write(extFields.Value.GetBytes());
             }
-            
+
             // Body
             cmd.Payload?.CopyTo(ms);
 

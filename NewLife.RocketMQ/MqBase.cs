@@ -15,13 +15,14 @@ namespace NewLife.RocketMQ.Client
 
         private String _group = "DEFAULT_PRODUCER";
         /// <summary>消费组</summary>
+        /// <remarks>阿里云目前需要在Group前面带上实例ID并用【%】连接,组成路由Group[用来路由到实例Group]</remarks>
         public String Group
         {
             get
             {
                 // 阿里云目前需要在Group前面带上实例ID并用【%】连接,组成路由Group[用来路由到实例Group]
-                if (Aliyun == null || String.IsNullOrWhiteSpace(Aliyun.InstanceId)) return _group;
-                return String.Join('%', Aliyun.InstanceId, _group);
+                var ins = Aliyun?.InstanceId;
+                return ins.IsNullOrEmpty() ? _group : $"{ins}%{_group}";
             }
             set
             {
@@ -31,13 +32,14 @@ namespace NewLife.RocketMQ.Client
 
         private String _topic = "TBW102";
         /// <summary>主题</summary>
+        /// <remarks>阿里云目前需要在Topic前面带上实例ID并用【%】连接,组成路由Topic[用来路由到实例Topic]</remarks>
         public String Topic
         {
             get
             {
                 // 阿里云目前需要在Topic前面带上实例ID并用【%】连接,组成路由Topic[用来路由到实例Topic]
-                if (Aliyun == null || String.IsNullOrWhiteSpace(Aliyun.InstanceId)) return _topic;
-                return String.Join('%', Aliyun.InstanceId, _topic);
+                var ins = Aliyun?.InstanceId;
+                return ins.IsNullOrEmpty() ? _topic : $"{ins}%{_topic}";
             }
             set
             {
@@ -77,7 +79,7 @@ namespace NewLife.RocketMQ.Client
         /// <summary>代理集合</summary>
         public IList<BrokerInfo> Brokers => _NameServer?.Brokers.OrderBy(t => t.Name).ToList();
 
-        /// <summary>阿里云选项</summary>
+        /// <summary>阿里云选项。使用阿里云RocketMQ的参数有些不一样</summary>
         public AliyunOptions Aliyun { get; set; }
 
         /// <summary> Apache RocketMQ ACL 客户端配置。在Borker服务器配置设置为AclEnable = true 时配置生效。</summary>
@@ -142,12 +144,16 @@ namespace NewLife.RocketMQ.Client
             Topic = setting.Topic;
             Group = setting.Group;
 
-            Aliyun = new AliyunOptions
+            if (!setting.Server.IsNullOrEmpty() &&
+                !setting.AccessKey.IsNullOrEmpty())
             {
-                Server = setting.Server,
-                AccessKey = setting.AccessKey,
-                SecretKey = setting.SecretKey,
-            };
+                Aliyun = new AliyunOptions
+                {
+                    Server = setting.Server,
+                    AccessKey = setting.AccessKey,
+                    SecretKey = setting.SecretKey,
+                };
+            }
         }
 
         /// <summary>开始</summary>
