@@ -45,6 +45,11 @@ namespace NewLife.RocketMQ
                   "2.非首次消费时如果队列最大偏移量与当前偏移量差值大于SkipOverStoredMsgCount时，会直接从尾部开始消费，而不是继续消费；" +
                   "3.上述的两种情况都是在Consumer初始化后首次DoPull时执行的判断，也就是一般情况下与应用启动操作绑定")]
         public UInt32 SkipOverStoredMsgCount { get; set; }
+        
+        /// <summary>
+        /// 订阅表达式 TAG
+        /// </summary>
+        public String Subscription { get; set; } = "*";
 
         /// <summary>消费委托</summary>
         public Func<MessageQueue, MessageExt[], Boolean> OnConsume;
@@ -136,6 +141,7 @@ namespace NewLife.RocketMQ
                 {
                     ConsumerGroup = Group,
                     Topic = Topic,
+                    Subscription = Subscription,
                     QueueId = mq.QueueId,
                     QueueOffset = offset,
                     MaxMsgNums = maxNums,
