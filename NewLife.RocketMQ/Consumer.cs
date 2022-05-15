@@ -17,9 +17,11 @@ namespace NewLife.RocketMQ
     public class Consumer : MqBase
     {
         #region 属性
-
         /// <summary>数据</summary>
         public IList<ConsumerData> Data { get; set; }
+
+        /// <summary>标签集合</summary>
+        public String[] Tags { get; set; }
 
         /// <summary>消费挂起超时。每次拉取消息，服务端如果没有消息时的挂起时间，默认15_000ms</summary>
         public Int32 SuspendTimeout { get; set; } = 15_000;
@@ -82,10 +84,10 @@ namespace NewLife.RocketMQ
             if (list == null)
             {
                 // 建立消费者数据，用于心跳
-                var sd = new SubscriptionData {Topic = Topic,};
-                var cd = new ConsumerData {GroupName = Group, SubscriptionDataSet = new[] {sd},};
+                var sd = new SubscriptionData { Topic = Topic, TagsSet = Tags };
+                var cd = new ConsumerData { GroupName = Group, SubscriptionDataSet = new[] { sd }, };
 
-                list = new List<ConsumerData> {cd};
+                list = new List<ConsumerData> { cd };
 
                 Data = list;
             }
@@ -155,9 +157,9 @@ namespace NewLife.RocketMQ
 
                 if (rs.Header.Code == 0)
                     pr.Status = PullStatus.Found;
-                else if (rs.Header.Code == (Int32) ResponseCode.PULL_NOT_FOUND)
+                else if (rs.Header.Code == (Int32)ResponseCode.PULL_NOT_FOUND)
                     pr.Status = PullStatus.NoNewMessage;
-                else if (rs.Header.Code == (Int32) ResponseCode.PULL_OFFSET_MOVED || rs.Header.Code == (Int32) ResponseCode.PULL_RETRY_IMMEDIATELY)
+                else if (rs.Header.Code == (Int32)ResponseCode.PULL_OFFSET_MOVED || rs.Header.Code == (Int32)ResponseCode.PULL_RETRY_IMMEDIATELY)
                     pr.Status = PullStatus.OffsetIllegal;
                 else
                 {
@@ -193,7 +195,7 @@ namespace NewLife.RocketMQ
             var bk = GetBroker(mq.BrokerName);
             var rs = await bk.InvokeAsync(RequestCode.QUERY_CONSUMER_OFFSET, null, new
             {
-                consumerGroup = Group, 
+                consumerGroup = Group,
                 topic = Topic,
                 queueId = mq.QueueId,
             }, true);
@@ -214,8 +216,8 @@ namespace NewLife.RocketMQ
             var bk = GetBroker(mq.BrokerName);
             var rs = await bk.InvokeAsync(RequestCode.GET_MAX_OFFSET, null, new
             {
-                consumerGroup = Group, 
-                topic = Topic, 
+                consumerGroup = Group,
+                topic = Topic,
                 queueId = mq.QueueId,
             }, true);
 
@@ -235,8 +237,8 @@ namespace NewLife.RocketMQ
             var bk = GetBroker(mq.BrokerName);
             var rs = await bk.InvokeAsync(RequestCode.GET_MIN_OFFSET, null, new
             {
-                consumerGroup = Group, 
-                topic = Topic, 
+                consumerGroup = Group,
+                topic = Topic,
                 queueId = mq.QueueId,
             }, true);
 
@@ -265,11 +267,11 @@ namespace NewLife.RocketMQ
             var rs = await bk.InvokeAsync(RequestCode.UPDATE_CONSUMER_OFFSET, null, new
             {
                 commitOffset,
-                consumerGroup = Group, 
+                consumerGroup = Group,
                 queueId = mq.QueueId,
                 topic = Topic,
             });
-            
+
             var dic = rs?.Header?.ExtFields;
             if (dic == null) return false;
 
@@ -282,7 +284,7 @@ namespace NewLife.RocketMQ
         {
             if (group.IsNullOrEmpty()) group = Group;
 
-            var header = new {consumerGroup = group,};
+            var header = new { consumerGroup = group, };
 
             var cs = new HashSet<String>();
 
@@ -333,7 +335,7 @@ namespace NewLife.RocketMQ
                 if (_timer != null) return;
 
                 // 快速检查消费组，均衡成功后改为30秒一次
-                _timer = new TimerX(CheckGroup, null, 100, 1_000) {Async = true};
+                _timer = new TimerX(CheckGroup, null, 100, 1_000) { Async = true };
             }
         }
 
@@ -354,7 +356,7 @@ namespace NewLife.RocketMQ
             _threads = new Thread[qs.Length];
             for (var i = 0; i < qs.Length; i++)
             {
-                var th = new Thread(DoPull) {Name = "CT" + i, IsBackground = true,};
+                var th = new Thread(DoPull) { Name = "CT" + i, IsBackground = true, };
                 th.Start(qs[i]);
 
                 _threads[i] = th;
@@ -541,7 +543,7 @@ namespace NewLife.RocketMQ
                 {
                     for (var i = 0; i < br.ReadQueueNums; i++)
                     {
-                        qs.Add(new MessageQueue {Topic = Topic, BrokerName = br.Name, QueueId = i,});
+                        qs.Add(new MessageQueue { Topic = Topic, BrokerName = br.Name, QueueId = i, });
                     }
                 }
             }
@@ -574,7 +576,7 @@ namespace NewLife.RocketMQ
             var rs = new List<QueueStore>();
             foreach (var item in qs)
             {
-                rs.Add(new QueueStore {Queue = item});
+                rs.Add(new QueueStore { Queue = item });
             }
 
             // 如果序列相等则返回false
@@ -646,7 +648,7 @@ namespace NewLife.RocketMQ
             foreach (var brokerName in queueBrokers)
             {
                 var broker = GetBroker(brokerName);
-                var command = await broker.InvokeAsync(RequestCode.GET_CONSUME_STATS, null, new {consumerGroup = Group, topic = Topic}, true);
+                var command = await broker.InvokeAsync(RequestCode.GET_CONSUME_STATS, null, new { consumerGroup = Group, topic = Topic }, true);
                 var consumerStates = ConsumerStatesSpecialJsonHandler(command.Payload);
                 foreach (var (key, value) in consumerStates.OffsetTable) offsetTables.Add(key, value);
             }
@@ -739,10 +741,10 @@ namespace NewLife.RocketMQ
 
             var offsetArr = cmdStr.Split('}');
             var offsetNew = (from offset in offsetArr
-                where !String.IsNullOrWhiteSpace(offset)
-                select String.Concat(offset.Trim(',').Trim(':'), "}")).ToList();
+                             where !String.IsNullOrWhiteSpace(offset)
+                             select String.Concat(offset.Trim(',').Trim(':'), "}")).ToList();
 
-            var consumerStatesModel = new ConsumerStatesModel() {OffsetTable = new Dictionary<MessageQueueModel, OffsetWrapperModel>()};
+            var consumerStatesModel = new ConsumerStatesModel() { OffsetTable = new Dictionary<MessageQueueModel, OffsetWrapperModel>() };
 
             for (var i = 0; i < offsetNew.Count / 2; i++)
             {
@@ -766,7 +768,7 @@ namespace NewLife.RocketMQ
         {
             if (cmd?.Header != null && (cmd.Header.Flag & 1) == 0)
             {
-                switch ((RequestCode) cmd.Header.Code)
+                switch ((RequestCode)cmd.Header.Code)
                 {
                     case RequestCode.NOTIFY_CONSUMER_IDS_CHANGED:
                         NotifyConsumerIdsChanged(cmd);
@@ -832,8 +834,8 @@ namespace NewLife.RocketMQ
             dic["messageModel"] = "CLUSTERING";
             ci.Properties = dic;
 
-            var sd = new SubscriptionData {Topic = Topic,};
-            ci.SubscriptionSet = new[] {sd};
+            var sd = new SubscriptionData { Topic = Topic, };
+            ci.SubscriptionSet = new[] { sd };
 
             var sb = new StringBuilder();
             sb.Append('{');
