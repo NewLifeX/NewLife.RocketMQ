@@ -45,7 +45,7 @@ namespace NewLife.RocketMQ
                   "2.非首次消费时如果队列最大偏移量与当前偏移量差值大于SkipOverStoredMsgCount时，会直接从尾部开始消费，而不是继续消费；" +
                   "3.上述的两种情况都是在Consumer初始化后首次DoPull时执行的判断，也就是一般情况下与应用启动操作绑定")]
         public UInt32 SkipOverStoredMsgCount { get; set; }
-        
+
         /// <summary>
         /// 订阅表达式 TAG
         /// </summary>
@@ -133,60 +133,49 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         public async Task<PullResult> Pull(MessageQueue mq, Int64 offset, Int32 maxNums, Int32 msTimeout = -1)
         {
-            // 性能埋点
-            using var span = Tracer?.NewSpan($"mq:{Topic}:Consume");
-            try
+            var header = new PullMessageRequestHeader
             {
-                var header = new PullMessageRequestHeader
-                {
-                    ConsumerGroup = Group,
-                    Topic = Topic,
-                    Subscription = Subscription,
-                    QueueId = mq.QueueId,
-                    QueueOffset = offset,
-                    MaxMsgNums = maxNums,
-                    SysFlag = 6,
-                    SubVersion = StartTime.ToLong(),
-                };
-                if (msTimeout >= 0) header.SuspendTimeoutMillis = msTimeout;
+                ConsumerGroup = Group,
+                Topic = Topic,
+                Subscription = Subscription,
+                QueueId = mq.QueueId,
+                QueueOffset = offset,
+                MaxMsgNums = maxNums,
+                SysFlag = 6,
+                SubVersion = StartTime.ToLong(),
+            };
+            if (msTimeout >= 0) header.SuspendTimeoutMillis = msTimeout;
 
-                var st = _Queues.FirstOrDefault(e => e.Queue == mq);
-                if (st != null) header.CommitOffset = st.CommitOffset;
+            var st = _Queues.FirstOrDefault(e => e.Queue == mq);
+            if (st != null) header.CommitOffset = st.CommitOffset;
 
-                var dic = header.GetProperties();
-                var bk = GetBroker(mq.BrokerName);
+            var dic = header.GetProperties();
+            var bk = GetBroker(mq.BrokerName);
 
-                var rs = await bk.InvokeAsync(RequestCode.PULL_MESSAGE, null, dic, true);
-                if (rs?.Header == null) return null;
+            var rs = await bk.InvokeAsync(RequestCode.PULL_MESSAGE, null, dic, true);
+            if (rs?.Header == null) return null;
 
-                var pr = new PullResult();
+            var pr = new PullResult();
 
-                if (rs.Header.Code == 0)
-                    pr.Status = PullStatus.Found;
-                else if (rs.Header.Code == (Int32)ResponseCode.PULL_NOT_FOUND)
-                    pr.Status = PullStatus.NoNewMessage;
-                else if (rs.Header.Code == (Int32)ResponseCode.PULL_OFFSET_MOVED || rs.Header.Code == (Int32)ResponseCode.PULL_RETRY_IMMEDIATELY)
-                    pr.Status = PullStatus.OffsetIllegal;
-                else
-                {
-                    pr.Status = PullStatus.Unknown;
-                    Log.Warn("响应编号：{0} 响应备注：{1} 序列编号：{2} 序列偏移量：{3}", rs.Header.Code, rs.Header.Remark, mq.QueueId, offset);
-                }
-
-                pr.Read(rs.Header?.ExtFields);
-
-                // 读取内容
-                var pk = rs.Payload;
-                if (pk != null) pr.Messages = MessageExt.ReadAll(pk).ToArray();
-
-                return pr;
-            }
-            catch (Exception ex)
+            if (rs.Header.Code == 0)
+                pr.Status = PullStatus.Found;
+            else if (rs.Header.Code == (Int32)ResponseCode.PULL_NOT_FOUND)
+                pr.Status = PullStatus.NoNewMessage;
+            else if (rs.Header.Code == (Int32)ResponseCode.PULL_OFFSET_MOVED || rs.Header.Code == (Int32)ResponseCode.PULL_RETRY_IMMEDIATELY)
+                pr.Status = PullStatus.OffsetIllegal;
+            else
             {
-                span?.SetError(ex, mq);
-
-                throw;
+                pr.Status = PullStatus.Unknown;
+                Log.Warn("响应编号：{0} 响应备注：{1} 序列编号：{2} 序列偏移量：{3}", rs.Header.Code, rs.Header.Remark, mq.QueueId, offset);
             }
+
+            pr.Read(rs.Header?.ExtFields);
+
+            // 读取内容
+            var pk = rs.Payload;
+            if (pk != null) pr.Messages = MessageExt.ReadAll(pk).ToArray();
+
+            return pr;
         }
 
         #endregion
@@ -359,14 +348,15 @@ namespace NewLife.RocketMQ
             //if (_Consumers != null && _Consumers.Length > 1) Thread.Sleep(10_000);
 
             // 开线程
-            _threads = new Thread[qs.Length];
+            var ts = new Thread[qs.Length];
             for (var i = 0; i < qs.Length; i++)
             {
                 var th = new Thread(DoPull) { Name = "CT" + i, IsBackground = true, };
                 th.Start(qs[i]);
 
-                _threads[i] = th;
+                ts[i] = th;
             }
+            _threads = ts;
         }
 
         /// <summary>停止</summary>
@@ -393,6 +383,8 @@ namespace NewLife.RocketMQ
                     }
                     catch { }
                 }
+
+                _threads = null;
             }
         }
 
@@ -415,15 +407,26 @@ namespace NewLife.RocketMQ
                             case PullStatus.Found:
                                 if (pr.Messages != null && pr.Messages.Length > 0)
                                 {
-                                    // 触发消费
-                                    var rs = await Consume(mq, pr);
-
-                                    // 更新偏移
-                                    if (rs)
+                                    // 性能埋点
+                                    using var span = Tracer?.NewSpan($"mq:{Topic}:Consume", pr.Messages);
+                                    try
                                     {
-                                        st.Offset = pr.NextBeginOffset;
-                                        // 提交消费进度
-                                        await UpdateOffset(mq, st.Offset);
+                                        // 触发消费
+                                        var rs = await Consume(mq, pr);
+
+                                        // 更新偏移
+                                        if (rs)
+                                        {
+                                            st.Offset = pr.NextBeginOffset;
+                                            // 提交消费进度
+                                            await UpdateOffset(mq, st.Offset);
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        span?.SetError(ex, mq);
+
+                                        throw;
                                     }
                                 }
 
