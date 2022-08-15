@@ -168,7 +168,7 @@ namespace NewLife.RocketMQ.Client
                 var addr = Aliyun?.Server;
                 if (!addr.IsNullOrEmpty() && addr.StartsWithIgnoreCase("http"))
                 {
-                    var http = new TinyHttpClient();
+                    var http = new HttpClient();
                     var html = http.GetStringAsync(addr).Result;
 
                     if (!html.IsNullOrWhiteSpace()) NameServerAddress = html.Trim();

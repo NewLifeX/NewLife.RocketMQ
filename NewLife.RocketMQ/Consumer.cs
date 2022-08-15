@@ -659,7 +659,11 @@ namespace NewLife.RocketMQ
                 var broker = GetBroker(brokerName);
                 var command = await broker.InvokeAsync(RequestCode.GET_CONSUME_STATS, null, new { consumerGroup = Group, topic = Topic }, true);
                 var consumerStates = ConsumerStatesSpecialJsonHandler(command.Payload);
-                foreach (var (key, value) in consumerStates.OffsetTable) offsetTables.Add(key, value);
+                //foreach (var (key, value) in consumerStates.OffsetTable) offsetTables.Add(key, value);
+                foreach (var item in consumerStates.OffsetTable)
+                {
+                    offsetTables.Add(item.Key, item.Value);
+                }
             }
 
             var neverConsumed = offsetTables.All(t => t.Value.LastTimestamp == 0); //表示没消费过
@@ -668,7 +672,8 @@ namespace NewLife.RocketMQ
             {
                 if (store.Offset >= 0) continue;
 
-                var (_, offsetTable) = offsetTables.FirstOrDefault(t => t.Key.BrokerName == store.Queue.BrokerName && t.Key.QueueId == store.Queue.QueueId);
+                var item = offsetTables.FirstOrDefault(t => t.Key.BrokerName == store.Queue.BrokerName && t.Key.QueueId == store.Queue.QueueId);
+                var offsetTable = item.Value;
                 if (neverConsumed)
                 {
                     var maxOffset = offsetTable.BrokerOffset;
