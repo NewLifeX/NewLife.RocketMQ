@@ -46,7 +46,7 @@ public class MessageExt : Message, IAccessor
     public Int64 PreparedTransactionOffset { get; set; }
 
     /// <summary>属性</summary>
-    public String Properties { get; set; }
+    public IDictionary<String, String> Properties { get; set; }
 
     /// <summary>消息编号</summary>
     public String MsgId { get; set; }
@@ -111,8 +111,9 @@ public class MessageExt : Message, IAccessor
         Topic = bn.ReadBytes(len).ToStr();
 
         var len2 = bn.Read<Int16>();
-        Properties = bn.ReadBytes(len2).ToStr();
-        SetProperties(Properties);
+        var str = bn.ReadBytes(len2).ToStr();
+        var dic = ParseProperties(str);
+        if (dic != null && dic.Count > 0) Properties = dic;
 
         // MsgId
         var ms = Pool.MemoryStream.Get();

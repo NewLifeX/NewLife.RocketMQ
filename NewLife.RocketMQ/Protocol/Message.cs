@@ -81,17 +81,34 @@ public class Message
         return sb.Put(true);
     }
 
-    /// <summary>设置数据</summary>
+    /// <summary>分析字典属性</summary>
     /// <param name="properties"></param>
-    public void SetProperties(String properties)
+    public IDictionary<String, String> ParseProperties(String properties)
     {
-        if (properties.IsNullOrEmpty()) return;
+        if (properties.IsNullOrEmpty()) return null;
+
         var dic = properties.SplitAsDictionaryT('\u0001', '\u0002');
 
-        if (dic.TryGetValue(nameof(Tags), out var str)) Tags = str;
-        if (dic.TryGetValue(nameof(Keys), out str)) Keys = str;
-        if (dic.TryGetValue("DELAY", out str)) DelayTimeLevel = str.ToInt();
-        if (dic.TryGetValue("WAIT", out str)) WaitStoreMsgOK = str.ToBoolean();
+        if (TryGetAndRemove(dic, nameof(Tags), out var str)) Tags = str;
+        if (TryGetAndRemove(dic, nameof(Keys), out str)) Keys = str;
+        if (TryGetAndRemove(dic, "DELAY", out str)) DelayTimeLevel = str.ToInt();
+        if (TryGetAndRemove(dic, "WAIT", out str)) WaitStoreMsgOK = str.ToBoolean();
+
+        return dic;
+    }
+
+    private Boolean TryGetAndRemove(IDictionary<String, String> dic, String key, out String value)
+    {
+        if (dic.TryGetValue(key, out var str))
+        {
+            value = str;
+            dic.Remove(key);
+
+            return true;
+        }
+
+        value = null;
+        return false;
     }
     #endregion
 }
