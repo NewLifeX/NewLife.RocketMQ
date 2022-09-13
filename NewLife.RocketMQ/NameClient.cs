@@ -74,9 +74,12 @@ namespace NewLife.RocketMQ
         /// <returns></returns>
         public IList<BrokerInfo> GetRouteInfo(String topic)
         {
+            using var span = Tracer?.NewSpan($"mq:{topic}:GetRouteInfo", topic);
+
             // 发送命令
             var rs = Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
             var js = rs.ReadBodyAsJson();
+            span?.SetTag(js);
 
             var list = new List<BrokerInfo>();
             // 解析broker集群地址
