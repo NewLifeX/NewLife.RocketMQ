@@ -199,6 +199,8 @@ public abstract class MqBase : DisposeBase
     /// <returns></returns>
     public virtual void Stop()
     {
+        if (!Active) return;
+
         foreach (var item in _Brokers)
         {
             try

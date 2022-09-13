@@ -71,6 +71,11 @@ public class Consumer : MqBase
         Stop();
 
         base.Dispose(disposing);
+
+        _timer.TryDispose();
+        _timer = null;
+        _threads.TryDispose();
+        _threads = null;
     }
 
     #endregion
@@ -120,17 +125,16 @@ public class Consumer : MqBase
     /// </summary>
     public override void Stop()
     {
-        if (_threads == null) return;
+        if (!Active) return;
 
         using var span = Tracer?.NewSpan($"mq:{Topic}:Stop");
         try
         {
             // 停止并保存偏移
             StopSchedule();
+            PersistAll(_Queues);
 
             base.Stop();
-
-            PersistAll(_Queues);
         }
         catch (Exception ex)
         {
@@ -138,10 +142,6 @@ public class Consumer : MqBase
 
             throw;
         }
-
-        _timer.TryDispose();
-        _threads.TryDispose();
-        _threads = null;
     }
 
     #endregion
@@ -317,8 +317,6 @@ public class Consumer : MqBase
                 var rs = bk.Invoke(RequestCode.GET_CONSUMER_LIST_BY_GROUP, null, header);
                 //WriteLog(rs.Header.ExtFields?.ToJson());
                 var js = rs.ReadBodyAsJson();
-                span?.SetTag(js);
-
                 if (js != null && js["consumerIdList"] is IList<Object> list)
                 {
                     foreach (String clientId in list)
@@ -329,7 +327,8 @@ public class Consumer : MqBase
             }
             catch (Exception ex)
             {
-                span?.SetError(ex, null);
+                if (ex is not ResponseException)
+                    span?.SetError(ex, null);
 
                 //XTrace.WriteException(ex);
                 WriteLog(ex.GetTrue().Message);
@@ -435,6 +434,8 @@ public class Consumer : MqBase
                         case PullStatus.Found:
                             if (pr.Messages != null && pr.Messages.Length > 0)
                             {
+                                DefaultSpan.Current = null;
+
                                 // 性能埋点
                                 using var span = Tracer?.NewSpan($"mq:{Topic}:Consume", pr.Messages);
                                 try
@@ -665,7 +666,7 @@ public class Consumer : MqBase
 
                 if (AutoSchedule) DoSchedule();
 
-                if (_timer != null) _timer.Period = 30_000;
+                if (_timer != null) _timer.Period = 60_000;
                 _nextCheck = now.AddSeconds(3);
             }
             catch (Exception ex)
@@ -818,10 +819,11 @@ public class Consumer : MqBase
     {
         if (cmd?.Header != null && (cmd.Header.Flag & 1) == 0)
         {
-            using var span = Tracer?.NewSpan($"mq:{Topic}:OnReceive", cmd);
+            var code = (RequestCode)cmd.Header.Code;
+            using var span = Tracer?.NewSpan($"mq:{Topic}:OnReceive", code + "");
             try
             {
-                switch ((RequestCode)cmd.Header.Code)
+                switch (code)
                 {
                     case RequestCode.NOTIFY_CONSUMER_IDS_CHANGED:
                         NotifyConsumerIdsChanged(cmd);
