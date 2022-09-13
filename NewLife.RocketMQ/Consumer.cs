@@ -674,17 +674,20 @@ namespace NewLife.RocketMQ
 
                 var item = offsetTables.FirstOrDefault(t => t.Key.BrokerName == store.Queue.BrokerName && t.Key.QueueId == store.Queue.QueueId);
                 var offsetTable = item.Value;
+#pragma warning disable CS0618 // 类型或成员已过时
+                var skipOver = SkipOverStoredMsgCount;
+#pragma warning restore CS0618 // 类型或成员已过时
                 if (neverConsumed)
                 {
                     var maxOffset = offsetTable.BrokerOffset;
                     var offset = FromLastOffset ? maxOffset : 0L;
-                    /**
+                    /*
                      * 下面这个判断是专门为SkipOverStoredMsgCount设置的，根据SkipOverStoredMsgCount，
                      * 根据SkipOverStoredMsgCount的原始定义，只有在积压量超过了SkipOverStoredMsgCount
                      * 设定值才会遵从FromLastOffset规则，在没有达到SkipOverStoredMsgCount设定值还是会
                      * 从头开始消费，以后在确定删除SkipOverStoredMsgCount时直接删除下面if代码段即可
                      */
-                    if (FromLastOffset && SkipOverStoredMsgCount > 0 && maxOffset < SkipOverStoredMsgCount)
+                    if (FromLastOffset && skipOver > 0 && maxOffset < skipOver)
                     {
                         offset = 0L;
                     }
@@ -696,13 +699,13 @@ namespace NewLife.RocketMQ
                 {
                     // var offset = await QueryOffset(store.Queue);
                     var offset = offsetTable.ConsumerOffset;
-                    /**
+                    /*
                      * 下面这个判断是专门为SkipOverStoredMsgCount设置的，根据SkipOverStoredMsgCount，
                      * 根据SkipOverStoredMsgCount的原始定义，在当前积压量大于SkipOverStoredMsgCount
                      * 设定值时，直接从最大偏移量开始消费，以后在确定删除SkipOverStoredMsgCount时
                      * 直接删除下面if代码段即可
                      */
-                    if (FromLastOffset && SkipOverStoredMsgCount > 0 && offset + SkipOverStoredMsgCount <= offsetTable.BrokerOffset)
+                    if (FromLastOffset && skipOver > 0 && offset + skipOver <= offsetTable.BrokerOffset)
                     {
                         offset = offsetTable.BrokerOffset;
                     }
