@@ -574,8 +574,6 @@ public class Consumer : MqBase
         var cs = GetConsumers(Group);
         if (cs.Count == 0) return false;
 
-        using var span = Tracer?.NewSpan($"mq:{Topic}:Rebalance");
-
         var qs = new List<MessageQueue>();
         foreach (var br in Brokers)
         {
@@ -634,9 +632,12 @@ public class Consumer : MqBase
         var dic = qs.GroupBy(e => e.BrokerName).ToDictionary(e => e.Key, e => e.Join(",", x => x.QueueId));
         WriteLog("消费重新平衡，当前消费者负责queue分片：{0}", dic.Join(";", e => $"{e.Key}[{e.Value}]"));
 
+        using var span = Tracer?.NewSpan($"mq:{Topic}:Rebalance");
+
         _Queues = rs.ToArray();
         InitOffsetAsync().ConfigureAwait(false).GetAwaiter().GetResult();
         _Consumers = cs2.ToArray();
+
         return true;
     }
 
@@ -820,7 +821,7 @@ public class Consumer : MqBase
         if (cmd?.Header != null && (cmd.Header.Flag & 1) == 0)
         {
             var code = (RequestCode)cmd.Header.Code;
-            using var span = Tracer?.NewSpan($"mq:{Topic}:OnReceive", code + "");
+            using var span = Tracer?.NewSpan($"mq:{Topic}:{code}", cmd);
             try
             {
                 switch (code)
@@ -892,7 +893,7 @@ public class Consumer : MqBase
         dic["PROP_CONSUMER_START_TIMESTAMP"] = StartTime.ToInt() + "";
         dic["PROP_CONSUME_TYPE"] = "CONSUME_PASSIVELY";
         dic["PROP_NAMESERVER_ADDR"] = NameServerAddress;
-        dic["PROP_THREADPOOL_CORE_SIZE"] = "2";
+        dic["PROP_THREADPOOL_CORE_SIZE"] = (_threads?.Length ?? 1).ToString();
         dic["messageModel"] = "CLUSTERING";
         ci.Properties = dic;
 
