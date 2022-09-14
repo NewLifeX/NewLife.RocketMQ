@@ -423,6 +423,7 @@ public class Consumer : MqBase
         var v = _version;
         while (v == _version)
         {
+            DefaultSpan.Current = null;
             try
             {
                 var offset = st.Offset;
