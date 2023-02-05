@@ -101,7 +101,7 @@ public class MessageExt : Message, IAccessor
         {
             /*uncompress*/
             // ZLIB格式RFC1950，要去掉头部两个字节
-            Body = Body.ReadBytes(2).Decompress();
+            Body = Body.ReadBytes(2, -1).Decompress();
             //var gs = new MemoryStream(Body);
             //Body = gs.DecompressGZip().ReadBytes();
         }

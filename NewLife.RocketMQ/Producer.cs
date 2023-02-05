@@ -80,16 +80,16 @@ public class Producer : MqBase
                 // 包装结果
                 var result = new SendResult
                 {
-                    //Status = SendStatus.SendOK,
-                    Queue = mq
-                };
-                result.Status = (ResponseCode)rs.Header.Code switch
-                {
-                    ResponseCode.SUCCESS => SendStatus.SendOK,
-                    ResponseCode.FLUSH_DISK_TIMEOUT => SendStatus.FlushDiskTimeout,
-                    ResponseCode.FLUSH_SLAVE_TIMEOUT => SendStatus.FlushSlaveTimeout,
-                    ResponseCode.SLAVE_NOT_AVAILABLE => SendStatus.SlaveNotAvailable,
-                    _ => throw rs.Header.CreateException(),
+                    Queue = mq,
+                    Header = rs.Header,
+                    Status = (ResponseCode)rs.Header.Code switch
+                    {
+                        ResponseCode.SUCCESS => SendStatus.SendOK,
+                        ResponseCode.FLUSH_DISK_TIMEOUT => SendStatus.FlushDiskTimeout,
+                        ResponseCode.FLUSH_SLAVE_TIMEOUT => SendStatus.FlushSlaveTimeout,
+                        ResponseCode.SLAVE_NOT_AVAILABLE => SendStatus.SlaveNotAvailable,
+                        _ => throw rs.Header.CreateException(),
+                    }
                 };
                 result.Read(rs.Header?.ExtFields);
 
@@ -174,6 +174,7 @@ public class Producer : MqBase
                 var sendResult = new SendResult
                 {
                     Queue = mq,
+                    Header = rs.Header,
                     Status = (ResponseCode)rs.Header.Code switch
                     {
                         ResponseCode.SUCCESS => SendStatus.SendOK,
