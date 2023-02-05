@@ -15,7 +15,7 @@ namespace Test
     {
         static void Main(String[] args)
         {
-           //XTrace.UseConsole();
+            //XTrace.UseConsole();
 
             // Test5();
             TestAliyun();
@@ -195,7 +195,7 @@ namespace Test
             //var ds = new DeflateStream(ms, CompressionMode.Decompress);
             //var buf = ds.ReadBytes();
 
-            var buf = a1.ReadBytes(2).Decompress();
+            var buf = a1.ReadBytes(2, -1).Decompress();
 
             var rs = a2.ToBase64() == buf.ToBase64();
             Console.WriteLine(rs);
