@@ -133,9 +133,10 @@ public abstract class ClusterClient : DisposeBase
             }
             else
             {
-                client.SendMessage(cmd);
-
-                return null;
+                int row = client.SendMessage(cmd);
+                Command command = new Command();
+                command.Header = new Header() { Code = row };
+                return command;
             }
         }
         catch
@@ -241,12 +242,17 @@ public abstract class ClusterClient : DisposeBase
     /// <param name="body"></param>
     /// <param name="extFields"></param>
     /// <returns></returns>
-    internal virtual void InvokeOneway(RequestCode request, Object body, Object extFields = null)
+    internal virtual Command InvokeOneway(RequestCode request, Object body, Object extFields = null)
     {
         var cmd = CreateCommand(request, body, extFields);
         cmd.OneWay = true;
+        // 避免UI死锁
+        var rs = Task.Run(() => SendAsync(cmd, false)).Result;
 
-        _ = SendAsync(cmd, false);
+
+
+        return rs;
+
     }
 
     private Command CreateCommand(RequestCode request, Object body, Object extFields)
