@@ -14,6 +14,9 @@ public enum SendStatus
 
     /// <summary>从机不可用</summary>
     SlaveNotAvailable = 3,
+
+    /// <summary>发送失败</summary>
+    SendError = 4,
 }
 
 /// <summary>发送结果</summary>
