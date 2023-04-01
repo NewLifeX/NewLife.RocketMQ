@@ -229,7 +229,7 @@ public class Producer : MqBase
     /// <param name="message"></param>
     /// <param name="timeout"></param>
     /// <returns></returns>
-    public virtual void PublishOneway(Message message, Int32 timeout = -1)
+    public virtual SendResult PublishOneway(Message message, Int32 timeout = -1)
     {
         // 选择队列分片
         var mq = SelectQueue();
@@ -247,7 +247,23 @@ public class Producer : MqBase
             {
                 // 根据队列获取Broker客户端
                 var bk = GetBroker(mq.BrokerName);
-                bk.InvokeOneway(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties());
+              var rs=  bk.InvokeOneway(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties());
+                // 包装结果
+                var sendResult = new SendResult
+                {
+                    Queue = mq,
+                    Header = rs.Header,
+                    Status = rs.Header.Code switch
+                    {
+                        -1 => SendStatus.SendError,
+                       
+                        _ => SendStatus.SendOK,
+                    }
+                };
+                if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("{0}", sendResult);
+
+                return sendResult;
+             
             }
             catch (Exception ex)
             {
@@ -263,6 +279,7 @@ public class Producer : MqBase
                 throw;
             }
         }
+        return null;
     }
 
     /// <summary>发布消息，不等结果</summary>
