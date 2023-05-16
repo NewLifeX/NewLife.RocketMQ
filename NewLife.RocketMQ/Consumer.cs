@@ -106,6 +106,7 @@ public class Consumer : MqBase
                 var cd = new ConsumerData
                 {
                     GroupName = Group,
+                    ConsumeFromWhere = FromLastOffset ? "CONSUME_FROM_LAST_OFFSET" : "CONSUME_FROM_FIRST_OFFSET",
                     MessageModel = MessageModel.ToString().ToUpper(),
                     SubscriptionDataSet = new[] { sd },
                 };
