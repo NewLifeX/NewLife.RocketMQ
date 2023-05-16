@@ -74,8 +74,6 @@ public class Consumer : MqBase
 
         _timer.TryDispose();
         _timer = null;
-        _threads.TryDispose();
-        _threads = null;
     }
 
     #endregion
@@ -342,7 +340,7 @@ public class Consumer : MqBase
 
     #region 消费调度
 
-    private Thread[] _threads;
+    private Task[] _tasks;
     private volatile Int32 _version;
 
     /// <summary>启动消费者时自动开始调度。默认true</summary>
@@ -366,7 +364,7 @@ public class Consumer : MqBase
         var qs = _Queues;
         if (qs == null || qs.Length == 0) return;
 
-        _version++;
+        Interlocked.Increment(ref _version);
 
         // 关线程
         Stop();
@@ -375,53 +373,51 @@ public class Consumer : MqBase
         //if (_Consumers != null && _Consumers.Length > 1) Thread.Sleep(10_000);
 
         // 开线程
-        var ts = new Thread[qs.Length];
+        var tasks = new Task[qs.Length];
         for (var i = 0; i < qs.Length; i++)
         {
-            var th = new Thread(DoPull) { Name = "CT" + i, IsBackground = true, };
-            th.Start(qs[i]);
-
-            ts[i] = th;
+            var queueStore = qs[i];
+            var task = Task.Run(async () =>
+            {
+                await DoPull(queueStore);
+            });
+            tasks[i] = task;
         }
-        _threads = ts;
+        _tasks = tasks;
     }
 
     /// <summary>停止</summary>
     public void StopSchedule()
     {
-        var ts = _threads;
+        var ts = _tasks;
         if (ts != null && ts.Length > 0)
         {
             WriteLog("停止调度线程[{0}]", ts.Length);
 
             // 预留一点退出时间
-            _version++;
-            foreach (var item in ts)
-            {
-                try
-                {
-                    if (item == null || item.ThreadState != ThreadState.Running) continue;
+            Interlocked.Increment(ref _version);
 
-                    if (!item.Join(3_000))
-                    {
-                        item.Interrupt();
-                        //item.Abort();
-                    }
-                }
-                catch { }
+            var timeout = TimeSpan.FromSeconds(3 * _tasks.Length);
+            try
+            {
+                Task.WaitAll(_tasks, timeout);
+            }
+            catch
+            {
+                // 理论上不会遇到异常
+                // 但等待过程可能会遇到积压的 Task 异常，统统吃掉，从业务上也没有需要捕获的需要
             }
 
-            _threads = null;
+            _tasks = null;
         }
     }
 
-    private async void DoPull(Object state)
+    private async Task DoPull(QueueStore st)
     {
-        var st = state as QueueStore;
         var mq = st.Queue;
 
-        var v = _version;
-        while (v == _version)
+        var currentVersion = _version;
+        while (currentVersion == _version)
         {
             DefaultSpan.Current = null;
             try
@@ -488,7 +484,8 @@ public class Consumer : MqBase
             catch (Exception ex)
             {
                 Log?.Error(ex.GetMessage());
-                Thread.Sleep(1000);
+                // 出现其他异常的情况下，等待一会，防止出现大量异常
+                await Task.Delay(TimeSpan.FromSeconds(1));
             }
         }
 
@@ -894,7 +891,7 @@ public class Consumer : MqBase
         dic["PROP_CONSUMER_START_TIMESTAMP"] = StartTime.ToInt() + "";
         dic["PROP_CONSUME_TYPE"] = "CONSUME_PASSIVELY";
         dic["PROP_NAMESERVER_ADDR"] = NameServerAddress;
-        dic["PROP_THREADPOOL_CORE_SIZE"] = (_threads?.Length ?? 1).ToString();
+        dic["PROP_THREADPOOL_CORE_SIZE"] = (_tasks?.Length ?? 1).ToString();
         dic["messageModel"] = "CLUSTERING";
         ci.Properties = dic;
 
