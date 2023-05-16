@@ -133,10 +133,11 @@ public abstract class ClusterClient : DisposeBase
             }
             else
             {
-                int row = client.SendMessage(cmd);
-                Command command = new Command();
-                command.Header = new Header() { Code = row };
-                return command;
+                var row = client.SendMessage(cmd);
+                return new Command
+                {
+                    Header = new Header() { Code = row }
+                };
             }
         }
         catch

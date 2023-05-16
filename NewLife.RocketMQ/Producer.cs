@@ -247,7 +247,7 @@ public class Producer : MqBase
             {
                 // 根据队列获取Broker客户端
                 var bk = GetBroker(mq.BrokerName);
-              var rs=  bk.InvokeOneway(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties());
+                var rs = bk.InvokeOneway(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties());
                 // 包装结果
                 var sendResult = new SendResult
                 {
@@ -256,14 +256,14 @@ public class Producer : MqBase
                     Status = rs.Header.Code switch
                     {
                         -1 => SendStatus.SendError,
-                       
+
                         _ => SendStatus.SendOK,
                     }
                 };
                 if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("{0}", sendResult);
 
                 return sendResult;
-             
+
             }
             catch (Exception ex)
             {
