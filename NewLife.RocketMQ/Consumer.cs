@@ -51,6 +51,9 @@ public class Consumer : MqBase
     /// </summary>
     public String Subscription { get; set; } = "*";
 
+    /// <summary>消息模型。广播/集群</summary>
+    public MessageModels MessageModel { get; set; } = MessageModels.Clustering;
+
     /// <summary>消费委托</summary>
     public Func<MessageQueue, MessageExt[], Boolean> OnConsume;
 
@@ -95,8 +98,17 @@ public class Consumer : MqBase
             if (list == null)
             {
                 // 建立消费者数据，用于心跳
-                var sd = new SubscriptionData { Topic = Topic, TagsSet = Tags };
-                var cd = new ConsumerData { GroupName = Group, SubscriptionDataSet = new[] { sd }, };
+                var sd = new SubscriptionData
+                {
+                    Topic = Topic,
+                    TagsSet = Tags
+                };
+                var cd = new ConsumerData
+                {
+                    GroupName = Group,
+                    MessageModel = MessageModel.ToString().ToUpper(),
+                    SubscriptionDataSet = new[] { sd },
+                };
 
                 list = new List<ConsumerData> { cd };
 
@@ -342,6 +354,7 @@ public class Consumer : MqBase
 
     private Task[] _tasks;
     private volatile Int32 _version;
+    private CancellationTokenSource _source;
 
     /// <summary>启动消费者时自动开始调度。默认true</summary>
     public Boolean AutoSchedule { get; set; } = true;
@@ -372,6 +385,8 @@ public class Consumer : MqBase
         // 如果有多个消费者，则等一段时间让大家停止消费，尽量避免重复消费
         //if (_Consumers != null && _Consumers.Length > 1) Thread.Sleep(10_000);
 
+        var source = new CancellationTokenSource();
+
         // 开线程
         var tasks = new Task[qs.Length];
         for (var i = 0; i < qs.Length; i++)
@@ -379,11 +394,13 @@ public class Consumer : MqBase
             var queueStore = qs[i];
             var task = Task.Run(async () =>
             {
-                await DoPull(queueStore);
+                await DoPull(queueStore, source.Token);
             });
             tasks[i] = task;
         }
         _tasks = tasks;
+
+        _source = source;
     }
 
     /// <summary>停止</summary>
@@ -397,6 +414,8 @@ public class Consumer : MqBase
             // 预留一点退出时间
             Interlocked.Increment(ref _version);
 
+            _source?.Cancel();
+
             var timeout = TimeSpan.FromSeconds(3 * _tasks.Length);
             try
             {
@@ -409,15 +428,16 @@ public class Consumer : MqBase
             }
 
             _tasks = null;
+            _source = null;
         }
     }
 
-    private async Task DoPull(QueueStore st)
+    private async Task DoPull(QueueStore st, CancellationToken cancellationToken)
     {
         var mq = st.Queue;
 
         var currentVersion = _version;
-        while (currentVersion == _version)
+        while (currentVersion == _version && !cancellationToken.IsCancellationRequested)
         {
             DefaultSpan.Current = null;
             try
@@ -583,31 +603,35 @@ public class Consumer : MqBase
                 }
             }
         }
-
-        // 排序，计算索引
-        var cid = ClientId;
-        var idx = 0;
         var cs2 = cs.OrderBy(e => e).ToList();
-        for (idx = 0; idx < cs2.Count; idx++)
+
+        // 集群模式需要分配Queue，而广播模式不需要
+        if (MessageModel == MessageModels.Clustering)
         {
-            if (cs2[idx] == cid) break;
+            // 排序，计算索引
+            var cid = ClientId;
+            var idx = 0;
+            for (idx = 0; idx < cs2.Count; idx++)
+            {
+                if (cs2[idx] == cid) break;
+            }
+
+            if (idx >= cs2.Count) return false;
+
+            // 先分糖，每人多少个
+            var ds = new Int32[cs2.Count];
+            for (Int32 i = 0, k = 0; i < qs.Count; i++)
+            {
+                ds[k++]++;
+
+                if (k >= ds.Length) k = 0;
+            }
+
+            // 我的前面分了多少
+            var start = ds.Take(idx).Sum();
+            // 跳过前面，取我的糖
+            qs = qs.Skip(start).Take(ds[idx]).ToList();
         }
-
-        if (idx >= cs2.Count) return false;
-
-        // 先分糖，每人多少个
-        var ds = new Int32[cs2.Count];
-        for (Int32 i = 0, k = 0; i < qs.Count; i++)
-        {
-            ds[k++]++;
-
-            if (k >= ds.Length) k = 0;
-        }
-
-        // 我的前面分了多少
-        var start = ds.Take(idx).Sum();
-        // 跳过前面，取我的糖
-        qs = qs.Skip(start).Take(ds[idx]).ToList();
 
         var rs = new List<QueueStore>();
         foreach (var item in qs)
