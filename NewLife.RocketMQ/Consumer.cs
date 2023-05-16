@@ -397,7 +397,7 @@ public class Consumer : MqBase
             // 预留一点退出时间
             Interlocked.Increment(ref _version);
 
-            var timeout = TimeSpan.FromSeconds(3) * _tasks.Length;
+            var timeout = TimeSpan.FromSeconds(3 * _tasks.Length);
             try
             {
                 Task.WaitAll(_tasks, timeout);
