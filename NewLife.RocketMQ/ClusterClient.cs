@@ -109,8 +109,9 @@ public abstract class ClusterClient : DisposeBase
     /// <summary>发送命令</summary>
     /// <param name="cmd"></param>
     /// <param name="waitResult"></param>
+    /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    protected virtual async Task<Command> SendAsync(Command cmd, Boolean waitResult)
+    protected virtual async Task<Command> SendAsync(Command cmd, Boolean waitResult, CancellationToken cancellationToken = default)
     {
         if (cmd.Header.Opaque == 0) cmd.Header.Opaque = Interlocked.Increment(ref g_id);
 
@@ -125,7 +126,7 @@ public abstract class ClusterClient : DisposeBase
         {
             if (waitResult)
             {
-                var rs = await client.SendMessageAsync(cmd);
+                var rs = await client.SendMessageAsync(cmd, cancellationToken);
 
                 WriteLog("<= {0}", rs as Command);
 
@@ -223,11 +224,11 @@ public abstract class ClusterClient : DisposeBase
 
     /// <summary>发送指定类型的命令</summary>
     internal virtual async Task<Command> InvokeAsync(RequestCode request, Object body, Object extFields = null,
-        Boolean ignoreError = false)
+        Boolean ignoreError = false, CancellationToken cancellationToken = default)
     {
         var cmd = CreateCommand(request, body, extFields);
 
-        var rs = await SendAsync(cmd, true);
+        var rs = await SendAsync(cmd, true, cancellationToken);
 
         // 判断异常响应
         if (!ignoreError && rs.Header != null && rs.Header.Code != 0)
@@ -247,13 +248,11 @@ public abstract class ClusterClient : DisposeBase
     {
         var cmd = CreateCommand(request, body, extFields);
         cmd.OneWay = true;
+
         // 避免UI死锁
         var rs = Task.Run(() => SendAsync(cmd, false)).Result;
 
-
-
         return rs;
-
     }
 
     private Command CreateCommand(RequestCode request, Object body, Object extFields)

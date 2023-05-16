@@ -58,7 +58,7 @@ public class Consumer : MqBase
     public Func<MessageQueue, MessageExt[], Boolean> OnConsume;
 
     /// <summary>异步消费委托</summary>
-    public Func<MessageQueue, MessageExt[], Task<Boolean>> OnConsumeAsync;
+    public Func<MessageQueue, MessageExt[], CancellationToken, Task<Boolean>> OnConsumeAsync;
 
     /// <summary>消费事件</summary>
     public event EventHandler<ConsumeEventArgs> Consumed;
@@ -163,8 +163,9 @@ public class Consumer : MqBase
     /// <param name="offset"></param>
     /// <param name="maxNums"></param>
     /// <param name="msTimeout"></param>
+    /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public async Task<PullResult> Pull(MessageQueue mq, Int64 offset, Int32 maxNums, Int32 msTimeout = -1)
+    public async Task<PullResult> Pull(MessageQueue mq, Int64 offset, Int32 maxNums, Int32 msTimeout = -1, CancellationToken cancellationToken = default)
     {
         var header = new PullMessageRequestHeader
         {
@@ -185,7 +186,7 @@ public class Consumer : MqBase
         var dic = header.GetProperties();
         var bk = GetBroker(mq.BrokerName);
 
-        var rs = await bk.InvokeAsync(RequestCode.PULL_MESSAGE, null, dic, true);
+        var rs = await bk.InvokeAsync(RequestCode.PULL_MESSAGE, null, dic, true, cancellationToken);
         if (rs?.Header == null) return null;
 
         var pr = new PullResult();
@@ -217,8 +218,9 @@ public class Consumer : MqBase
 
     /// <summary>查询指定队列的偏移量</summary>
     /// <param name="mq"></param>
+    /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public async Task<Int64> QueryOffset(MessageQueue mq)
+    public async Task<Int64> QueryOffset(MessageQueue mq, CancellationToken cancellationToken = default)
     {
         var bk = GetBroker(mq.BrokerName);
         var rs = await bk.InvokeAsync(RequestCode.QUERY_CONSUMER_OFFSET, null, new
@@ -226,7 +228,7 @@ public class Consumer : MqBase
             consumerGroup = Group,
             topic = Topic,
             queueId = mq.QueueId,
-        }, true);
+        }, true, cancellationToken);
 
         var dic = rs.Header?.ExtFields;
         if (dic == null) return -1;
@@ -238,8 +240,9 @@ public class Consumer : MqBase
     /// 查询“队列”最大偏移量，不是消费提交的最后偏移量
     /// </summary>
     /// <param name="mq"></param>
+    /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public async Task<Int64> QueryMaxOffset(MessageQueue mq)
+    public async Task<Int64> QueryMaxOffset(MessageQueue mq, CancellationToken cancellationToken = default)
     {
         var bk = GetBroker(mq.BrokerName);
         var rs = await bk.InvokeAsync(RequestCode.GET_MAX_OFFSET, null, new
@@ -247,7 +250,7 @@ public class Consumer : MqBase
             consumerGroup = Group,
             topic = Topic,
             queueId = mq.QueueId,
-        }, true);
+        }, true, cancellationToken);
 
         var dic = rs.Header?.ExtFields;
         if (dic == null) return -1;
@@ -259,8 +262,9 @@ public class Consumer : MqBase
     /// 获取最小偏移量
     /// </summary>
     /// <param name="mq"></param>
+    /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public async Task<Int64> QueryMinOffset(MessageQueue mq)
+    public async Task<Int64> QueryMinOffset(MessageQueue mq, CancellationToken cancellationToken = default)
     {
         var bk = GetBroker(mq.BrokerName);
         var rs = await bk.InvokeAsync(RequestCode.GET_MIN_OFFSET, null, new
@@ -268,7 +272,7 @@ public class Consumer : MqBase
             consumerGroup = Group,
             topic = Topic,
             queueId = mq.QueueId,
-        }, true);
+        }, true, cancellationToken);
 
         var dic = rs.Header?.ExtFields;
         if (dic == null) return -1;
@@ -288,8 +292,9 @@ public class Consumer : MqBase
     /// <summary>更新队列的偏移</summary>
     /// <param name="mq"></param>
     /// <param name="commitOffset"></param>
+    /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public async Task<Boolean> UpdateOffset(MessageQueue mq, Int64 commitOffset)
+    public async Task<Boolean> UpdateOffset(MessageQueue mq, Int64 commitOffset, CancellationToken cancellationToken = default)
     {
         var bk = GetBroker(mq.BrokerName);
         var rs = await bk.InvokeAsync(RequestCode.UPDATE_CONSUMER_OFFSET, null, new
@@ -298,7 +303,7 @@ public class Consumer : MqBase
             consumerGroup = Group,
             queueId = mq.QueueId,
             topic = Topic,
-        });
+        }, false, cancellationToken);
 
         var dic = rs?.Header?.ExtFields;
         if (dic == null) return false;
@@ -443,7 +448,7 @@ public class Consumer : MqBase
             try
             {
                 var offset = st.Offset;
-                var pr = await Pull(mq, offset, BatchSize, SuspendTimeout);
+                var pr = await Pull(mq, offset, BatchSize, SuspendTimeout, cancellationToken);
                 if (pr != null)
                 {
                     switch (pr.Status)
@@ -458,14 +463,14 @@ public class Consumer : MqBase
                                 try
                                 {
                                     // 触发消费
-                                    var rs = await Consume(mq, pr);
+                                    var rs = await Consume(mq, pr, cancellationToken);
 
                                     // 更新偏移
                                     if (rs)
                                     {
                                         st.Offset = pr.NextBeginOffset;
                                         // 提交消费进度
-                                        await UpdateOffset(mq, st.Offset);
+                                        await UpdateOffset(mq, st.Offset, cancellationToken);
                                     }
                                 }
                                 catch (Exception ex)
@@ -510,21 +515,22 @@ public class Consumer : MqBase
         }
 
         // 保存消费进度
-        if (st.Offset >= 0 && st.Offset != st.CommitOffset) await UpdateOffset(mq, st.Offset);
+        if (st.Offset >= 0 && st.Offset != st.CommitOffset) await UpdateOffset(mq, st.Offset, cancellationToken);
     }
 
     /// <summary>拉取到一批消息</summary>
     /// <param name="queue"></param>
     /// <param name="result"></param>
+    /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    protected virtual async Task<Boolean> Consume(MessageQueue queue, PullResult result)
+    protected virtual async Task<Boolean> Consume(MessageQueue queue, PullResult result, CancellationToken cancellationToken)
     {
         if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("{0}", result);
 
         Consumed?.Invoke(this, new ConsumeEventArgs { Queue = queue, Messages = result.Messages, Result = result });
 
         if (OnConsume != null) return OnConsume(queue, result.Messages);
-        if (OnConsumeAsync != null) return await OnConsumeAsync(queue, result.Messages);
+        if (OnConsumeAsync != null) return await OnConsumeAsync(queue, result.Messages, cancellationToken);
 
         return true;
     }
@@ -533,6 +539,9 @@ public class Consumer : MqBase
     {
         if (stores == null) return;
 
+        var ts = new List<Task>();
+        var source = new CancellationTokenSource(5_000);
+
         foreach (var item in stores)
         {
             if (item.Offset >= 0 && item.Offset != item.CommitOffset)
@@ -540,11 +549,13 @@ public class Consumer : MqBase
                 var mq = item.Queue;
                 WriteLog("队列[{0}@{1}]更新偏移[{2:n0}]", mq.BrokerName, mq.QueueId, item.Offset);
 
-                _ = UpdateOffset(item.Queue, item.Offset);
+                ts.Add(UpdateOffset(item.Queue, item.Offset, source.Token));
 
                 item.CommitOffset = item.Offset;
             }
         }
+
+        Task.WhenAll(ts);
     }
 
     #endregion
@@ -555,7 +566,7 @@ public class Consumer : MqBase
     public MessageQueue[] Queues => _Queues.Select(e => e.Queue).ToArray();
 
     private QueueStore[] _Queues;
-    private String[] _Consumers;
+    //private String[] _Consumers;
 
     class QueueStore
     {
@@ -658,7 +669,7 @@ public class Consumer : MqBase
 
         _Queues = rs.ToArray();
         InitOffsetAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-        _Consumers = cs2.ToArray();
+        //_Consumers = cs2.ToArray();
 
         return true;
     }
@@ -705,7 +716,7 @@ public class Consumer : MqBase
         }
     }
 
-    private async Task InitOffsetAsync()
+    private async Task InitOffsetAsync(CancellationToken cancellationToken = default)
     {
         if (_Queues == null || _Queues.Length == 0) return;
 
@@ -714,7 +725,11 @@ public class Consumer : MqBase
         foreach (var brokerName in queueBrokers)
         {
             var broker = GetBroker(brokerName);
-            var command = await broker.InvokeAsync(RequestCode.GET_CONSUME_STATS, null, new { consumerGroup = Group, topic = Topic }, true);
+            var command = await broker.InvokeAsync(RequestCode.GET_CONSUME_STATS, null, new
+            {
+                consumerGroup = Group,
+                topic = Topic
+            }, true, cancellationToken);
             var consumerStates = ConsumerStatesSpecialJsonHandler(command.Payload);
             //foreach (var (key, value) in consumerStates.OffsetTable) offsetTables.Add(key, value);
             foreach (var item in consumerStates.OffsetTable)
@@ -750,7 +765,7 @@ public class Consumer : MqBase
                 }
 
                 store.Offset = store.CommitOffset = offset;
-                await UpdateOffset(store.Queue, offset);
+                await UpdateOffset(store.Queue, offset, cancellationToken);
             }
             else
             {

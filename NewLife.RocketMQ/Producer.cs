@@ -150,7 +150,7 @@ public class Producer : MqBase
     }
 
     /// <summary>发布消息</summary>
-    public virtual async Task<SendResult> PublishAsync(Message message)
+    public virtual async Task<SendResult> PublishAsync(Message message, CancellationToken cancellationToken = default)
     {
         // 选择队列分片
         var mq = SelectQueue();
@@ -168,7 +168,7 @@ public class Producer : MqBase
             {
                 // 根据队列获取Broker客户端
                 var bk = GetBroker(mq.BrokerName);
-                var rs = await bk.InvokeAsync(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties(), ignoreError: true);
+                var rs = await bk.InvokeAsync(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties(), true, cancellationToken);
 
                 // 包装结果
                 var sendResult = new SendResult
