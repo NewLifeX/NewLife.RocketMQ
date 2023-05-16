@@ -564,7 +564,7 @@ public class Consumer : MqBase
     #region 消费端负载均衡
 
     /// <summary>当前所需要消费的队列。由均衡算法产生</summary>
-    public MessageQueue[] Queues => _Queues.Select(e => e.Queue).ToArray();
+    public MessageQueue[] Queues => _Queues?.Select(e => e.Queue).ToArray();
 
     private QueueStore[] _Queues;
     //private String[] _Consumers;

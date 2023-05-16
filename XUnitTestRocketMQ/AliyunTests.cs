@@ -88,7 +88,6 @@ namespace XUnitTestRocketMQ
                 Group = "test",
 
                 FromLastOffset = true,
-                SkipOverStoredMsgCount = 0,
                 BatchSize = 20,
             };
             SetConfig(consumer);
