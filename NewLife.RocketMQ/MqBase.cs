@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Reflection;
 using NewLife.Log;
 using NewLife.RocketMQ.Protocol;
 
@@ -105,6 +106,12 @@ public abstract class MqBase : DisposeBase
     #endregion
 
     #region 构造
+    static MqBase()
+    {
+        // 输出当前版本
+        Assembly.GetExecutingAssembly().WriteVersion();
+    }
+
     /// <summary>实例化</summary>
     public MqBase()
     {
