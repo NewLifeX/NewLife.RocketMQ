@@ -333,6 +333,7 @@ public class Consumer : MqBase
                 var rs = bk.Invoke(RequestCode.GET_CONSUMER_LIST_BY_GROUP, null, header);
                 //WriteLog(rs.Header.ExtFields?.ToJson());
                 var js = rs.ReadBodyAsJson();
+                span?.AppendTag(js);
                 if (js != null && js["consumerIdList"] is IList<Object> list)
                 {
                     foreach (String clientId in list)
@@ -615,22 +616,21 @@ public class Consumer : MqBase
                 }
             }
         }
+
         var cs2 = cs.OrderBy(e => e).ToList();
+
+        if (_Queues == null) WriteLog("消费者列表[{0}]：{1}", cs2.Count, cs2.Join());
 
         // 集群模式需要分配Queue，而广播模式不需要
         if (MessageModel == MessageModels.Clustering)
         {
-            // 排序，计算索引
+            // 排序，计算索引。如果当前节点不在消费者列表里，则跳过
             var cid = ClientId;
-            var idx = 0;
-            for (idx = 0; idx < cs2.Count; idx++)
-            {
-                if (cs2[idx] == cid) break;
-            }
+            var idx = cs2.IndexOf(cid);
+            if (idx < 0 || idx >= cs2.Count) return false;
 
-            if (idx >= cs2.Count) return false;
-
-            // 先分糖，每人多少个
+            // 先分糖，每人多少个。你一个我一个，一圈又一圈的分。
+            // 如果无法均分，前面的消费者会比后面的消费者多拿一个，并且最多只会多一个
             var ds = new Int32[cs2.Count];
             for (Int32 i = 0, k = 0; i < qs.Count; i++)
             {
@@ -639,7 +639,7 @@ public class Consumer : MqBase
                 if (k >= ds.Length) k = 0;
             }
 
-            // 我的前面分了多少
+            // 我的前面分了多少，就是前面的桶内数字之和
             var start = ds.Take(idx).Sum();
             // 跳过前面，取我的糖
             qs = qs.Skip(start).Take(ds[idx]).ToList();
@@ -664,9 +664,10 @@ public class Consumer : MqBase
         }
 
         var dic = qs.GroupBy(e => e.BrokerName).ToDictionary(e => e.Key, e => e.Join(",", x => x.QueueId));
-        WriteLog("消费重新平衡，当前消费者负责queue分片：{0}", dic.Join(";", e => $"{e.Key}[{e.Value}]"));
+        var str = dic.Join(";", e => $"{e.Key}[{e.Value}]");
+        WriteLog("消费重新平衡，当前消费者负责queue分片：{0}", str);
 
-        using var span = Tracer?.NewSpan($"mq:{Topic}:Rebalance");
+        using var span = Tracer?.NewSpan($"mq:{Topic}:Rebalance", str);
 
         _Queues = rs.ToArray();
         InitOffsetAsync().ConfigureAwait(false).GetAwaiter().GetResult();
@@ -890,7 +891,7 @@ public class Consumer : MqBase
         return null;
     }
 
-    private void NotifyConsumerIdsChanged(Command cmd) => Task.Run(() => CheckGroup());
+    private void NotifyConsumerIdsChanged(Command cmd) => _timer?.SetNext(-1);
 
     private void ResetOffset(Command cmd)
     {

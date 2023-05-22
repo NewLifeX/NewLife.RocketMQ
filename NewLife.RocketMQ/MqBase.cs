@@ -194,7 +194,7 @@ public abstract class MqBase : DisposeBase
         var rs = client.GetRouteInfo(Topic);
         foreach (var item in rs)
         {
-            XTrace.WriteLine("发现Broker[{0}]: {1}", item.Name, item.Addresses.Join());
+            XTrace.WriteLine("发现Broker[{0}]: {1}, reads={2}, writes={3}", item.Name, item.Addresses.Join(), item.ReadQueueNums, item.WriteQueueNums);
         }
 
         _NameServer = client;

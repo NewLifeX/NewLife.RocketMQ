@@ -1,4 +1,5 @@
-﻿using NewLife.Net;
+﻿using NewLife.Log;
+using NewLife.Net;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Threading;
@@ -79,7 +80,7 @@ namespace NewLife.RocketMQ
             // 发送命令
             var rs = Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
             var js = rs.ReadBodyAsJson();
-            span?.SetTag(js);
+            span?.AppendTag(js);
 
             var list = new List<BrokerInfo>();
             // 解析broker集群地址
