@@ -74,7 +74,7 @@ namespace NewLife.RocketMQ.Protocol
                 if (p > 0) err = err.Substring(0, p);
             }
 
-            return new ResponseException(Code, err);
+            return new ResponseException((ResponseCode)Code, err);
         }
         #endregion
     }

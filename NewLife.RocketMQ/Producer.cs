@@ -59,16 +59,16 @@ public class Producer : MqBase
     /// <returns></returns>
     public virtual SendResult Publish(Message message, Int32 timeout = -1)
     {
-        // 选择队列分片
-        var mq = SelectQueue();
-        mq.Topic = Topic;
-
         // 构造请求头
         var header = CreateHeader(message);
-        header.QueueId = mq.QueueId;
 
         for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
         {
+            // 选择队列分片
+            var mq = SelectQueue();
+            mq.Topic = Topic;
+            header.QueueId = mq.QueueId;
+
             // 性能埋点
             using var span = Tracer?.NewSpan($"mq:{Topic}:Publish", message.BodyString);
             try
@@ -99,14 +99,14 @@ public class Producer : MqBase
             }
             catch (Exception ex)
             {
-                span?.SetError(ex, message);
-
                 // 如果网络异常，则延迟重发
-                if (ex is not ResponseException && i < RetryTimesWhenSendFailed)
+                if (i < RetryTimesWhenSendFailed)
                 {
                     Thread.Sleep(1000);
                     continue;
                 }
+
+                span?.SetError(ex, message);
 
                 throw;
             }
@@ -152,16 +152,16 @@ public class Producer : MqBase
     /// <summary>发布消息</summary>
     public virtual async Task<SendResult> PublishAsync(Message message, CancellationToken cancellationToken = default)
     {
-        // 选择队列分片
-        var mq = SelectQueue();
-        mq.Topic = Topic;
-
         // 构造请求头
         var header = CreateHeader(message);
-        header.QueueId = mq.QueueId;
 
         for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
         {
+            // 选择队列分片
+            var mq = SelectQueue();
+            mq.Topic = Topic;
+            header.QueueId = mq.QueueId;
+
             // 性能埋点
             using var span = Tracer?.NewSpan($"mq:{Topic}:PublishAsync", message.BodyString);
             try
@@ -190,14 +190,14 @@ public class Producer : MqBase
             }
             catch (Exception ex)
             {
-                span?.SetError(ex, message);
-
                 // 如果网络异常，则延迟重发
-                if (ex is not ResponseException && i < RetryTimesWhenSendFailed)
+                if (i < RetryTimesWhenSendFailed)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(1));
                     continue;
                 }
+
+                span?.SetError(ex, message);
 
                 throw;
             }
@@ -231,16 +231,16 @@ public class Producer : MqBase
     /// <returns></returns>
     public virtual SendResult PublishOneway(Message message, Int32 timeout = -1)
     {
-        // 选择队列分片
-        var mq = SelectQueue();
-        mq.Topic = Topic;
-
         // 构造请求头
         var header = CreateHeader(message);
-        header.QueueId = mq.QueueId;
 
         for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
         {
+            // 选择队列分片
+            var mq = SelectQueue();
+            mq.Topic = Topic;
+            header.QueueId = mq.QueueId;
+
             // 性能埋点
             using var span = Tracer?.NewSpan($"mq:{Topic}:PublishOneway", message.BodyString);
             try
@@ -267,14 +267,14 @@ public class Producer : MqBase
             }
             catch (Exception ex)
             {
-                span?.SetError(ex, message);
-
                 // 如果网络异常，则延迟重发
-                if (ex is not ResponseException && i < RetryTimesWhenSendFailed)
+                if (i < RetryTimesWhenSendFailed)
                 {
                     Thread.Sleep(1000);
                     continue;
                 }
+
+                span?.SetError(ex, message);
 
                 throw;
             }
