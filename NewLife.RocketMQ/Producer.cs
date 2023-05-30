@@ -36,7 +36,7 @@ public class Producer : MqBase
     {
         if (!base.Start()) return false;
 
-        if (LoadBalance == null) LoadBalance = new WeightRoundRobin();
+        LoadBalance ??= new WeightRoundRobin();
 
         if (_NameServer != null)
         {
@@ -71,6 +71,7 @@ public class Producer : MqBase
 
             // 性能埋点
             using var span = Tracer?.NewSpan($"mq:{Topic}:Publish", message.BodyString);
+            span?.AppendTag($"queue={mq}");
             try
             {
                 // 根据队列获取Broker客户端
@@ -92,6 +93,12 @@ public class Producer : MqBase
                     }
                 };
                 result.Read(rs.Header?.ExtFields);
+
+                span?.AppendTag($"Status={result.Status}");
+                span?.AppendTag($"MsgId={result.MsgId}");
+                span?.AppendTag($"OffsetMsgId={result.OffsetMsgId}");
+                span?.AppendTag($"QueueOffset={result.QueueOffset}");
+                span?.AppendTag($"TransactionId={result.TransactionId}");
 
                 if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("{0}", result);
 

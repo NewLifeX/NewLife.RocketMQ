@@ -60,7 +60,7 @@ namespace NewLife.RocketMQ
 
             base.Start();
 
-            if (_timer == null) _timer = new TimerX(DoWork, null, cfg.PollNameServerInterval, cfg.PollNameServerInterval);
+            _timer ??= new TimerX(DoWork, null, cfg.PollNameServerInterval, cfg.PollNameServerInterval);
         }
 
         #endregion
