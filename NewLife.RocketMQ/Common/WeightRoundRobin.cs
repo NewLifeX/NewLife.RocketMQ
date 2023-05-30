@@ -43,23 +43,27 @@ public class WeightRoundRobin : ILoadBalance
     /// <returns></returns>
     public Int32 Get(out Int32 times)
     {
+        times = 1;
+        var ts = _states;
+        if (ts == null) return 0;
+
         // 选择状态最大值
-        var cur = GetMax(_states, out var idx);
+        var cur = GetMax(ts, out var idx);
 
         // 如果所有状态都不达标，则集体加盐
         if (cur < minWeight)
         {
             for (var i = 0; i < Weights.Length; i++)
             {
-                _states[i] += Weights[i];
+                ts[i] += Weights[i];
             }
 
             // 重新选择状态最大值
-            cur = GetMax(_states, out idx);
+            cur = GetMax(ts, out idx);
         }
 
         // 已选择，减状态
-        _states[idx] -= minWeight;
+        ts[idx] -= minWeight;
 
         times = ++_times[idx];
 
