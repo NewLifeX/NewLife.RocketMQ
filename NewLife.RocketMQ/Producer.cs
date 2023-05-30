@@ -353,10 +353,14 @@ public class Producer : MqBase
             lb.Set(list.Select(e => e.WriteQueueNums).ToArray());
         }
 
-        // 构造排序列表。希望能够均摊到各Broker
-        var idx = lb.Get(out var times);
-        var bk = _brokers[idx];
-        return new MessageQueue { BrokerName = bk.Name, QueueId = (times - 1) % bk.WriteQueueNums };
+        // 解锁解决冲突，让消息发送更均匀
+        lock (lb)
+        {
+            // 构造排序列表。希望能够均摊到各Broker
+            var idx = lb.Get(out var times);
+            var bk = _brokers[idx];
+            return new MessageQueue { BrokerName = bk.Name, QueueId = (times - 1) % bk.WriteQueueNums };
+        }
     }
     #endregion
 }
