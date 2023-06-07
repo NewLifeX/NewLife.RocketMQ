@@ -187,7 +187,7 @@ public abstract class MqBase : DisposeBase
         {
             Name = "Name",
             Tracer = Tracer,
-            Log = ClientLog
+            Log = Log
         };
         client.Start();
 

@@ -83,8 +83,9 @@ public abstract class ClusterClient : DisposeBase
                 client = uri.CreateRemote();
                 client.Timeout = Timeout;
                 client.Log = Log;
-                if (Log != null && Log.Level <= LogLevel.Debug) client.Tracer = Tracer;
-                client.Add(new MqCodec { Timeout = 59_000 });
+                //if (Log != null && Log.Level <= LogLevel.Debug) client.Tracer = Tracer;
+                client.Tracer = Tracer;
+                client.Add(new MqCodec { Timeout = Timeout });
 
                 // 关闭Tcp延迟以合并小包的算法，降低延迟
                 if (client is TcpSession tcp) tcp.NoDelay = true;

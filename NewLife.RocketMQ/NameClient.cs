@@ -76,50 +76,57 @@ public class NameClient : ClusterClient
     public IList<BrokerInfo> GetRouteInfo(String topic)
     {
         using var span = Tracer?.NewSpan($"mq:{topic}:GetRouteInfo", topic);
-
-        // 发送命令
-        var rs = Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
-        var js = rs.ReadBodyAsJson();
-        span?.AppendTag(js);
-
-        var list = new List<BrokerInfo>();
-        // 解析broker集群地址
-        if (js["brokerDatas"] is IList<Object> bs)
+        try
         {
-            foreach (IDictionary<String, Object> item in bs)
-            {
-                var name = item["brokerName"] + "";
-                if (item["brokerAddrs"] is IDictionary<String, Object> addrs)
-                    list.Add(new BrokerInfo { Name = name, Addresses = addrs.Select(e => e.Value + "").ToArray() });
-            }
-        }
+            // 发送命令
+            var rs = Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
+            var js = rs.ReadBodyAsJson();
+            span?.AppendTag(js);
 
-        // 解析队列集合
-        if (js["queueDatas"] is IList<Object> bs2)
+            var list = new List<BrokerInfo>();
+            // 解析broker集群地址
+            if (js["brokerDatas"] is IList<Object> bs)
+            {
+                foreach (IDictionary<String, Object> item in bs)
+                {
+                    var name = item["brokerName"] + "";
+                    if (item["brokerAddrs"] is IDictionary<String, Object> addrs)
+                        list.Add(new BrokerInfo { Name = name, Addresses = addrs.Select(e => e.Value + "").ToArray() });
+                }
+            }
+
+            // 解析队列集合
+            if (js["queueDatas"] is IList<Object> bs2)
+            {
+                foreach (IDictionary<String, Object> item in bs2)
+                {
+                    var name = item["brokerName"] + "";
+
+                    var bk = list.FirstOrDefault(e => e.Name == name);
+                    if (bk == null) list.Add(bk = new BrokerInfo { Name = name });
+
+                    bk.Permission = (Permissions)item["perm"].ToInt();
+                    bk.ReadQueueNums = item["readQueueNums"].ToInt();
+                    bk.WriteQueueNums = item["writeQueueNums"].ToInt();
+                    bk.TopicSynFlag = item["topicSynFlag"].ToInt();
+                }
+            }
+
+            // 如果完全相等，则直接返回。否则重新平衡队列
+            if (Brokers.SequenceEqual(list)) return list.OrderBy(t => t.Name).ToList();
+
+            Brokers = list;
+
+            // 有改变，重新平衡队列
+            OnBrokerChange?.Invoke(this, EventArgs.Empty);
+
+            return list.OrderBy(t => t.Name).ToList();
+        }
+        catch (Exception ex)
         {
-            foreach (IDictionary<String, Object> item in bs2)
-            {
-                var name = item["brokerName"] + "";
-
-                var bk = list.FirstOrDefault(e => e.Name == name);
-                if (bk == null) list.Add(bk = new BrokerInfo { Name = name });
-
-                bk.Permission = (Permissions)item["perm"].ToInt();
-                bk.ReadQueueNums = item["readQueueNums"].ToInt();
-                bk.WriteQueueNums = item["writeQueueNums"].ToInt();
-                bk.TopicSynFlag = item["topicSynFlag"].ToInt();
-            }
+            span?.SetError(ex, null);
+            throw;
         }
-
-        // 如果完全相等，则直接返回。否则重新平衡队列
-        if (Brokers.SequenceEqual(list)) return list.OrderBy(t => t.Name).ToList();
-
-        Brokers = list;
-
-        // 有改变，重新平衡队列
-        OnBrokerChange?.Invoke(this, EventArgs.Empty);
-
-        return list.OrderBy(t => t.Name).ToList();
     }
 
     #endregion
