@@ -75,6 +75,9 @@ public class Consumer : MqBase
 
         base.Dispose(disposing);
 
+        _source.TryDispose();
+        _source = null;
+
         _timer.TryDispose();
         _timer = null;
     }
@@ -392,6 +395,13 @@ public class Consumer : MqBase
         // 如果有多个消费者，则等一段时间让大家停止消费，尽量避免重复消费
         //if (_Consumers != null && _Consumers.Length > 1) Thread.Sleep(10_000);
 
+        // 释放资源
+        if (_source != null)
+        {
+            _source.Cancel();
+            _source.TryDispose();
+        }
+
         var source = new CancellationTokenSource();
 
         // 开线程
@@ -421,7 +431,13 @@ public class Consumer : MqBase
             // 预留一点退出时间
             Interlocked.Increment(ref _version);
 
-            _source?.Cancel();
+            // 释放资源
+            if (_source != null)
+            {
+                _source.Cancel();
+                _source.TryDispose();
+                _source = null;
+            }
 
             var timeout = TimeSpan.FromSeconds(3 * _tasks.Length);
             try
@@ -435,7 +451,6 @@ public class Consumer : MqBase
             }
 
             _tasks = null;
-            _source = null;
         }
     }
 
@@ -542,7 +557,7 @@ public class Consumer : MqBase
         if (stores == null) return;
 
         var ts = new List<Task>();
-        var source = new CancellationTokenSource(5_000);
+        using var source = new CancellationTokenSource(5_000);
 
         foreach (var item in stores)
         {
