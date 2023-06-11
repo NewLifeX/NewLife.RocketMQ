@@ -233,6 +233,8 @@ public abstract class MqBase : DisposeBase
     /// <returns></returns>
     protected BrokerClient GetBroker(String name)
     {
+        if (String.IsNullOrEmpty(name)) throw new ArgumentException($"“{nameof(name)}”不能为 null 或空。", nameof(name));
+
         if (_Brokers.TryGetValue(name, out var client)) return client;
 
         var bk = Brokers?.FirstOrDefault(e => name == null || e.Name == name);
@@ -243,20 +245,7 @@ public abstract class MqBase : DisposeBase
             if (_Brokers.TryGetValue(name, out client)) return client;
 
             // 实例化客户端
-            client = new BrokerClient(bk.Addresses)
-            {
-                Id = ClientId,
-                Name = bk.Name,
-                Config = this,
-
-                Tracer = Tracer,
-                Log = ClientLog,
-            };
-
-            client.Received += (s, e) =>
-            {
-                e.Arg = OnReceive(e.Arg);
-            };
+            client = CreateBroker(bk.Name, bk.Addresses);
 
             client.Start();
 
@@ -266,6 +255,31 @@ public abstract class MqBase : DisposeBase
             return client;
         }
     }
+
+    /// <summary>创建Broker客户端通信</summary>
+    /// <param name="name"></param>
+    /// <param name="addrs"></param>
+    /// <returns></returns>
+    protected virtual BrokerClient CreateBroker(String name, String[] addrs)
+    {
+        var client = new BrokerClient(addrs)
+        {
+            Id = ClientId,
+            Name = name,
+            Config = this,
+
+            Tracer = Tracer,
+            Log = ClientLog,
+        };
+
+        client.Received += (s, e) =>
+        {
+            e.Arg = OnReceive(e.Arg);
+        };
+
+        return client;
+    }
+
 
     /// <summary>Broker客户端集合</summary>
     public ICollection<BrokerClient> Clients => _Brokers.Values;

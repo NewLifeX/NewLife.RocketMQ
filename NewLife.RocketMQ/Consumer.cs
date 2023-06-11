@@ -158,6 +158,17 @@ public class Consumer : MqBase
         }
     }
 
+    /// <summary>创建Broker客户端，已重载，设置更大的超时时间</summary>
+    /// <param name="name"></param>
+    /// <param name="addrs"></param>
+    /// <returns></returns>
+    protected override BrokerClient CreateBroker(String name, String[] addrs)
+    {
+        var client = base.CreateBroker(name, addrs);
+        if (client.Timeout < SuspendTimeout) client.Timeout = SuspendTimeout;
+
+        return client;
+    }
     #endregion
 
     #region 拉取消息
