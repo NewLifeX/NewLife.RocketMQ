@@ -191,6 +191,7 @@ public abstract class MqBase : DisposeBase
         };
         client.Start();
 
+        // 阻塞获取Broker地址，确保首次使用之前已经获取到Broker地址
         var rs = client.GetRouteInfo(Topic);
         foreach (var item in rs)
         {
@@ -279,7 +280,6 @@ public abstract class MqBase : DisposeBase
 
         return client;
     }
-
 
     /// <summary>Broker客户端集合</summary>
     public ICollection<BrokerClient> Clients => _Brokers.Values;

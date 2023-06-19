@@ -68,7 +68,20 @@ public class NameClient : ClusterClient
     #region 命令
 
     private TimerX _timer;
-    private void DoWork(Object state) => GetRouteInfo(Config.Topic);
+    private String _lastBrokers;
+    private void DoWork(Object state)
+    {
+        var rs = GetRouteInfo(Config.Topic);
+        var str = rs?.Join(",", e => $"{e.Name}={e.Addresses.Join()}");
+        if (str != _lastBrokers)
+        {
+            _lastBrokers = str;
+            foreach (var item in rs)
+            {
+                XTrace.WriteLine("发现Broker[{0}]: {1}, reads={2}, writes={3}", item.Name, item.Addresses.Join(), item.ReadQueueNums, item.WriteQueueNums);
+            }
+        }
+    }
 
     /// <summary>获取主题的路由信息，含登录验证</summary>
     /// <param name="topic"></param>
