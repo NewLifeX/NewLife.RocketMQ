@@ -78,7 +78,7 @@ public class NameClient : ClusterClient
             _lastBrokers = str;
             foreach (var item in rs)
             {
-                XTrace.WriteLine("发现Broker[{0}]: {1}, reads={2}, writes={3}", item.Name, item.Addresses.Join(), item.ReadQueueNums, item.WriteQueueNums);
+                WriteLog("发现Broker[{0}]: {1}, reads={2}, writes={3}", item.Name, item.Addresses.Join(), item.ReadQueueNums, item.WriteQueueNums);
             }
         }
     }

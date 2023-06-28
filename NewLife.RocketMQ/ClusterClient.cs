@@ -123,9 +123,9 @@ public abstract class ClusterClient : DisposeBase
     {
         if (cmd.Header.Opaque == 0) cmd.Header.Opaque = Interlocked.Increment(ref g_id);
 
-        WriteLog("=> {0}", cmd);
+        if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("=> {0}", cmd);
 
-        using var span = Tracer?.NewSpan($"mq:{Name}:SendAsync:{cmd.Header.Code}", cmd);
+        using var span = Tracer?.NewSpan($"mq:{Name}:SendAsync:{(RequestCode)cmd.Header.Code}", cmd);
 
         // 签名
         SetSignature(cmd);
@@ -138,7 +138,7 @@ public abstract class ClusterClient : DisposeBase
             {
                 var rs = await client.SendMessageAsync(cmd, cancellationToken);
 
-                WriteLog("<= {0}", rs as Command);
+                if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("<= {0}", rs as Command);
                 span?.AppendTag(rs);
 
                 return rs as Command;
@@ -222,7 +222,7 @@ public abstract class ClusterClient : DisposeBase
     /// <param name="extFields"></param>
     /// <param name="ignoreError"></param>
     /// <returns></returns>
-    internal virtual Command Invoke(RequestCode request, Object body, Object extFields = null, Boolean ignoreError = false)
+    public virtual Command Invoke(RequestCode request, Object body, Object extFields = null, Boolean ignoreError = false)
     {
         var cmd = CreateCommand(request, body, extFields);
 
@@ -236,7 +236,7 @@ public abstract class ClusterClient : DisposeBase
     }
 
     /// <summary>发送指定类型的命令</summary>
-    internal virtual async Task<Command> InvokeAsync(RequestCode request, Object body, Object extFields = null,
+    public virtual async Task<Command> InvokeAsync(RequestCode request, Object body, Object extFields = null,
         Boolean ignoreError = false, CancellationToken cancellationToken = default)
     {
         var cmd = CreateCommand(request, body, extFields);
@@ -257,7 +257,7 @@ public abstract class ClusterClient : DisposeBase
     /// <param name="body"></param>
     /// <param name="extFields"></param>
     /// <returns></returns>
-    internal virtual Command InvokeOneway(RequestCode request, Object body, Object extFields = null)
+    public virtual Command InvokeOneway(RequestCode request, Object body, Object extFields = null)
     {
         var cmd = CreateCommand(request, body, extFields);
         cmd.OneWay = true;
