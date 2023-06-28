@@ -1,6 +1,7 @@
 ﻿using NewLife.Log;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Common;
+using NewLife.RocketMQ.Models;
 using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ;
@@ -52,7 +53,7 @@ public class Producer : MqBase
     }
     #endregion
 
-    #region 发送消息
+    #region 发布消息（普通/顺序）
     /// <summary>发送消息</summary>
     /// <param name="message">消息体</param>
     /// <param name="queue">目标队列。指定时可实现顺序发布（通过SelectQueue获取），默认未指定并自动选择队列</param>
@@ -156,7 +157,9 @@ public class Producer : MqBase
 
         return Publish(message, null, timeout);
     }
+    #endregion
 
+    #region 异步发布消息
     /// <summary>发布消息</summary>
     /// <param name="message">消息体</param>
     /// <param name="queue">目标队列。指定时可实现顺序发布（通过SelectQueue获取），默认未指定并自动选择队列</param>
@@ -237,13 +240,14 @@ public class Producer : MqBase
 
         return PublishAsync(message, null);
     }
+    #endregion
 
+    #region 发布单向消息
     /// <summary>发送消息，不等结果</summary>
     /// <param name="message">消息体</param>
     /// <param name="queue">目标队列。指定时可实现顺序发布（通过SelectQueue获取），默认未指定并自动选择队列</param>
-    /// <param name="timeout"></param>
     /// <returns></returns>
-    public virtual SendResult PublishOneway(Message message, MessageQueue queue, Int32 timeout = -1)
+    public virtual SendResult PublishOneway(Message message, MessageQueue queue)
     {
         // 构造请求头
         var header = CreateHeader(message);
@@ -299,16 +303,91 @@ public class Producer : MqBase
     /// <summary>发布消息，不等结果</summary>
     /// <param name="body"></param>
     /// <param name="tags"></param>
-    /// <param name="timeout"></param>
     /// <returns></returns>
-    public virtual void PublishOneway(Object body, String tags = null, Int32 timeout = -1)
+    public virtual void PublishOneway(Object body, String tags = null)
     {
         var message = CreateMessage(body);
         message.Tags = tags;
 
-        PublishOneway(message, null, timeout);
+        PublishOneway(message, null);
+    }
+    #endregion
+
+    #region 发布延迟消息
+    /// <summary>发布延迟消息</summary>
+    /// <param name="message">消息体</param>
+    /// <param name="queue">目标队列。指定时可实现顺序发布（通过SelectQueue获取），默认未指定并自动选择队列</param>
+    /// <param name="level">延迟时间等级。18级</param>
+    /// <returns></returns>
+    public virtual SendResult PublishDelay(Message message, MessageQueue queue, DelayTimeLevels level)
+    {
+        // 构造请求头
+        message.DelayTimeLevel = (Int32)level;
+        var header = CreateHeader(message);
+
+        for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
+        {
+            // 选择队列分片
+            var mq = queue ?? SelectQueue();
+            mq.Topic = Topic;
+            header.QueueId = mq.QueueId;
+
+            // 性能埋点
+            using var span = Tracer?.NewSpan($"mq:{Topic}:PublishDelay", new { level, message.BodyString });
+            try
+            {
+                // 根据队列获取Broker客户端
+                var bk = GetBroker(mq.BrokerName);
+                var rs = bk.InvokeOneway(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties());
+                // 包装结果
+                var sendResult = new SendResult
+                {
+                    Queue = mq,
+                    Header = rs.Header,
+                    Status = rs.Header.Code switch
+                    {
+                        -1 => SendStatus.SendError,
+
+                        _ => SendStatus.SendOK,
+                    }
+                };
+                if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("{0}", sendResult);
+
+                return sendResult;
+
+            }
+            catch (Exception ex)
+            {
+                // 如果网络异常，则延迟重发
+                if (i < RetryTimesWhenSendFailed)
+                {
+                    Thread.Sleep(1000);
+                    continue;
+                }
+
+                span?.SetError(ex, message);
+
+                throw;
+            }
+        }
+        return null;
     }
 
+    /// <summary>发布延迟消息</summary>
+    /// <param name="body"></param>
+    /// <param name="level">延迟时间等级。18级</param>
+    /// <param name="tags"></param>
+    /// <returns></returns>
+    public virtual void PublishDelay(Object body, DelayTimeLevels level, String tags = null)
+    {
+        var message = CreateMessage(body);
+        message.Tags = tags;
+
+        PublishDelay(message, null, level);
+    }
+    #endregion
+
+    #region 辅助
     /// <summary>
     /// 创建消息，设计于支持用户重载以改变消息序列化行为
     /// </summary>
