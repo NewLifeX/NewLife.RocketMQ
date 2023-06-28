@@ -56,7 +56,14 @@ public abstract class ClusterClient : DisposeBase
 
     #region 方法
     /// <summary>开始</summary>
-    public virtual void Start()
+    public void Start()
+    {
+        using var span = Tracer?.NewSpan($"mq:{Name}:Start", Servers);
+        OnStart();
+    }
+
+    /// <summary>开始</summary>
+    protected virtual void OnStart()
     {
         WriteLog("集群地址：{0}", Servers.Join(";"));
 
@@ -118,6 +125,8 @@ public abstract class ClusterClient : DisposeBase
 
         WriteLog("=> {0}", cmd);
 
+        using var span = Tracer?.NewSpan($"mq:{Name}:SendAsync:{cmd.Header.Code}", cmd);
+
         // 签名
         SetSignature(cmd);
 
@@ -130,6 +139,7 @@ public abstract class ClusterClient : DisposeBase
                 var rs = await client.SendMessageAsync(cmd, cancellationToken);
 
                 WriteLog("<= {0}", rs as Command);
+                span?.AppendTag(rs);
 
                 return rs as Command;
             }
@@ -142,8 +152,10 @@ public abstract class ClusterClient : DisposeBase
                 };
             }
         }
-        catch
+        catch (Exception ex)
         {
+            span?.SetError(ex, null);
+
             // 销毁，下次使用另一个地址
             client.TryDispose();
 
@@ -320,15 +332,24 @@ public abstract class ClusterClient : DisposeBase
     protected virtual Command OnReceive(Command cmd)
     {
         var code = (cmd.Header.Flag & 1) == 0 ? (RequestCode)cmd.Header.Code + "" : (ResponseCode)cmd.Header.Code + "";
-
         WriteLog("收到：Code={0} {1}", code, cmd.Header.ToJson());
 
-        if (Received == null) return null;
+        using var span = Tracer?.NewSpan($"mq:{Name}:Receive:{code}", cmd);
+        try
+        {
+            if (Received == null) return null;
 
-        var e = new EventArgs<Command>(cmd);
-        Received.Invoke(this, e);
+            var e = new EventArgs<Command>(cmd);
+            Received.Invoke(this, e);
 
-        return e.Arg;
+            return e.Arg;
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+
+            throw;
+        }
     }
     #endregion
 

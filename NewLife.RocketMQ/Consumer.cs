@@ -886,31 +886,21 @@ public class Consumer : MqBase
         if (cmd?.Header != null && (cmd.Header.Flag & 1) == 0)
         {
             var code = (RequestCode)cmd.Header.Code;
-            using var span = Tracer?.NewSpan($"mq:{Topic}:{code}", cmd);
-            try
+            switch (code)
             {
-                switch (code)
-                {
-                    case RequestCode.NOTIFY_CONSUMER_IDS_CHANGED:
-                        NotifyConsumerIdsChanged(cmd);
-                        break;
-                    case RequestCode.RESET_CONSUMER_CLIENT_OFFSET:
-                        ResetOffset(cmd);
-                        break;
-                    case RequestCode.GET_CONSUMER_STATUS_FROM_CLIENT:
-                        GetConsumeStatus(cmd);
-                        break;
-                    case RequestCode.GET_CONSUMER_RUNNING_INFO:
-                        return GetConsumerRunningInfo(cmd);
-                    default:
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                span?.SetError(ex, null);
-
-                throw;
+                case RequestCode.NOTIFY_CONSUMER_IDS_CHANGED:
+                    NotifyConsumerIdsChanged(cmd);
+                    break;
+                case RequestCode.RESET_CONSUMER_CLIENT_OFFSET:
+                    ResetOffset(cmd);
+                    break;
+                case RequestCode.GET_CONSUMER_STATUS_FROM_CLIENT:
+                    GetConsumeStatus(cmd);
+                    break;
+                case RequestCode.GET_CONSUMER_RUNNING_INFO:
+                    return GetConsumerRunningInfo(cmd);
+                default:
+                    break;
             }
         }
 

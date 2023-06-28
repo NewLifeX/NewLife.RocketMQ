@@ -1,4 +1,5 @@
-﻿using NewLife.Net;
+﻿using NewLife.Log;
+using NewLife.Net;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Threading;
 
@@ -20,7 +21,7 @@ public class BrokerClient : ClusterClient
 
     #region 方法
     /// <summary>启动</summary>
-    public override void Start()
+    protected override void OnStart()
     {
         //Servers = _Servers.Select(e => new NetUri(e)).ToArray();
         var list = new List<NetUri>();
@@ -32,7 +33,7 @@ public class BrokerClient : ClusterClient
         }
         Servers = list.ToArray();
 
-        base.Start();
+        base.OnStart();
 
         // 心跳
         StartPing();
@@ -80,33 +81,46 @@ public class BrokerClient : ClusterClient
 
     private void OnPing(Object state)
     {
+        DefaultSpan.Current = null;
+
         Ping();
     }
 
     /// <summary>心跳</summary>
     public void Ping()
     {
-        var cfg = Config;
-
-        var body = new HeartbeatData { ClientID = Id };
-
-        // 生产者 和 消费者 略有不同
-        if (cfg is Producer pd)
+        using var span = Tracer?.NewSpan($"mq:{Name}:Ping");
+        try
         {
-            body.ProducerDataSet = new[] {
+            var cfg = Config;
+
+            var body = new HeartbeatData { ClientID = Id };
+
+            // 生产者 和 消费者 略有不同
+            if (cfg is Producer pd)
+            {
+                body.ProducerDataSet = new[] {
                 new ProducerData { GroupName = pd.Group },
                 new ProducerData { GroupName = "CLIENT_INNER_PRODUCER" },
             };
-            body.ConsumerDataSet = new ConsumerData[] { };
-        }
-        else if (cfg is Consumer cm)
-        {
-            body.ProducerDataSet = new[] { new ProducerData { GroupName = "CLIENT_INNER_PRODUCER" } };
-            body.ConsumerDataSet = cm.Data.ToArray();
-        }
+                body.ConsumerDataSet = new ConsumerData[] { };
+            }
+            else if (cfg is Consumer cm)
+            {
+                body.ProducerDataSet = new[] { new ProducerData { GroupName = "CLIENT_INNER_PRODUCER" } };
+                body.ConsumerDataSet = cm.Data.ToArray();
+            }
 
-        // 心跳忽略错误。有时候报40错误
-        Invoke(RequestCode.HEART_BEAT, body, null, true);
+            span?.AppendTag(body);
+
+            // 心跳忽略错误。有时候报40错误
+            Invoke(RequestCode.HEART_BEAT, body, null, true);
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
     #endregion
 

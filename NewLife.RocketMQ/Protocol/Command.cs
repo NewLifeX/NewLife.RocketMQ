@@ -1,4 +1,6 @@
-﻿using NewLife.Collections;
+﻿using System.Runtime.Serialization;
+using System.Xml.Serialization;
+using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Log;
 using NewLife.Messaging;
@@ -14,6 +16,7 @@ public class Command : IAccessor, IMessage
     public Header Header { get; set; }
 
     /// <summary>主体</summary>
+    [XmlIgnore, IgnoreDataMember]
     public Packet Payload { get; set; }
     #endregion
 

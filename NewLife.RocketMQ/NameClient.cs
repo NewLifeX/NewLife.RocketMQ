@@ -43,7 +43,7 @@ public class NameClient : ClusterClient
     }
 
     /// <summary>启动</summary>
-    public override void Start()
+    protected override void OnStart()
     {
         var cfg = Config;
         var ss = cfg.NameServerAddress.Split(";");
@@ -58,7 +58,7 @@ public class NameClient : ClusterClient
 
         Servers = list.ToArray();
 
-        base.Start();
+        base.OnStart();
 
         _timer ??= new TimerX(DoWork, null, cfg.PollNameServerInterval, cfg.PollNameServerInterval) { Async = true };
     }

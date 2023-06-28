@@ -185,7 +185,7 @@ public abstract class MqBase : DisposeBase
 
         var client = new NameClient(ClientId, this)
         {
-            Name = "Name",
+            Name = Topic,
             Tracer = Tracer,
             Log = Log
         };
