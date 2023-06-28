@@ -54,10 +54,11 @@ public class Producer : MqBase
 
     #region 发送消息
     /// <summary>发送消息</summary>
-    /// <param name="message"></param>
+    /// <param name="message">消息体</param>
+    /// <param name="queue">目标队列。指定时可实现顺序发布（通过SelectQueue获取），默认未指定并自动选择队列</param>
     /// <param name="timeout"></param>
     /// <returns></returns>
-    public virtual SendResult Publish(Message message, Int32 timeout = -1)
+    public virtual SendResult Publish(Message message, MessageQueue queue, Int32 timeout = -1)
     {
         // 构造请求头
         var header = CreateHeader(message);
@@ -65,7 +66,7 @@ public class Producer : MqBase
         for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
         {
             // 选择队列分片
-            var mq = SelectQueue();
+            var mq = queue ?? SelectQueue();
             mq.Topic = Topic;
             header.QueueId = mq.QueueId;
 
@@ -126,7 +127,7 @@ public class Producer : MqBase
     /// <param name="body"></param>
     /// <param name="timeout"></param>
     /// <returns></returns>
-    public virtual SendResult Publish(Object body, Int32 timeout = -1) => Publish(CreateMessage(body), timeout);
+    public virtual SendResult Publish(Object body, Int32 timeout = -1) => Publish(CreateMessage(body), null, timeout);
 
     /// <summary>发布消息</summary>
     /// <param name="body"></param>
@@ -138,7 +139,7 @@ public class Producer : MqBase
         var message = CreateMessage(body);
         message.Tags = tags;
 
-        return Publish(message, timeout);
+        return Publish(message, null, timeout);
     }
 
     /// <summary>发布消息</summary>
@@ -153,19 +154,24 @@ public class Producer : MqBase
         message.Tags = tags;
         message.Keys = keys;
 
-        return Publish(message, timeout);
+        return Publish(message, null, timeout);
     }
 
     /// <summary>发布消息</summary>
-    public virtual async Task<SendResult> PublishAsync(Message message, CancellationToken cancellationToken = default)
+    /// <param name="message">消息体</param>
+    /// <param name="queue">目标队列。指定时可实现顺序发布（通过SelectQueue获取），默认未指定并自动选择队列</param>
+    /// <param name="cancellationToken"></param>
+    public virtual async Task<SendResult> PublishAsync(Message message, MessageQueue queue, CancellationToken cancellationToken = default)
     {
+        if (message is null) throw new ArgumentNullException(nameof(message));
+
         // 构造请求头
         var header = CreateHeader(message);
 
         for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
         {
             // 选择队列分片
-            var mq = SelectQueue();
+            var mq = queue ?? SelectQueue();
             mq.Topic = Topic;
             header.QueueId = mq.QueueId;
 
@@ -216,7 +222,7 @@ public class Producer : MqBase
     /// <summary>发布消息</summary>
     /// <param name="body"></param>
     /// <returns></returns>
-    public virtual Task<SendResult> PublishAsync(Object body) => PublishAsync(CreateMessage(body));
+    public virtual Task<SendResult> PublishAsync(Object body) => PublishAsync(CreateMessage(body), null);
 
     /// <summary>发布消息</summary>
     /// <param name="body"></param>
@@ -229,14 +235,15 @@ public class Producer : MqBase
         message.Tags = tags;
         message.Keys = keys;
 
-        return PublishAsync(message);
+        return PublishAsync(message, null);
     }
 
     /// <summary>发送消息，不等结果</summary>
-    /// <param name="message"></param>
+    /// <param name="message">消息体</param>
+    /// <param name="queue">目标队列。指定时可实现顺序发布（通过SelectQueue获取），默认未指定并自动选择队列</param>
     /// <param name="timeout"></param>
     /// <returns></returns>
-    public virtual SendResult PublishOneway(Message message, Int32 timeout = -1)
+    public virtual SendResult PublishOneway(Message message, MessageQueue queue, Int32 timeout = -1)
     {
         // 构造请求头
         var header = CreateHeader(message);
@@ -244,7 +251,7 @@ public class Producer : MqBase
         for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
         {
             // 选择队列分片
-            var mq = SelectQueue();
+            var mq = queue ?? SelectQueue();
             mq.Topic = Topic;
             header.QueueId = mq.QueueId;
 
@@ -299,7 +306,7 @@ public class Producer : MqBase
         var message = CreateMessage(body);
         message.Tags = tags;
 
-        PublishOneway(message, timeout);
+        PublishOneway(message, null, timeout);
     }
 
     /// <summary>
@@ -309,6 +316,9 @@ public class Producer : MqBase
     /// <returns></returns>
     protected virtual Message CreateMessage(Object body)
     {
+        if (body is null) throw new ArgumentNullException(nameof(body));
+        if (body is Message) throw new ArgumentOutOfRangeException(nameof(body), "body不能是Message类型");
+
         var msg = new Message();
         msg.SetBody(body);
 
