@@ -338,7 +338,7 @@ public abstract class ClusterClient : DisposeBase
     /// <param name="cmd"></param>
     protected virtual Command OnReceive(Command cmd)
     {
-        var code = (cmd.Header.Flag & 1) == 0 ? (RequestCode)cmd.Header.Code + "" : (ResponseCode)cmd.Header.Code + "";
+        var code = !cmd.Reply ? (RequestCode)cmd.Header.Code + "" : (ResponseCode)cmd.Header.Code + "";
         WriteLog("收到：Code={0} {1}", code, cmd.Header.ToJson());
 
         using var span = Tracer?.NewSpan($"mq:{Name}:Receive:{code}", cmd);

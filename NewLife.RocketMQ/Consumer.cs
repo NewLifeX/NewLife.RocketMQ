@@ -883,7 +883,7 @@ public class Consumer : MqBase
     /// <param name="cmd"></param>
     protected override Command OnReceive(Command cmd)
     {
-        if (cmd?.Header != null && (cmd.Header.Flag & 1) == 0)
+        if (!cmd.Reply)
         {
             var code = (RequestCode)cmd.Header.Code;
             switch (code)

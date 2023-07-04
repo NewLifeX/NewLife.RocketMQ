@@ -22,7 +22,7 @@ public class Command : IAccessor, IMessage
 
     #region 扩展属性
     /// <summary>是否响应</summary>
-    public Boolean Reply => Header != null && ((Header.Flag & 1) == 1);
+    public Boolean Reply { get; set; }
 
     /// <summary>是否单向</summary>
     public Boolean OneWay { get; set; }
@@ -54,7 +54,10 @@ public class Command : IAccessor, IMessage
             if (hlen <= 0 || hlen > 8 * 1024) return false;
 
             var json = bn.ReadBytes(hlen).ToStr();
-            Header = json.ToJsonEntity<Header>();
+            var h = json.ToJsonEntity<Header>();
+            Header = h;
+            Reply = (h.Flag & 0b01) == 0b01;
+            OneWay = (h.Flag & 0b10) == 0b10;
 
             //  读取主体
             if (len > 4 + hlen)
@@ -87,6 +90,10 @@ public class Command : IAccessor, IMessage
     /// <returns></returns>
     public Boolean Write(Stream stream, Object context = null)
     {
+        var h = Header;
+        if (Reply) h.Flag |= 0b01;
+        if (OneWay) h.Flag |= 0b10;
+
         // 计算头部
         //var json = Header.ToJson();
         var json = JsonWriter.ToJson(Header, false, false, false);
@@ -130,16 +137,16 @@ public class Command : IAccessor, IMessage
     /// <returns></returns>
     public IMessage CreateReply()
     {
-        if (Header == null || Reply || Header.Flag == 2) throw new Exception("不能创建响应命令");
+        if (Header == null || Reply || OneWay) throw new Exception("不能创建响应命令");
 
         var head = new Header
         {
-            Flag = 1,
             Opaque = Header.Opaque,
         };
 
         var cmd = new Command
         {
+            Reply = true,
             Header = head,
         };
 
@@ -159,7 +166,7 @@ public class Command : IAccessor, IMessage
 
         var sb = Pool.StringBuilder.Get();
         // 请求与响应
-        if ((h.Flag & 1) == 1)
+        if (Reply)
         {
             sb.Append('#');
             sb.Append((ResponseCode)h.Code);
