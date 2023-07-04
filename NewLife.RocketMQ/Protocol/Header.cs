@@ -42,7 +42,7 @@ public class Header
 
     /// <summary>给通信层知道对方的版本号，响应方可以以此做兼容老版本等的特殊操作</summary>
     [XmlElement("version")]
-    public Int32 Version { get; set; } = 275;
+    public MQVersion Version { get; set; } = MQVersion.V4_8_0;
 
     /// <summary>附带的文本信息。常见的如存放一些broker/nameserver返回的一些异常信息，方便开发人员定位问题。</summary>
     [XmlElement("remark")]
