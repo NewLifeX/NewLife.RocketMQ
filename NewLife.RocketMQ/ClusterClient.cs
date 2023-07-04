@@ -125,7 +125,8 @@ public abstract class ClusterClient : DisposeBase
 
         if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("=> {0}", cmd);
 
-        using var span = Tracer?.NewSpan($"mq:{Name}:SendAsync:{(RequestCode)cmd.Header.Code}", cmd);
+        var code = (RequestCode)cmd.Header.Code;
+        using var span = Tracer?.NewSpan($"mq:{Name}:SendAsync:{code}");
 
         // 签名
         SetSignature(cmd);
@@ -134,6 +135,8 @@ public abstract class ClusterClient : DisposeBase
         var client = _Client;
         try
         {
+            span?.AppendTag(cmd);
+            span?.AppendTag(cmd.Payload?.ToStr());
             if (waitResult)
             {
                 var rs = await client.SendMessageAsync(cmd, cancellationToken);
@@ -154,7 +157,11 @@ public abstract class ClusterClient : DisposeBase
         }
         catch (Exception ex)
         {
-            span?.SetError(ex, null);
+            // 拉取消息超时，不记录错误日志
+            if (code == RequestCode.PULL_MESSAGE && ex is TaskCanceledException)
+                span?.AppendTag(ex.Message);
+            else
+                span?.SetError(ex, null);
 
             // 销毁，下次使用另一个地址
             client.TryDispose();
@@ -335,6 +342,7 @@ public abstract class ClusterClient : DisposeBase
         WriteLog("收到：Code={0} {1}", code, cmd.Header.ToJson());
 
         using var span = Tracer?.NewSpan($"mq:{Name}:Receive:{code}", cmd);
+        span?.AppendTag(cmd.Payload?.ToStr());
         try
         {
             if (Received == null) return null;
