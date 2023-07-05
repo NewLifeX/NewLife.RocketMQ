@@ -755,7 +755,7 @@ public class Consumer : MqBase
             }
         }
 
-        var neverConsumed = offsetTables.All(t => t.Value.LastTimestamp == 0); //表示没消费过
+        var neverConsumed = offsetTables.All(t => t.Value.ConsumerOffset == 0); //表示没消费过
 
         foreach (var store in _Queues)
         {
