@@ -1,10 +1,11 @@
 ﻿namespace NewLife.RocketMQ.Models;
 
+#pragma warning disable CS1591 // 缺少对公共可见类型或成员的 XML 注释
 /// <summary>延迟消息的18个等级</summary>
 public enum DelayTimeLevels
 {
-    S1=1,
-    S5=2,
+    S1 =1,
+    S5 =2,
     S10=3,
     S30=4,
     Min1=5,
@@ -22,3 +23,4 @@ public enum DelayTimeLevels
     Hour1=17,
     Hour2=18,
 }
+#pragma warning restore CS1591 // 缺少对公共可见类型或成员的 XML 注释

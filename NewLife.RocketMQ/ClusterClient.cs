@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System.Net.Sockets;
+using System.Security.Cryptography;
 using NewLife.Data;
 using NewLife.Log;
 using NewLife.Net;
@@ -135,23 +136,35 @@ public abstract class ClusterClient : DisposeBase
         var client = _Client;
         try
         {
-            span?.AppendTag(cmd);
-            span?.AppendTag(cmd.Payload?.ToStr());
+            if (span is DefaultSpan ds && ds.TraceFlag > 0)
+            {
+                span.AppendTag(cmd);
+                span.AppendTag(cmd.Payload?.ToStr());
+            }
+
             if (waitResult)
             {
                 var rs = await client.SendMessageAsync(cmd, cancellationToken);
 
                 if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("<= {0}", rs as Command);
-                span?.AppendTag(rs);
 
-                return rs as Command;
+                var result = rs as Command;
+                if (rs != null && span is DefaultSpan ds2 && ds2.TraceFlag > 0)
+                {
+                    span.AppendTag(Environment.NewLine);
+                    span.AppendTag(rs);
+                    span.AppendTag(result?.Payload?.ToStr());
+                }
+
+                return result;
             }
             else
             {
                 var row = client.SendMessage(cmd);
                 return new Command
                 {
-                    Header = new Header() { Code = row }
+                    Reply = true,
+                    Header = new Header() { Code = (Int32)ResponseCode.SUCCESS }
                 };
             }
         }
@@ -164,7 +177,8 @@ public abstract class ClusterClient : DisposeBase
                 span?.SetError(ex, null);
 
             // 销毁，下次使用另一个地址
-            client.TryDispose();
+            if (ex is SocketException or IOException)
+                client.TryDispose();
 
             throw;
         }

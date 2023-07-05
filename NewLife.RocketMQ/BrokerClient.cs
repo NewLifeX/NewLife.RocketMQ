@@ -119,7 +119,9 @@ public class BrokerClient : ClusterClient
         catch (Exception ex)
         {
             span?.SetError(ex, null);
-            throw;
+
+            if (ex.GetTrue() is not TaskCanceledException)
+                throw;
         }
     }
     #endregion
