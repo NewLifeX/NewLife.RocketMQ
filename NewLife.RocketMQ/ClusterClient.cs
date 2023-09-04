@@ -35,6 +35,7 @@ public abstract class ClusterClient : DisposeBase
     public ITracer Tracer { get; set; }
 
     private ISocketClient _Client;
+    private SerializeType _serializeType = SerializeType.JSON;
     #endregion
 
     #region 构造
@@ -67,6 +68,9 @@ public abstract class ClusterClient : DisposeBase
     protected virtual void OnStart()
     {
         WriteLog("集群地址：{0}", Servers.Join(";"));
+
+        if (Config != null)
+            _serializeType = Config.SerializeType;
 
         EnsureCreate();
     }
@@ -293,6 +297,7 @@ public abstract class ClusterClient : DisposeBase
         var header = new Header
         {
             Code = (Int32)request,
+            SerializeTypeCurrentRPC = _serializeType + "",
             Remark = request + "",
         };
 
@@ -334,7 +339,14 @@ public abstract class ClusterClient : DisposeBase
     #region 接收数据
     private void Client_Received(Object sender, ReceivedEventArgs e)
     {
-        if (e.Message is not Command cmd || cmd.Reply) return;
+        if (e.Message is not Command cmd) return;
+
+        if (cmd.Reply)
+        {
+            if (cmd.Header != null) _serializeType = cmd.Header.SerializeTypeCurrentRPC.ToEnum(SerializeType.JSON);
+
+            return;
+        }
 
         var rs = OnReceive(cmd);
         if (rs != null)

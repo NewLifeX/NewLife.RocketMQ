@@ -50,20 +50,64 @@ public class Command : IAccessor, IMessage
             if (len < 4 || len > 4 * 1024 * 1024) return false;
 
             // 读取头部
-            var hlen = bn.Read<Int32>();
-            if (hlen <= 0 || hlen > 8 * 1024) return false;
+            var oriHeaderLen = bn.Read<Int32>();
+            var headerLen = oriHeaderLen & 0xFFFFFF;
+            if (headerLen <= 0 || headerLen > 8 * 1024) return false;
 
-            var json = bn.ReadBytes(hlen).ToStr();
-            var h = json.ToJsonEntity<Header>();
-            Header = h;
-            Reply = (h.Flag & 0b01) == 0b01;
-            OneWay = (h.Flag & 0b10) == 0b10;
-
-            //  读取主体
-            if (len > 4 + hlen)
+            // 读取序列化类型
+            var type = (SerializeType)((oriHeaderLen >> 24) & 0xFF);
+            if (type == SerializeType.JSON)
             {
-                Payload = bn.ReadBytes(len - 4 - hlen);
+                var json = bn.ReadBytes(headerLen).ToStr();
+                var header = json.ToJsonEntity<Header>();
+                if (header.SerializeTypeCurrentRPC.IsNullOrEmpty()) header.SerializeTypeCurrentRPC = type + "";
+
+                Header = header;
+                Reply = (header.Flag & 0b01) == 0b01;
+                OneWay = (header.Flag & 0b10) == 0b10;
+
+                //  读取主体
+                if (len > 4 + headerLen)
+                {
+                    Payload = bn.ReadBytes(len - 4 - headerLen);
+                }
             }
+            else if (type == SerializeType.ROCKETMQ)
+            {
+                var header = new Header
+                {
+                    SerializeTypeCurrentRPC = type + "",
+                    Code = bn.ReadUInt16(),
+                    Language = ((LanguageCode)bn.ReadByte()) + "",
+                    Version = (MQVersion)bn.ReadUInt16(),
+                    Opaque = bn.ReadInt32(),
+                    Flag = bn.ReadInt32(),
+                    Remark = ReadStr(bn, false, headerLen),
+                };
+
+                Reply = (header.Flag & 0b01) == 0b01;
+                OneWay = (header.Flag & 0b10) == 0b10;
+
+                // 读取扩展字段
+                var extFieldsLength = bn.ReadInt32();
+                if (extFieldsLength > 0)
+                {
+                    if (extFieldsLength > headerLen) throw new Exception($"扩展字段长度[{extFieldsLength}]超过头部长度[{headerLen}]");
+
+                    var extFields = header.GetExtFields();
+                    var endIndex = stream.Position + extFieldsLength;
+                    while (stream.Position < endIndex)
+                    {
+                        var k = ReadStr(bn, true, extFieldsLength);
+                        var v = ReadStr(bn, false, extFieldsLength);
+                        extFields[k + ""] = v;
+                    }
+                }
+
+                Header = header;
+            }
+            else
+                throw new NotSupportedException($"不支持[{type}]序列化");
         }
         catch
         {
@@ -72,6 +116,28 @@ public class Command : IAccessor, IMessage
         }
 
         return true;
+    }
+
+    private String ReadStr(Binary bn, Boolean useShortLength, Int32 limit)
+    {
+        var len = useShortLength ? bn.ReadInt16() : bn.ReadInt32();
+        if (len == 0) return null;
+        if (len > limit) throw new Exception($"字符串长度[{len}]超过限制[{limit}]");
+
+        return bn.ReadBytes(len).ToStr();
+    }
+
+    private void WriteStr(Binary bn, Boolean useShortLength, String value)
+    {
+        var buf = value?.GetBytes();
+        var len = buf?.Length ?? 0;
+
+        if (useShortLength)
+            bn.Write((Int16)len);
+        else
+            bn.Write(len);
+
+        if (len > 0) bn.Write(buf);
     }
 
     /// <summary>读取Body作为Json返回</summary>
@@ -90,31 +156,88 @@ public class Command : IAccessor, IMessage
     /// <returns></returns>
     public Boolean Write(Stream stream, Object context = null)
     {
-        var h = Header;
-        if (Reply) h.Flag |= 0b01;
-        if (OneWay) h.Flag |= 0b10;
-
-        // 计算头部
-        //var json = Header.ToJson();
-        var json = JsonWriter.ToJson(Header, false, false, false);
-        var hs = json.GetBytes();
+        var header = Header;
+        if (Reply) header.Flag |= 0b01;
+        if (OneWay) header.Flag |= 0b10;
         var pk = Payload;
 
-        // 计算长度
-        var len = 4 + hs.Length;
-        if (pk != null) len += pk.Total;
-
-        // 写入总长度
-        var bn = new Binary
+        // 区分不同的序列化类型
+        var type = header.SerializeTypeCurrentRPC.ToEnum(SerializeType.JSON);
+        if (type == SerializeType.JSON)
         {
-            Stream = stream,
-            IsLittleEndian = false,
-        };
-        bn.Write(len);
+            // 计算头部
+            //var json = Header.ToJson();
+            var json = JsonWriter.ToJson(Header, false, false, false);
+            var hs = json.GetBytes();
 
-        // 写入头部
-        bn.Write(hs.Length);
-        stream.Write(hs);
+            // 计算长度
+            var len = 4 + hs.Length;
+            if (pk != null) len += pk.Total;
+
+            // 写入总长度
+            var bn = new Binary
+            {
+                Stream = stream,
+                IsLittleEndian = false,
+            };
+            bn.Write(len);
+
+            // 写入头部
+            bn.Write(hs.Length);
+            stream.Write(hs);
+        }
+        else if (type == SerializeType.ROCKETMQ)
+        {
+            var bn = new Binary
+            {
+                //Stream = stream,
+                IsLittleEndian = false,
+            };
+
+            bn.WriteUInt16((UInt16)header.Code);
+            bn.WriteByte((Byte)header.Language.ToEnum(LanguageCode.JAVA));
+            bn.WriteUInt16((UInt16)header.Version);
+            bn.WriteInt32(header.Opaque);
+            bn.WriteInt32(header.Flag);
+
+            WriteStr(bn, false, header.Remark);
+
+            if (header.ExtFields != null)
+            {
+                var ext = new Binary { IsLittleEndian = false };
+                foreach (var item in header.ExtFields)
+                {
+                    WriteStr(ext, true, item.Key);
+                    WriteStr(ext, false, item.Value);
+                }
+
+                var buf = ext.GetBytes();
+                bn.WriteInt32(buf.Length);
+                if (buf.Length > 0) bn.Write(buf, 0, buf.Length);
+            }
+            else
+            {
+                bn.WriteInt32(0);
+            }
+
+            // 计算长度
+            var hs = bn.GetBytes();
+            var oriHeaderLen = (hs.Length & 0xFFFFFF) | ((Byte)type << 24);
+
+            var len = 4 + hs.Length;
+            if (pk != null) len += pk.Total;
+
+            // 写入长度
+            var prefix = new Byte[8];
+            prefix.Write((UInt32)len, 0, false);
+            prefix.Write((UInt32)oriHeaderLen, 4, false);
+            stream.Write(prefix);
+
+            // 写入头部
+            stream.Write(hs);
+        }
+        else
+            throw new NotSupportedException($"不支持[{type}]序列化");
 
         // 写入主体
         if (pk != null && pk.Total > 0) pk.CopyTo(stream);
@@ -142,6 +265,7 @@ public class Command : IAccessor, IMessage
         var head = new Header
         {
             Opaque = Header.Opaque,
+            SerializeTypeCurrentRPC = Header.SerializeTypeCurrentRPC,
         };
 
         var cmd = new Command

@@ -71,6 +71,9 @@ public abstract class MqBase : DisposeBase
     /// <summary>单元模式</summary>
     public Boolean UnitMode { get; set; }
 
+    /// <summary>序列化类型。默认Json，支持RocketMQ二进制</summary>
+    public SerializeType SerializeType { get; set; } = SerializeType.JSON;
+
     //public Boolean VipChannelEnabled { get; set; } = true;
 
     /// <summary>是否可用</summary>
