@@ -343,7 +343,7 @@ public abstract class ClusterClient : DisposeBase
 
         if (cmd.Reply)
         {
-            if (cmd.Header != null) _serializeType = cmd.Header.SerializeTypeCurrentRPC.ToEnum(SerializeType.JSON);
+            //if (cmd.Header != null) _serializeType = cmd.Header.SerializeTypeCurrentRPC.ToEnum(SerializeType.JSON);
 
             return;
         }
