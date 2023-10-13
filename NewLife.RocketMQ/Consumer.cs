@@ -40,6 +40,9 @@ public class Consumer : MqBase
     /// </summary>
     public String Subscription { get; set; } = "*";
 
+    /// <summary>启动消费者时自动开始调度。默认true</summary>
+    public Boolean AutoSchedule { get; set; } = true;
+
     /// <summary>消息模型。广播/集群</summary>
     public MessageModels MessageModel { get; set; } = MessageModels.Clustering;
 
@@ -365,9 +368,6 @@ public class Consumer : MqBase
     private Task[] _tasks;
     private volatile Int32 _version;
     private CancellationTokenSource _source;
-
-    /// <summary>启动消费者时自动开始调度。默认true</summary>
-    public Boolean AutoSchedule { get; set; } = true;
 
     /// <summary>开始调度</summary>
     public void StartSchedule()
