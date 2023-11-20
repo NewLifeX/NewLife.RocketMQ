@@ -177,7 +177,7 @@ public abstract class MqBase : DisposeBase
             var addr = Aliyun?.Server;
             if (!addr.IsNullOrEmpty() && addr.StartsWithIgnoreCase("http"))
             {
-                var http = new HttpClient();
+                var http = new System.Net.Http.HttpClient();
                 var html = http.GetStringAsync(addr).Result;
 
                 if (!html.IsNullOrWhiteSpace()) NameServerAddress = html.Trim();

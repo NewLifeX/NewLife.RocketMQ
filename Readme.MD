@@ -11,7 +11,7 @@ RocketMQ，支持`.Net Framework/.netstandard/Mono`。
 教程：[https://newlifex.com/core/rocketmq](https://newlifex.com/core/rocketmq)  
 
 ## 新生命项目矩阵
-各项目默认支持net7.0/netstandard2.1/netstandard2.0/net4.61/net4.5，旧版（2023.0401）支持net4.0/net2.0  
+各项目默认支持net8.0/net7.0/netstandard2.1/netstandard2.0/net4.61/net4.5，旧版（2023.0401）支持net4.0/net2.0  
 
 |                               项目                               | 年份  | 说明                                                                                   |
 | :--------------------------------------------------------------: | :---: | -------------------------------------------------------------------------------------- |
