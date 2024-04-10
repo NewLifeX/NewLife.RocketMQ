@@ -113,6 +113,8 @@ public abstract class MqBase : DisposeBase
     {
         // 输出当前版本
         Assembly.GetExecutingAssembly().WriteVersion();
+
+        XTrace.WriteLine("RocketMQ文档：https://newlifex.com/core/rocketmq");
     }
 
     /// <summary>实例化</summary>

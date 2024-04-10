@@ -735,10 +735,12 @@ public class Consumer : MqBase
 
     private async Task InitOffsetAsync(CancellationToken cancellationToken = default)
     {
-        if (_Queues == null || _Queues.Length == 0) return;
+        var qs = _Queues;
+        if (qs == null || qs.Length == 0) return;
 
         var offsetTables = new Dictionary<MessageQueueModel, OffsetWrapperModel>();
-        var queueBrokers = _Queues.Select(t => t.Queue.BrokerName).Distinct().ToList();//获取当前消费这分配到的服务器及服务器队列
+        // 获取当前消费这分配到的服务器及服务器队列
+        var queueBrokers = qs.Select(t => t.Queue.BrokerName).Distinct().ToList();
         foreach (var brokerName in queueBrokers)
         {
             var broker = GetBroker(brokerName);
@@ -755,9 +757,10 @@ public class Consumer : MqBase
             }
         }
 
-        var neverConsumed = offsetTables.All(t => t.Value.ConsumerOffset == 0); //表示没消费过
+        // 表示没消费过
+        var neverConsumed = offsetTables.All(t => t.Value.ConsumerOffset == 0);
 
-        foreach (var store in _Queues)
+        foreach (var store in qs)
         {
             if (store.Offset >= 0) continue;
 
