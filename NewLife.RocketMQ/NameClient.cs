@@ -93,8 +93,8 @@ public class NameClient : ClusterClient
         {
             // 发送命令
             var rs = Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
+            span?.AppendTag(rs.Payload?.ToStr());
             var js = rs.ReadBodyAsJson();
-            span?.AppendTag(rs.Payload.ToStr());
 
             var list = new List<BrokerInfo>();
             // 解析broker集群地址
