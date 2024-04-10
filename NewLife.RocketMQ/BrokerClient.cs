@@ -99,15 +99,15 @@ public class BrokerClient : ClusterClient
             // 生产者 和 消费者 略有不同
             if (cfg is Producer pd)
             {
-                body.ProducerDataSet = new[] {
+                body.ProducerDataSet = [
                 new ProducerData { GroupName = pd.Group },
                 new ProducerData { GroupName = "CLIENT_INNER_PRODUCER" },
-            };
-                body.ConsumerDataSet = new ConsumerData[] { };
+            ];
+                body.ConsumerDataSet = [];
             }
             else if (cfg is Consumer cm)
             {
-                body.ProducerDataSet = new[] { new ProducerData { GroupName = "CLIENT_INNER_PRODUCER" } };
+                body.ProducerDataSet = [new ProducerData { GroupName = "CLIENT_INNER_PRODUCER" }];
                 body.ConsumerDataSet = cm.Data.ToArray();
             }
 

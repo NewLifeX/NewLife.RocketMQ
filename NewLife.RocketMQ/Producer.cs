@@ -33,9 +33,9 @@ public class Producer : MqBase
     #region 基础方法
     /// <summary>启动</summary>
     /// <returns></returns>
-    public override Boolean Start()
+    protected override void OnStart()
     {
-        if (!base.Start()) return false;
+        base.OnStart();
 
         LoadBalance ??= new WeightRoundRobin();
 
@@ -48,8 +48,6 @@ public class Producer : MqBase
                 LoadBalance.Ready = false;
             };
         }
-
-        return true;
     }
     #endregion
 
@@ -72,7 +70,7 @@ public class Producer : MqBase
             header.QueueId = mq.QueueId;
 
             // 性能埋点
-            using var span = Tracer?.NewSpan($"mq:{Topic}:Publish", message.BodyString);
+            using var span = Tracer?.NewSpan($"mq:{Name}:Publish", message.BodyString);
             span?.AppendTag($"queue={mq}");
             try
             {
@@ -179,7 +177,7 @@ public class Producer : MqBase
             header.QueueId = mq.QueueId;
 
             // 性能埋点
-            using var span = Tracer?.NewSpan($"mq:{Topic}:PublishAsync", message.BodyString);
+            using var span = Tracer?.NewSpan($"mq:{Name}:PublishAsync", message.BodyString);
             try
             {
                 // 根据队列获取Broker客户端
@@ -260,7 +258,7 @@ public class Producer : MqBase
             header.QueueId = mq.QueueId;
 
             // 性能埋点
-            using var span = Tracer?.NewSpan($"mq:{Topic}:PublishOneway", message.BodyString);
+            using var span = Tracer?.NewSpan($"mq:{Name}:PublishOneway", message.BodyString);
             try
             {
                 // 根据队列获取Broker客户端
@@ -333,7 +331,7 @@ public class Producer : MqBase
             header.QueueId = mq.QueueId;
 
             // 性能埋点
-            using var span = Tracer?.NewSpan($"mq:{Topic}:PublishDelay", new { level, message.BodyString });
+            using var span = Tracer?.NewSpan($"mq:{Name}:PublishDelay", new { level, message.BodyString });
             try
             {
                 // 根据队列获取Broker客户端

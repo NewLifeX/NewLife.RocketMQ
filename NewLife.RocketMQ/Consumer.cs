@@ -80,50 +80,36 @@ public class Consumer : MqBase
 
     /// <summary>启动</summary>
     /// <returns></returns>
-    public override Boolean Start()
+    protected override void OnStart()
     {
-        if (Active) return true;
-
         WriteLog("正在准备消费 {0}", Topic);
 
-        using var span = Tracer?.NewSpan($"mq:{Topic}:Start");
-        try
+        var list = Data;
+        if (list == null)
         {
-            var list = Data;
-            if (list == null)
+            // 建立消费者数据，用于心跳
+            var sd = new SubscriptionData
             {
-                // 建立消费者数据，用于心跳
-                var sd = new SubscriptionData
-                {
-                    Topic = Topic,
-                    TagsSet = Tags
-                };
-                var cd = new ConsumerData
-                {
-                    GroupName = Group,
-                    ConsumeFromWhere = FromLastOffset ? "CONSUME_FROM_LAST_OFFSET" : "CONSUME_FROM_FIRST_OFFSET",
-                    MessageModel = MessageModel.ToString().ToUpper(),
-                    SubscriptionDataSet = new[] { sd },
-                };
+                Topic = Topic,
+                TagsSet = Tags
+            };
+            var cd = new ConsumerData
+            {
+                GroupName = Group,
+                ConsumeFromWhere = FromLastOffset ? "CONSUME_FROM_LAST_OFFSET" : "CONSUME_FROM_FIRST_OFFSET",
+                MessageModel = MessageModel.ToString().ToUpper(),
+                SubscriptionDataSet = [sd],
+            };
 
-                list = new List<ConsumerData> { cd };
+            list = [cd];
 
-                Data = list;
-            }
-
-            if (!base.Start()) return false;
-
-            // 默认自动开始调度
-            if (AutoSchedule) StartSchedule();
-        }
-        catch (Exception ex)
-        {
-            span?.SetError(ex, null);
-
-            throw;
+            Data = list;
         }
 
-        return true;
+        base.OnStart();
+
+        // 默认自动开始调度
+        if (AutoSchedule) StartSchedule();
     }
 
     /// <summary>
@@ -133,7 +119,7 @@ public class Consumer : MqBase
     {
         if (!Active) return;
 
-        using var span = Tracer?.NewSpan($"mq:{Topic}:Stop");
+        using var span = Tracer?.NewSpan($"mq:{Name}:Stop");
         try
         {
             // 停止并保存偏移
@@ -207,7 +193,7 @@ public class Consumer : MqBase
         else
         {
             pr.Status = PullStatus.Unknown;
-            Log.Warn("响应编号：{0} 响应备注：{1} 序列编号：{2} 序列偏移量：{3}", rs.Header.Code, rs.Header.Remark, mq.QueueId, offset);
+            Log.Warn("[{0}]{1} 序列编号：{2} 序列偏移量：{3}", (ResponseCode)rs.Header.Code, rs.Header.Remark, mq.QueueId, offset);
         }
 
         pr.Read(rs.Header?.ExtFields);
@@ -331,7 +317,7 @@ public class Consumer : MqBase
         // 在所有Broker上查询
         foreach (var item in Brokers)
         {
-            using var span = Tracer?.NewSpan($"mq:{Topic}:GetConsumers", item.Name);
+            using var span = Tracer?.NewSpan($"mq:{Name}:GetConsumers", item.Name);
             try
             {
                 var bk = GetBroker(item.Name);
@@ -476,7 +462,7 @@ public class Consumer : MqBase
                                 DefaultSpan.Current = null;
 
                                 // 性能埋点
-                                using var span = Tracer?.NewSpan($"mq:{Topic}:Consume", pr.Messages);
+                                using var span = Tracer?.NewSpan($"mq:{Name}:Consume", pr.Messages);
                                 try
                                 {
                                     // 触发消费
@@ -512,7 +498,7 @@ public class Consumer : MqBase
 
                             break;
                         case PullStatus.Unknown:
-                            Log.Error("未知响应类型消息序列[{1}]偏移量{0}", st.Offset, st.Queue.QueueId);
+                            Log.Error("未知响应类型消息，序列[{1}]偏移量{0}", st.Offset, st.Queue.QueueId);
                             break;
                         default:
                             break;
@@ -587,7 +573,8 @@ public class Consumer : MqBase
 
     class QueueStore
     {
-        [XmlIgnore] public MessageQueue Queue { get; set; }
+        [XmlIgnore]
+        public MessageQueue Queue { get; set; }
         public Int64 Offset { get; set; } = -1;
         public Int64 CommitOffset { get; set; } = -1;
 
@@ -602,6 +589,7 @@ public class Consumer : MqBase
         /// <returns></returns>
         public override Int32 GetHashCode() => (Queue == null ? 0 : Queue.GetHashCode()) ^ Offset.GetHashCode();
 
+        public override String ToString() => Queue?.ToString();
         #endregion
     }
 
@@ -682,7 +670,7 @@ public class Consumer : MqBase
         var str = dic.Join(";", e => $"{e.Key}[{e.Value}]");
         WriteLog("消费重新平衡，当前消费者负责queue分片：{0}", str);
 
-        using var span = Tracer?.NewSpan($"mq:{Topic}:Rebalance", str);
+        using var span = Tracer?.NewSpan($"mq:{Name}:Rebalance", str);
 
         _Queues = rs.ToArray();
         await InitOffsetAsync();
@@ -710,7 +698,7 @@ public class Consumer : MqBase
         if (_checking) return;
         _checking = true;
 
-        using var span = Tracer?.NewSpan($"mq:{Topic}:CheckGroup");
+        using var span = Tracer?.NewSpan($"mq:{Name}:CheckGroup");
         try
         {
             var rs = await Rebalance();
@@ -766,7 +754,8 @@ public class Consumer : MqBase
             if (store.Offset >= 0) continue;
 
             var item = offsetTables.FirstOrDefault(t => t.Key.BrokerName == store.Queue.BrokerName && t.Key.QueueId == store.Queue.QueueId);
-            var offsetTable = item.Value;
+            //!! 阿里云公网版RocketMQ，消费者状态返回的是真正brokerName，而前面Broker得到的是网关名，导致这里无法匹配
+            var offsetTable = item.Value ?? new OffsetWrapperModel();
             if (neverConsumed)
             {
                 var offset = 0L;
@@ -937,10 +926,11 @@ public class Consumer : MqBase
         ci.Properties = dic;
 
         var sd = new SubscriptionData { Topic = Topic, };
-        ci.SubscriptionSet = new[] { sd };
+        ci.SubscriptionSet = [sd];
 
         var sb = new StringBuilder();
         sb.Append('{');
+        if (_Queues != null)
         {
             sb.Append("\"mqTable\":{");
             for (var i = 0; i < _Queues.Length; i++)

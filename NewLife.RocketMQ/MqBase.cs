@@ -10,42 +10,19 @@ namespace NewLife.RocketMQ.Client;
 public abstract class MqBase : DisposeBase
 {
     #region 属性
+    /// <summary>名称</summary>
+    public String Name { get; set; }
+
     /// <summary>名称服务器地址</summary>
     public String NameServerAddress { get; set; }
 
-    private String _group = "DEFAULT_PRODUCER";
     /// <summary>消费组</summary>
     /// <remarks>阿里云目前需要在Group前面带上实例ID并用【%】连接,组成路由Group[用来路由到实例Group]</remarks>
-    public String Group
-    {
-        get
-        {
-            // 阿里云目前需要在Group前面带上实例ID并用【%】连接,组成路由Group[用来路由到实例Group]
-            var ins = Aliyun?.InstanceId;
-            return ins.IsNullOrEmpty() ? _group : $"{ins}%{_group}";
-        }
-        set
-        {
-            _group = value;
-        }
-    }
+    public String Group { get; set; } = "DEFAULT_PRODUCER";
 
-    private String _topic = "TBW102";
     /// <summary>主题</summary>
     /// <remarks>阿里云目前需要在Topic前面带上实例ID并用【%】连接,组成路由Topic[用来路由到实例Topic]</remarks>
-    public String Topic
-    {
-        get
-        {
-            // 阿里云目前需要在Topic前面带上实例ID并用【%】连接,组成路由Topic[用来路由到实例Topic]
-            var ins = Aliyun?.InstanceId;
-            return ins.IsNullOrEmpty() ? _topic : $"{ins}%{_topic}";
-        }
-        set
-        {
-            _topic = value;
-        }
-    }
+    public String Topic { get; set; } = "TBW102";
 
     /// <summary>本地IP地址</summary>
     public String ClientIP { get; set; } = NetHelper.MyIP() + "";
@@ -90,6 +67,9 @@ public abstract class MqBase : DisposeBase
 
     /// <summary>性能跟踪</summary>
     public ITracer Tracer { get; set; } = DefaultTracer.Instance;
+
+    private String _group;
+    private String _topic;
 
     /// <summary>名称服务器</summary>
     protected NameClient _NameServer;
@@ -143,7 +123,7 @@ public abstract class MqBase : DisposeBase
 
     /// <summary>友好字符串</summary>
     /// <returns></returns>
-    public override String ToString() => Group;
+    public override String ToString() => _group;
     #endregion
 
     #region 基础方法
@@ -151,28 +131,63 @@ public abstract class MqBase : DisposeBase
     /// <param name="setting"></param>
     public virtual void Configure(MqSetting setting)
     {
-        NameServerAddress = setting.NameServer;
-        Topic = setting.Topic;
-        Group = setting.Group;
+        if (!setting.NameServer.IsNullOrEmpty()) NameServerAddress = setting.NameServer;
+        if (!setting.Topic.IsNullOrEmpty()) Topic = setting.Topic;
+        if (!setting.Group.IsNullOrEmpty()) Group = setting.Group;
 
-        if (!setting.Server.IsNullOrEmpty() &&
-            !setting.AccessKey.IsNullOrEmpty())
-        {
-            Aliyun = new AliyunOptions
-            {
-                Server = setting.Server,
-                AccessKey = setting.AccessKey,
-                SecretKey = setting.SecretKey,
-            };
-        }
+        Aliyun ??= new AliyunOptions();
+        if (!setting.Server.IsNullOrEmpty()) Aliyun.Server = setting.Server;
+        if (!setting.AccessKey.IsNullOrEmpty()) Aliyun.AccessKey = setting.AccessKey;
+        if (!setting.SecretKey.IsNullOrEmpty()) Aliyun.SecretKey = setting.SecretKey;
     }
 
     /// <summary>开始</summary>
     /// <returns></returns>
-    public virtual Boolean Start()
+    public Boolean Start()
     {
         if (Active) return true;
 
+        _group = Group;
+        _topic = Topic;
+        if (Name.IsNullOrEmpty()) Name = Topic;
+
+        // 解析阿里云实例
+        var aliyun = Aliyun;
+        if (aliyun != null && !aliyun.AccessKey.IsNullOrEmpty())
+        {
+            var ns = NameServerAddress;
+            if (aliyun.InstanceId.IsNullOrEmpty() && !ns.IsNullOrEmpty() && ns.Contains("MQ_INST_"))
+            {
+                aliyun.InstanceId = ns.Substring("://", ".");
+            }
+        }
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:Start");
+        try
+        {
+            // 阿里云目前需要在Topic前面带上实例ID并用【%】连接,组成路由Topic[用来路由到实例Topic]
+            var ins = Aliyun?.InstanceId;
+            if (!ins.IsNullOrEmpty())
+            {
+                if (!Topic.StartsWith(ins)) Topic = $"{ins}%{Topic}";
+                if (!Group.StartsWith(ins)) Group = $"{ins}%{Group}";
+            }
+
+            OnStart();
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+
+            throw;
+        }
+
+        return Active = true;
+    }
+
+    /// <summary>开始</summary>
+    protected virtual void OnStart()
+    {
         if (NameServerAddress.IsNullOrEmpty())
         {
             // 获取阿里云ONS的名称服务器地址
@@ -190,7 +205,7 @@ public abstract class MqBase : DisposeBase
 
         var client = new NameClient(ClientId, this)
         {
-            Name = Topic,
+            Name = Name,
             Tracer = Tracer,
             Log = Log
         };
@@ -204,8 +219,6 @@ public abstract class MqBase : DisposeBase
         }
 
         _NameServer = client;
-
-        return Active = true;
     }
 
     /// <summary>停止</summary>
@@ -313,7 +326,7 @@ public abstract class MqBase : DisposeBase
             order = false,
         };
 
-        using var span = Tracer?.NewSpan($"mq:{Topic}:CreateTopic", header);
+        using var span = Tracer?.NewSpan($"mq:{Name}:CreateTopic", header);
         try
         {
             // 在所有Broker上创建Topic

@@ -46,6 +46,9 @@ public class NameClient : ClusterClient
     protected override void OnStart()
     {
         var cfg = Config;
+        if (cfg.NameServerAddress.IsNullOrEmpty())
+            throw new ArgumentNullException(nameof(cfg.NameServerAddress), "未指定NameServer地址");
+
         var ss = cfg.NameServerAddress.Split(";");
 
         var list = new List<NetUri>();

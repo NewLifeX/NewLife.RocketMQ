@@ -17,8 +17,8 @@ class Program
     {
         XTrace.UseConsole();
 
-        Test5();
-        //TestAliyun();
+        //Test5();
+        TestAliyun();
 
         Console.WriteLine("OK!");
         Console.ReadKey();
@@ -84,6 +84,8 @@ class Program
 
     static void TestAliyun()
     {
+        // 2024-04-10 对接阿里云RocketMQ v4测试通过。
+        // 创建RocketMQ实例后，需要手工创建Topic和Group，并创建正确的AccessKey
         var consumer = new Consumer
         {
             Topic = "newlife_test_02",
@@ -94,7 +96,7 @@ class Program
             {
                 AccessKey = "LTAI5tKTGShu31C61xRARVC4",
                 SecretKey = "a9oPwph1IcMGanWckzUOwOf3Ork8LO",
-                InstanceId = "MQ_INST_1827694722767531_BXxCwUhm",
+                //InstanceId = "MQ_INST_1827694722767531_BXxCwUhm",
             },
 
             FromLastOffset = true,
@@ -107,7 +109,7 @@ class Program
 
         consumer.OnConsume = OnConsume;
 
-        //consumer.Configure(MqSetting.Current);
+        consumer.Configure(MqSetting.Current);
         consumer.Start();
 
         _consumer = consumer;

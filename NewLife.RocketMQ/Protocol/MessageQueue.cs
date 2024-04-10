@@ -38,6 +38,6 @@ public class MessageQueue
     #region 辅助
     /// <summary>友好字符串</summary>
     /// <returns></returns>
-    public override String ToString() => $"MessageQueue[Topic={Topic}, BrokerName={BrokerName}, QueueId={QueueId}]";
+    public override String ToString() => $"{BrokerName}[{QueueId}]";
     #endregion
 }
