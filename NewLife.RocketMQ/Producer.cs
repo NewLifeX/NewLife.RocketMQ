@@ -1,4 +1,5 @@
 ﻿using NewLife.Log;
+using NewLife.Reflection;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Common;
 using NewLife.RocketMQ.Models;
@@ -395,6 +396,8 @@ public class Producer : MqBase
     {
         if (body is null) throw new ArgumentNullException(nameof(body));
         if (body is Message) throw new ArgumentOutOfRangeException(nameof(body), "body不能是Message类型");
+
+        if (!body.GetType().IsBaseType()) body = JsonHost.Write(body);
 
         var msg = new Message();
         msg.SetBody(body);
