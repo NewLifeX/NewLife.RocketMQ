@@ -939,9 +939,9 @@ public class Consumer : MqBase
 
                 var item = _Queues[i];
 
-                sb.Append(JsonWriter.ToJson(item.Queue, false, false, true));
+                sb.Append(JsonHost.Write(item.Queue, false, false, true));
                 sb.Append(':');
-                sb.Append(JsonWriter.ToJson(item, false, false, true));
+                sb.Append(JsonHost.Write(item, false, false, true));
             }
 
             sb.Append('}');
@@ -949,12 +949,12 @@ public class Consumer : MqBase
         {
             sb.Append(',');
             sb.Append("\"properties\":");
-            sb.Append(ci.Properties.ToJson());
+            sb.Append(JsonHost.Write(ci.Properties));
         }
         {
             sb.Append(',');
             sb.Append("\"subscriptionSet\":");
-            sb.Append(JsonWriter.ToJson(ci.SubscriptionSet, false, false, true));
+            sb.Append(JsonHost.Write(ci.SubscriptionSet, false, false, true));
         }
         sb.Append('}');
 

@@ -312,7 +312,7 @@ public abstract class ClusterClient : DisposeBase
         else if (body is Byte[] buf)
             cmd.Payload = buf;
         else if (body != null)
-            cmd.Payload = JsonWriter.ToJson(body, false, false, false).GetBytes();
+            cmd.Payload = Config.JsonHost.Write(body, false, false, false).GetBytes();
 
         if (extFields != null)
         {

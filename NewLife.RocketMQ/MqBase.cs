@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Reflection;
 using NewLife.Log;
 using NewLife.RocketMQ.Protocol;
+using NewLife.Serialization;
 
 namespace NewLife.RocketMQ.Client;
 
@@ -64,6 +65,9 @@ public abstract class MqBase : DisposeBase
 
     /// <summary> Apache RocketMQ ACL 客户端配置。在Borker服务器配置设置为AclEnable = true 时配置生效。</summary>
     public AclOptions AclOptions { get; set; }
+
+    /// <summary>Json序列化主机</summary>
+    public IJsonHost JsonHost { get; set; } = JsonHelper.Default;
 
     /// <summary>性能跟踪</summary>
     public ITracer Tracer { get; set; } = DefaultTracer.Instance;
