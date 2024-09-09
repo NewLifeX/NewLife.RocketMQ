@@ -28,7 +28,7 @@ public class Message
 
     private String _BodyString;
     /// <summary>消息体。字符串格式</summary>
-    public String BodyString => _BodyString ??= Body?.ToStr();
+    public String BodyString { get => _BodyString ??= Body?.ToStr(); set => Body = (_BodyString = value)?.GetBytes(); }
 
     /// <summary>等待存储消息</summary>
     public Boolean WaitStoreMsgOK { get; set; } = true;
@@ -50,6 +50,7 @@ public class Message
     /// <param name="body"></param>
     public void SetBody(Object body)
     {
+        _BodyString = null;
         if (body is Packet pk)
             Body = pk.ReadBytes();
         else if (body is Byte[] buf)
