@@ -2,7 +2,7 @@ name: publish-beta
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master,dev ]
     paths:
         - 'NewLife.RocketMQ/**'
   workflow_dispatch:
