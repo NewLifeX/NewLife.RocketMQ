@@ -307,12 +307,12 @@ public abstract class ClusterClient : DisposeBase
         };
 
         // 主体
-        if (body is Packet pk)
+        if (body is IPacket pk)
             cmd.Payload = pk;
         else if (body is Byte[] buf)
-            cmd.Payload = buf;
+            cmd.Payload = (ArrayPacket)buf;
         else if (body != null)
-            cmd.Payload = Config.JsonHost.Write(body, false, false, false).GetBytes();
+            cmd.Payload = (ArrayPacket)Config.JsonHost.Write(body, false, false, false).GetBytes();
 
         if (extFields != null)
         {

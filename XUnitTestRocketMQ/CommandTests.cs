@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NewLife;
+using NewLife.Data;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
 using Xunit;

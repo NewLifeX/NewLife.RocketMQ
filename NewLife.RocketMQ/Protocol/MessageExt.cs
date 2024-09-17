@@ -129,7 +129,7 @@ public class MessageExt : Message, IAccessor
     /// <summary>读取所有消息</summary>
     /// <param name="body"></param>
     /// <returns></returns>
-    public static IList<MessageExt> ReadAll(Packet body)
+    public static IList<MessageExt> ReadAll(IPacket body)
     {
         //var ms = new MemoryStream(body);
         var ms = body.GetStream();

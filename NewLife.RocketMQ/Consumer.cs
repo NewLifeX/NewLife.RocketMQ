@@ -789,7 +789,7 @@ public class Consumer : MqBase
     /// </summary>
     /// <param name="payload">负载数据</param>
     /// <returns></returns>
-    private ConsumerStatesModel ConsumerStatesSpecialJsonHandler(Packet payload)
+    private ConsumerStatesModel ConsumerStatesSpecialJsonHandler(IPacket payload)
     {
         #region <cmd formate/>
 
@@ -960,7 +960,7 @@ public class Consumer : MqBase
 
         var rs = cmd.CreateReply() as Command;
         rs.Header.Language = "DOTNET";
-        rs.Payload = sb.ToString().GetBytes();
+        rs.Payload = (ArrayPacket)sb.ToString().GetBytes();
 
         return rs;
     }

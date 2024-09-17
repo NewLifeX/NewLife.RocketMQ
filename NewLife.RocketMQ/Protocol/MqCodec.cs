@@ -35,7 +35,7 @@ class MqCodec : MessageCodec<Command>
     /// <param name="context"></param>
     /// <param name="pk"></param>
     /// <returns></returns>
-    protected override IList<Command> Decode(IHandlerContext context, Packet pk)
+    protected override IList<Command> Decode(IHandlerContext context, IPacket pk)
     {
         var ss = context.Owner as IExtend;
         if (ss["Codec"] is not PacketCodec pc)

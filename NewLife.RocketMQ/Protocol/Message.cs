@@ -51,7 +51,7 @@ public class Message
     public void SetBody(Object body)
     {
         _BodyString = null;
-        if (body is Packet pk)
+        if (body is IPacket pk)
             Body = pk.ReadBytes();
         else if (body is Byte[] buf)
             Body = buf;
@@ -88,7 +88,7 @@ public class Message
     {
         if (properties.IsNullOrEmpty()) return null;
 
-        var dic = properties.SplitAsDictionaryT('\u0001', '\u0002');
+        var dic = properties.SplitAsDictionary("\u0001", "\u0002");
 
         if (TryGetAndRemove(dic, nameof(Tags), out var str)) Tags = str;
         if (TryGetAndRemove(dic, nameof(Keys), out str)) Keys = str;
