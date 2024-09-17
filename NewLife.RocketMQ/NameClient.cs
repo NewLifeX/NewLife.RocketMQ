@@ -1,81 +1,102 @@
-﻿using NewLife.Net;
+﻿using NewLife.Log;
+using NewLife.Net;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Threading;
 
-namespace NewLife.RocketMQ
+namespace NewLife.RocketMQ;
+
+/// <summary>连接名称服务器的客户端</summary>
+public class NameClient : ClusterClient
 {
-    /// <summary>连接名称服务器的客户端</summary>
-    public class NameClient : ClusterClient
+    #region 属性
+
+    /// <summary>Broker集合</summary>
+    public IList<BrokerInfo> Brokers { get; private set; } = [];
+
+    /// <summary>代理改变时触发</summary>
+    public event EventHandler OnBrokerChange;
+
+    #endregion
+
+    #region 构造
+
+    /// <summary>实例化</summary>
+    /// <param name="id"></param>
+    /// <param name="config"></param>
+    public NameClient(String id, MqBase config)
     {
-        #region 属性
+        Id = id;
+        Config = config;
+    }
+    #endregion
 
-        /// <summary>Broker集合</summary>
-        public IList<BrokerInfo> Brokers { get; private set; } = new List<BrokerInfo>();
+    #region 方法
 
-        /// <summary>代理改变时触发</summary>
-        public event EventHandler OnBrokerChange;
+    /// <inheritdoc/>
+    protected override void Dispose(Boolean disposing)
+    {
+        if (disposing)
+            _timer?.Dispose();
 
-        #endregion
+        base.Dispose(disposing);
+    }
 
-        #region 构造
+    /// <summary>启动</summary>
+    protected override void OnStart()
+    {
+        var cfg = Config;
+        if (cfg.NameServerAddress.IsNullOrEmpty())
+            throw new ArgumentNullException(nameof(cfg.NameServerAddress), "未指定NameServer地址");
 
-        /// <summary>实例化</summary>
-        /// <param name="id"></param>
-        /// <param name="config"></param>
-        public NameClient(String id, MqBase config)
+        var ss = cfg.NameServerAddress.Split(";");
+
+        var list = new List<NetUri>();
+        foreach (var item in ss)
         {
-            Id = id;
-            Config = config;
+            var uri = new NetUri(item);
+            if (uri.Type == NetType.Unknown) uri.Type = NetType.Tcp;
+            list.Add(uri);
         }
-        #endregion
 
-        #region 方法
+        Servers = list.ToArray();
 
-        /// <inheritdoc/>
-        protected override void Dispose(Boolean disposing)
+        base.OnStart();
+
+        _timer ??= new TimerX(DoWork, null, cfg.PollNameServerInterval, cfg.PollNameServerInterval) { Async = true };
+    }
+
+    #endregion
+
+    #region 命令
+
+    private TimerX _timer;
+    private String _lastBrokers;
+    private void DoWork(Object state)
+    {
+        var rs = GetRouteInfo(Config.Topic);
+        var str = rs?.Join(",", e => $"{e.Name}={e.Addresses.Join()}");
+        if (str != _lastBrokers)
         {
-            if (disposing)
-                _timer?.Dispose();
-
-            base.Dispose(disposing);
-        }
-
-        /// <summary>启动</summary>
-        public override void Start()
-        {
-            var cfg = Config;
-            var ss = cfg.NameServerAddress.Split(";");
-
-            var list = new List<NetUri>();
-            foreach (var item in ss)
+            _lastBrokers = str;
+            foreach (var item in rs)
             {
-                var uri = new NetUri(item);
-                if (uri.Type == NetType.Unknown) uri.Type = NetType.Tcp;
-                list.Add(uri);
+                WriteLog("发现Broker[{0}]: {1}, reads={2}, writes={3}", item.Name, item.Addresses.Join(), item.ReadQueueNums, item.WriteQueueNums);
             }
-
-            Servers = list.ToArray();
-
-            base.Start();
-
-            if (_timer == null) _timer = new TimerX(DoWork, null, cfg.PollNameServerInterval, cfg.PollNameServerInterval);
         }
+    }
 
-        #endregion
-
-        #region 命令
-
-        private TimerX _timer;
-        private void DoWork(Object state) => GetRouteInfo(Config.Topic);
-
-        /// <summary>获取主题的路由信息，含登录验证</summary>
-        /// <param name="topic"></param>
-        /// <returns></returns>
-        public IList<BrokerInfo> GetRouteInfo(String topic)
+    /// <summary>获取主题的路由信息，含登录验证</summary>
+    /// <param name="topic"></param>
+    /// <returns></returns>
+    public IList<BrokerInfo> GetRouteInfo(String topic)
+    {
+        using var span = Tracer?.NewSpan($"mq:{topic}:GetRouteInfo", topic);
+        try
         {
             // 发送命令
             var rs = Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
+            span?.AppendTag(rs.Payload?.ToStr());
             var js = rs.ReadBodyAsJson();
 
             var list = new List<BrokerInfo>();
@@ -112,12 +133,24 @@ namespace NewLife.RocketMQ
 
             Brokers = list;
 
+            // 结果检查
+            if (list.Count == 0)
+            {
+                WriteLog("未能找到主题[{0}]的任何Broker信息，可能是Topic或NameServer错误，也可能是不支持的服务端版本。服务端返回如下：", topic);
+                WriteLog(rs.Payload.ToStr());
+            }
+
             // 有改变，重新平衡队列
             OnBrokerChange?.Invoke(this, EventArgs.Empty);
 
             return list.OrderBy(t => t.Name).ToList();
         }
-
-        #endregion
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
+
+    #endregion
 }

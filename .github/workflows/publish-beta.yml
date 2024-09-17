@@ -2,10 +2,10 @@ name: publish-beta
 
 on:
   push:
-    branches: 
-        - master
+    branches: [ master ]
     paths:
         - 'NewLife.RocketMQ/**'
+  workflow_dispatch:
 
 jobs:
   build-publish:
@@ -13,17 +13,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v2
+    - uses: actions/checkout@v4
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 6.0.x
-    - name: Restore
-      run: |
-        dotnet restore NewLife.RocketMQ/NewLife.RocketMQ.csproj
+        dotnet-version: 8.x
     - name: Build
       run: |
-        dotnet pack --no-restore  --version-suffix $(date "+%Y.%m%d-beta%H%M") -c Release -o out NewLife.RocketMQ/NewLife.RocketMQ.csproj
+        dotnet pack --version-suffix $(date "+%Y.%m%d-beta%H%M") -c Release -o out NewLife.RocketMQ/NewLife.RocketMQ.csproj
     - name: Publish
       run: |
         # dotnet nuget push ./out/*.nupkg --skip-duplicate --source https://nuget.pkg.github.com/NewLifeX/index.json --api-key ${{ github.token }}

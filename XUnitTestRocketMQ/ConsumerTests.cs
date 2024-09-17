@@ -22,7 +22,6 @@ namespace XUnitTestRocketMQ
                 NameServerAddress = "127.0.0.1:9876",
 
                 FromLastOffset = true,
-                SkipOverStoredMsgCount = 0,
                 BatchSize = 20,
 
                 Log = XTrace.Log,
