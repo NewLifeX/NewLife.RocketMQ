@@ -17,8 +17,8 @@ class Program
     {
         XTrace.UseConsole();
 
-        //Test5();
-        TestAliyun();
+        Test1();
+        //TestAliyun();
 
         Console.WriteLine("OK!");
         Console.ReadKey();
@@ -26,35 +26,61 @@ class Program
 
     static void Test1()
     {
-        var mq = new Producer
+        XTrace.WriteLine("");
+        XTrace.WriteLine("创建生产者……");
+        var producer = new Producer
         {
             Topic = "nx_test",
-            NameServerAddress = "127.0.0.1:9876",
+            NameServerAddress = "rocketmq.newlifex.com:9876",
 
             Log = XTrace.Log,
         };
 
-        mq.Configure(MqSetting.Current);
-        mq.Start();
+        producer.Configure(MqSetting.Current);
+        producer.Start();
 
         //mq.CreateTopic("nx_test", 2);
 
-        for (var i = 0; i < 1000_000; i++)
+        XTrace.WriteLine("");
+        XTrace.WriteLine("创建消费者……");
+        var consumer = new Consumer
+        {
+            Topic = producer.Topic,
+            Group = "test",
+            NameServerAddress = producer.NameServerAddress,
+
+            FromLastOffset = false,
+            //SkipOverStoredMsgCount = 0,
+            //BatchSize = 20,
+
+            Log = XTrace.Log,
+            ClientLog = XTrace.Log,
+        };
+
+        consumer.OnConsume = OnConsume;
+
+        consumer.Configure(MqSetting.Current);
+        consumer.Start();
+        Thread.Sleep(1000);
+
+        XTrace.WriteLine("");
+        XTrace.WriteLine("发布测试消息……");
+        for (var i = 0; i < 10; i++)
         {
             var str = "学无先后达者为师" + i;
             //var str = Rand.NextString(1337);
 
-            var sr = mq.Publish(str, "TagA", null);
+            var sr = producer.Publish(str, "TagA", null);
 
             //Console.WriteLine("[{0}] {1} {2} {3}", sr.Queue.BrokerName, sr.Queue.QueueId, sr.MsgId, sr.QueueOffset);
 
             // 阿里云发送消息不能过快，否则报错“服务不可用”
-            Thread.Sleep(100);
+            Thread.Sleep(500);
         }
 
         Console.WriteLine("完成");
 
-        mq.Dispose();
+        producer.Dispose();
     }
 
     private static Consumer _consumer;
@@ -121,7 +147,7 @@ class Program
 
         foreach (var item in ms.ToList())
         {
-            Console.WriteLine($"消息：主键【{item.Keys}】 Topic 【{item.Topic}】，产生时间【{item.BornTimestamp.ToDateTime()}】，内容【{item.Body.ToStr(null, 0, 64)}】");
+            Console.WriteLine($"消息：主键【{item.Keys}】 Topic 【{item.Topic}】，产生时间【{item.BornTimestamp.ToDateTime().ToFullString()}】，内容【{item.Body.ToStr(null, 0, 64)}】");
         }
 
         return true;

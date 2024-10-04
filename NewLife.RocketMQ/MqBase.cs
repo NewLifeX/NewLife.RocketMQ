@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using NewLife.Log;
+using NewLife.Net;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
 
@@ -267,8 +268,21 @@ public abstract class MqBase : DisposeBase
         {
             if (_Brokers.TryGetValue(name, out client)) return client;
 
+            // broker可能在内网，转为公网地址
+            var uri = new NetUri(NameServerAddress.Split(";").FirstOrDefault());
+            var addrs = bk.Addresses.ToArray();
+            for (var i = 0; i < addrs.Length; i++)
+            {
+                var addr = addrs[i];
+                if (addr.StartsWithIgnoreCase("10.", "192.", "172."))
+                {
+                    var p = addr.IndexOf(':');
+                    addrs[i] = p > 0 ? uri.Host + addr[p..] : uri.Host;
+                }
+            }
+
             // 实例化客户端
-            client = CreateBroker(bk.Name, bk.Addresses);
+            client = CreateBroker(bk.Name, addrs);
 
             client.Start();
 
@@ -316,7 +330,7 @@ public abstract class MqBase : DisposeBase
     /// <param name="topic">主题</param>
     /// <param name="queueNum">队列数</param>
     /// <param name="topicSysFlag"></param>
-    public virtual void CreateTopic(String topic, Int32 queueNum, Int32 topicSysFlag = 0)
+    public virtual Int32 CreateTopic(String topic, Int32 queueNum, Int32 topicSysFlag = 0)
     {
         var header = new
         {
@@ -330,6 +344,7 @@ public abstract class MqBase : DisposeBase
             order = false,
         };
 
+        var count = 0;
         using var span = Tracer?.NewSpan($"mq:{Name}:CreateTopic", header);
         try
         {
@@ -341,6 +356,7 @@ public abstract class MqBase : DisposeBase
                 {
                     var bk = GetBroker(item.Name);
                     var rs = bk.Invoke(RequestCode.UPDATE_AND_CREATE_TOPIC, null, header);
+                    if (rs != null && rs.Header.Code == (Int32)ResponseCode.SUCCESS) count++;
                 }
                 catch (Exception ex)
                 {
@@ -354,6 +370,8 @@ public abstract class MqBase : DisposeBase
 
             throw;
         }
+
+        return count;
     }
     #endregion
 

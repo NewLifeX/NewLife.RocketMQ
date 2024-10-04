@@ -258,9 +258,9 @@ public class Command : IAccessor, IMessage
     {
         var ms = new MemoryStream();
         Write(ms, null);
-        ms.Position = 0;
 
-        return new Packet(ms);
+        ms.Position = 0;
+        return new ArrayPacket(ms);
     }
 
     /// <summary>创建响应</summary>

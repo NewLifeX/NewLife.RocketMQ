@@ -7,49 +7,49 @@ using System.Linq;
 using System.Threading;
 using Xunit;
 
-namespace XUnitTestRocketMQ
+namespace XUnitTestRocketMQ;
+
+public class ConsumerTests
 {
-    public class ConsumerTests
+    private static Consumer _consumer;
+    [Fact]
+    public static void ConsumeTest()
     {
-        private static Consumer _consumer;
-        [Fact]
-        static void ConsumeTest()
+        var set = BasicTest.GetConfig();
+        var consumer = new Consumer
         {
-            var consumer = new Consumer
-            {
-                Topic = "nx_test",
-                Group = "test",
-                NameServerAddress = "127.0.0.1:9876",
+            Topic = "nx_test",
+            Group = "test",
+            NameServerAddress = set.NameServer,
 
-                FromLastOffset = true,
-                BatchSize = 20,
+            FromLastOffset = true,
+            BatchSize = 20,
 
-                Log = XTrace.Log,
-            };
+            Log = XTrace.Log,
+        };
 
-            consumer.OnConsume = OnConsume;
-            consumer.Start();
+        consumer.OnConsume = OnConsume;
+        consumer.Start();
 
-            _consumer = consumer;
+        _consumer = consumer;
 
-            Thread.Sleep(3000);
-            //foreach (var item in consumer.Clients)
-            //{
-            //    var rs = item.GetRuntimeInfo();
-            //    Console.WriteLine("{0}\t{1}", item.Name, rs["brokerVersionDesc"]);
-            //}
+        Thread.Sleep(3000);
+        //foreach (var item in consumer.Clients)
+        //{
+        //    var rs = item.GetRuntimeInfo();
+        //    Console.WriteLine("{0}\t{1}", item.Name, rs["brokerVersionDesc"]);
+        //}
+    }
+
+    private static Boolean OnConsume(MessageQueue q, MessageExt[] ms)
+    {
+        Console.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
+
+        foreach (var item in ms.ToList())
+        {
+            Console.WriteLine($"消息：主键【{item.Keys}】，产生时间【{item.BornTimestamp.ToDateTime()}】，内容【{item.Body.ToStr()}】");
         }
 
-        private static Boolean OnConsume(MessageQueue q, MessageExt[] ms)
-        {
-            Console.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
-
-            foreach (var item in ms.ToList())
-            {
-                Console.WriteLine($"消息：主键【{item.Keys}】，产生时间【{item.BornTimestamp.ToDateTime()}】，内容【{item.Body.ToStr()}】");
-            }
-
-            return true;
-        }
+        return true;
     }
 }
