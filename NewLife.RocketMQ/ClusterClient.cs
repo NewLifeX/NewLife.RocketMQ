@@ -99,7 +99,12 @@ public abstract class ClusterClient : DisposeBase
                 client.Add(new MqCodec { Timeout = Timeout });
 
                 // 关闭Tcp延迟以合并小包的算法，降低延迟
-                if (client is TcpSession tcp) tcp.NoDelay = true;
+                if (client is TcpSession tcp)
+                {
+                    tcp.SslProtocol = Config.SslProtocol;
+                    tcp.Certificate = Config.Certificate;
+                    tcp.NoDelay = true;
+                }
 
                 try
                 {
