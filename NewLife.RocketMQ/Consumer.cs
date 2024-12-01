@@ -179,7 +179,7 @@ public class Consumer : MqBase
         var dic = header.GetProperties();
         var bk = GetBroker(mq.BrokerName);
 
-        var rs = await bk.InvokeAsync(RequestCode.PULL_MESSAGE, null, dic, true, cancellationToken);
+        var rs = await bk.InvokeAsync(RequestCode.PULL_MESSAGE, null, dic, true, cancellationToken).ConfigureAwait(false);
         if (rs?.Header == null) return null;
 
         var pr = new PullResult();
@@ -221,7 +221,7 @@ public class Consumer : MqBase
             consumerGroup = Group,
             topic = Topic,
             queueId = mq.QueueId,
-        }, true, cancellationToken);
+        }, true, cancellationToken).ConfigureAwait(false);
 
         var dic = rs.Header?.ExtFields;
         if (dic == null) return -1;
@@ -243,7 +243,7 @@ public class Consumer : MqBase
             consumerGroup = Group,
             topic = Topic,
             queueId = mq.QueueId,
-        }, true, cancellationToken);
+        }, true, cancellationToken).ConfigureAwait(false);
 
         var dic = rs.Header?.ExtFields;
         if (dic == null) return -1;
@@ -265,7 +265,7 @@ public class Consumer : MqBase
             consumerGroup = Group,
             topic = Topic,
             queueId = mq.QueueId,
-        }, true, cancellationToken);
+        }, true, cancellationToken).ConfigureAwait(false);
 
         var dic = rs.Header?.ExtFields;
         if (dic == null) return -1;
@@ -296,7 +296,7 @@ public class Consumer : MqBase
             consumerGroup = Group,
             queueId = mq.QueueId,
             topic = Topic,
-        }, false, cancellationToken);
+        }, false, cancellationToken).ConfigureAwait(false);
 
         var dic = rs?.Header?.ExtFields;
         if (dic == null) return false;
@@ -322,7 +322,7 @@ public class Consumer : MqBase
             {
                 var bk = GetBroker(item.Name);
                 //bk.Ping();
-                var rs = await bk.InvokeAsync(RequestCode.GET_CONSUMER_LIST_BY_GROUP, null, header);
+                var rs = await bk.InvokeAsync(RequestCode.GET_CONSUMER_LIST_BY_GROUP, null, header).ConfigureAwait(false);
                 span?.AppendTag(rs.Payload?.ToStr());
                 //WriteLog(rs.Header.ExtFields?.ToJson());
                 var js = rs.ReadBodyAsJson();
@@ -397,7 +397,7 @@ public class Consumer : MqBase
             var queueStore = qs[i];
             var task = Task.Run(async () =>
             {
-                await DoPull(queueStore, source.Token);
+                await DoPull(queueStore, source.Token).ConfigureAwait(false);
             });
             tasks[i] = task;
         }
@@ -451,7 +451,7 @@ public class Consumer : MqBase
             try
             {
                 var offset = st.Offset;
-                var pr = await Pull(mq, offset, BatchSize, SuspendTimeout, cancellationToken);
+                var pr = await Pull(mq, offset, BatchSize, SuspendTimeout, cancellationToken).ConfigureAwait(false);
                 if (pr != null)
                 {
                     switch (pr.Status)
@@ -466,14 +466,14 @@ public class Consumer : MqBase
                                 try
                                 {
                                     // 触发消费
-                                    var rs = await Consume(mq, pr, cancellationToken);
+                                    var rs = await Consume(mq, pr, cancellationToken).ConfigureAwait(false);
 
                                     // 更新偏移
                                     if (rs)
                                     {
                                         st.Offset = pr.NextBeginOffset;
                                         // 提交消费进度
-                                        await UpdateOffset(mq, st.Offset, cancellationToken);
+                                        await UpdateOffset(mq, st.Offset, cancellationToken).ConfigureAwait(false);
                                     }
                                 }
                                 catch (Exception ex)
@@ -513,12 +513,12 @@ public class Consumer : MqBase
             {
                 Log?.Error(ex.GetMessage());
                 // 出现其他异常的情况下，等待一会，防止出现大量异常
-                await Task.Delay(TimeSpan.FromSeconds(1));
+                await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
             }
         }
 
         // 保存消费进度
-        if (st.Offset >= 0 && st.Offset != st.CommitOffset) await UpdateOffset(mq, st.Offset, cancellationToken);
+        if (st.Offset >= 0 && st.Offset != st.CommitOffset) await UpdateOffset(mq, st.Offset, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>拉取到一批消息</summary>
@@ -533,7 +533,7 @@ public class Consumer : MqBase
         Consumed?.Invoke(this, new ConsumeEventArgs { Queue = queue, Messages = result.Messages, Result = result });
 
         if (OnConsume != null) return OnConsume(queue, result.Messages);
-        if (OnConsumeAsync != null) return await OnConsumeAsync(queue, result.Messages, cancellationToken);
+        if (OnConsumeAsync != null) return await OnConsumeAsync(queue, result.Messages, cancellationToken).ConfigureAwait(false);
 
         return true;
     }
@@ -558,7 +558,7 @@ public class Consumer : MqBase
             }
         }
 
-        await Task.WhenAll(ts);
+        await Task.WhenAll(ts).ConfigureAwait(false);
     }
 
     #endregion
@@ -605,7 +605,7 @@ public class Consumer : MqBase
 
         if (_Queues == null) WriteLog("准备从所有Broker服务器上获取消费者列表，以确定当前消费者应该负责消费的queue分片");
 
-        var cs = await GetConsumers(Group);
+        var cs = await GetConsumers(Group).ConfigureAwait(false);
         if (cs.Count == 0) return false;
 
         var qs = new List<MessageQueue>();
@@ -663,7 +663,7 @@ public class Consumer : MqBase
 
             if (q1.SequenceEqual(q2)) return false;
 
-            await PersistAll(ori);
+            await PersistAll(ori).ConfigureAwait(false);
         }
 
         var dic = qs.GroupBy(e => e.BrokerName).ToDictionary(e => e.Key, e => e.Join(",", x => x.QueueId));
@@ -673,7 +673,7 @@ public class Consumer : MqBase
         using var span = Tracer?.NewSpan($"mq:{Name}:Rebalance", str);
 
         _Queues = rs.ToArray();
-        await InitOffsetAsync();
+        await InitOffsetAsync().ConfigureAwait(false);
         //_Consumers = cs2.ToArray();
 
         return true;
@@ -701,7 +701,7 @@ public class Consumer : MqBase
         using var span = Tracer?.NewSpan($"mq:{Name}:CheckGroup");
         try
         {
-            var rs = await Rebalance();
+            var rs = await Rebalance().ConfigureAwait(false);
             if (!rs) return;
 
             if (AutoSchedule) DoSchedule();
@@ -737,7 +737,7 @@ public class Consumer : MqBase
             {
                 consumerGroup = Group,
                 topic = Topic
-            }, true, cancellationToken);
+            }, true, cancellationToken).ConfigureAwait(false);
             var consumerStates = ConsumerStatesSpecialJsonHandler(command.Payload);
             //foreach (var (key, value) in consumerStates.OffsetTable) offsetTables.Add(key, value);
             foreach (var item in consumerStates.OffsetTable)
@@ -762,20 +762,20 @@ public class Consumer : MqBase
                 if (FromLastOffset)
                 {
                     offset = offsetTable.BrokerOffset;
-                    if (offset <= 0) offset = await QueryMaxOffset(store.Queue, cancellationToken);
+                    if (offset <= 0) offset = await QueryMaxOffset(store.Queue, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
-                    offset = await QueryMinOffset(store.Queue, cancellationToken);
+                    offset = await QueryMinOffset(store.Queue, cancellationToken).ConfigureAwait(false);
                 }
 
                 store.Offset = store.CommitOffset = offset;
-                await UpdateOffset(store.Queue, offset, cancellationToken);
+                await UpdateOffset(store.Queue, offset, cancellationToken).ConfigureAwait(false);
             }
             else
             {
                 var offset = offsetTable.ConsumerOffset;
-                if (offset <= 0) offset = await QueryOffset(store.Queue, cancellationToken);
+                if (offset <= 0) offset = await QueryOffset(store.Queue, cancellationToken).ConfigureAwait(false);
 
                 store.Offset = store.CommitOffset = offset;
             }

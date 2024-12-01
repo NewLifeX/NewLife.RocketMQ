@@ -183,7 +183,7 @@ public class Producer : MqBase
             {
                 // 根据队列获取Broker客户端
                 var bk = GetBroker(mq.BrokerName);
-                var rs = await bk.InvokeAsync(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties(), true, cancellationToken);
+                var rs = await bk.InvokeAsync(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties(), true, cancellationToken).ConfigureAwait(false);
 
                 // 包装结果
                 var sendResult = new SendResult
@@ -208,7 +208,7 @@ public class Producer : MqBase
                 // 如果网络异常，则延迟重发
                 if (i < RetryTimesWhenSendFailed)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(1));
+                    await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
                     continue;
                 }
 

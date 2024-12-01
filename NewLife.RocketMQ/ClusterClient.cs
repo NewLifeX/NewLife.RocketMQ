@@ -147,7 +147,7 @@ public abstract class ClusterClient : DisposeBase
 
             if (waitResult)
             {
-                var rs = await client.SendMessageAsync(cmd, cancellationToken);
+                var rs = await client.SendMessageAsync(cmd, cancellationToken).ConfigureAwait(false);
 
                 if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("<= {0}", rs as Command);
 
@@ -251,7 +251,7 @@ public abstract class ClusterClient : DisposeBase
         var cmd = CreateCommand(request, body, extFields);
 
         // 避免UI死锁
-        var rs = Task.Run(() => SendAsync(cmd, true)).Result;
+        var rs = SendAsync(cmd, true).ConfigureAwait(false).GetAwaiter().GetResult();
 
         // 判断异常响应
         if (!ignoreError && rs.Header != null && rs.Header.Code != 0) throw rs.Header.CreateException();
@@ -265,7 +265,7 @@ public abstract class ClusterClient : DisposeBase
     {
         var cmd = CreateCommand(request, body, extFields);
 
-        var rs = await SendAsync(cmd, true, cancellationToken);
+        var rs = await SendAsync(cmd, true, cancellationToken).ConfigureAwait(false);
 
         // 判断异常响应
         if (!ignoreError && rs.Header != null && rs.Header.Code != 0)
