@@ -285,14 +285,17 @@ public abstract class MqBase : DisposeBase
 
             // broker可能在内网，转为公网地址
             var uri = new NetUri(NameServerAddress.Split(";").FirstOrDefault());
+            var ext = uri.Host;
+            if (ext.IsNullOrEmpty()) ext = uri.Address.ToString();
+
             var addrs = bk.Addresses.ToArray();
             for (var i = 0; i < addrs.Length; i++)
             {
                 var addr = addrs[i];
-                if (addr.StartsWithIgnoreCase("10.", "192.", "172."))
+                if (addr.StartsWithIgnoreCase("10.", "192.", "172.") && !ext.IsNullOrEmpty())
                 {
                     var p = addr.IndexOf(':');
-                    addrs[i] = p > 0 ? uri.Host + addr[p..] : uri.Host;
+                    addrs[i] = p > 0 ? ext + addr[p..] : ext;
                 }
             }
 
