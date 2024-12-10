@@ -68,6 +68,9 @@ public abstract class MqBase : DisposeBase
     /// </example>
     public X509Certificate? Certificate { get; set; }
 
+    /// <summary>是否使用外部代理。有些RocketMQ的Broker部署在网关外部，需要使用映射地址，默认false</summary>
+    public Boolean ExternalBroker { get; set; }
+
     //public Boolean VipChannelEnabled { get; set; } = true;
 
     /// <summary>是否可用</summary>
@@ -283,19 +286,22 @@ public abstract class MqBase : DisposeBase
         {
             if (_Brokers.TryGetValue(name, out client)) return client;
 
-            // broker可能在内网，转为公网地址
-            var uri = new NetUri(NameServerAddress.Split(";").FirstOrDefault());
-            var ext = uri.Host;
-            if (ext.IsNullOrEmpty()) ext = uri.Address.ToString();
-
             var addrs = bk.Addresses.ToArray();
-            for (var i = 0; i < addrs.Length; i++)
+            if (ExternalBroker)
             {
-                var addr = addrs[i];
-                if (addr.StartsWithIgnoreCase("10.", "192.", "172.") && !ext.IsNullOrEmpty())
+                // broker可能在内网，转为公网地址
+                var uri = new NetUri(NameServerAddress.Split(";").FirstOrDefault());
+                var ext = uri.Host;
+                if (ext.IsNullOrEmpty()) ext = uri.Address.ToString();
+
+                for (var i = 0; i < addrs.Length; i++)
                 {
-                    var p = addr.IndexOf(':');
-                    addrs[i] = p > 0 ? ext + addr[p..] : ext;
+                    var addr = addrs[i];
+                    if (addr.StartsWithIgnoreCase("10.", "192.", "172.") && !ext.IsNullOrEmpty())
+                    {
+                        var p = addr.IndexOf(':');
+                        addrs[i] = p > 0 ? ext + addr[p..] : ext;
+                    }
                 }
             }
 
