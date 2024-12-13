@@ -143,8 +143,33 @@ public class NameClient : ClusterClient
 
             // 有改变，重新平衡队列
             OnBrokerChange?.Invoke(this, EventArgs.Empty);
-
+            
             return list.OrderBy(t => t.Name).ToList();
+        }
+        catch (ResponseException ex)
+        {
+            if (!topic.Equals(MqBase.DefaultTopic) && ResponseCode.TOPIC_NOT_EXIST.Equals(ex.Code))
+            {
+                WriteLog("未能找到主题[{0}]，将读取默认主题[TBW102]的替代。", topic);
+                var rs = GetRouteInfo(MqBase.DefaultTopic);
+                if (rs != null && rs.Count() > 0)
+                {
+                    if (rs[0].ReadQueueNums > Config.DefaultTopicQueueNums)
+                    {
+                        foreach (var item in rs)
+                        {
+                            item.WriteQueueNums = Config.DefaultTopicQueueNums;
+                            item.ReadQueueNums = Config.DefaultTopicQueueNums;
+                        }
+                    }
+                }
+                return rs;
+            }
+            else
+            {
+                span?.SetError(ex, null);
+                throw;
+            }
         }
         catch (Exception ex)
         {

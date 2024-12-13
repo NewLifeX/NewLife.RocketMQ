@@ -422,7 +422,8 @@ public class Producer : MqBase
             Properties = message.GetProperties(),
             ReconsumeTimes = 0,
             UnitMode = UnitMode,
-            DefaultTopic = "TBW102"
+            DefaultTopic = DefaultTopic,
+            DefaultTopicQueueNums = DefaultTopicQueueNums
         };
 
         return smrh;

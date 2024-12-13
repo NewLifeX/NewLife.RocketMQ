@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Security.Authentication;
@@ -24,9 +25,15 @@ public abstract class MqBase : DisposeBase
     /// <remarks>阿里云目前需要在Group前面带上实例ID并用【%】连接,组成路由Group[用来路由到实例Group]</remarks>
     public String Group { get; set; } = "DEFAULT_PRODUCER";
 
+    /// <summary>rocketmq 默认主题</summary>
+    public static String DefaultTopic { get; } = "TBW102";
+
     /// <summary>主题</summary>
     /// <remarks>阿里云目前需要在Topic前面带上实例ID并用【%】连接,组成路由Topic[用来路由到实例Topic]</remarks>
-    public String Topic { get; set; } = "TBW102";
+    public String Topic { get; set; } = DefaultTopic;
+    
+    /// <summary>默认的主题队列数量</summary>
+    public Int32 DefaultTopicQueueNums { get; set; } = 4;
 
     /// <summary>本地IP地址</summary>
     public String ClientIP { get; set; } = NetHelper.MyIP() + "";
@@ -236,6 +243,8 @@ public abstract class MqBase : DisposeBase
 
         // 阻塞获取Broker地址，确保首次使用之前已经获取到Broker地址
         var rs = client.GetRouteInfo(Topic);
+        DefaultTopicQueueNums = Math.Min(DefaultTopicQueueNums, rs.Where(e => e.Permission.HasFlag(Permissions.Write) && e.WriteQueueNums > 0).Select(e => e.WriteQueueNums).First());
+
         foreach (var item in rs)
         {
             XTrace.WriteLine("发现Broker[{0}]: {1}, reads={2}, writes={3}", item.Name, item.Addresses.Join(), item.ReadQueueNums, item.WriteQueueNums);
