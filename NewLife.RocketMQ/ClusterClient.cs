@@ -224,25 +224,26 @@ public abstract class ClusterClient : DisposeBase
         var sha = new HMACSHA1(secretKey.GetBytes());
         var ms = new MemoryStream();
 
-        // AccessKey + OnsChannel
-        ms.Write(accessKey.GetBytes());
-        ms.Write(onsChannel.GetBytes());
+        var extFieldsDic = cmd.Header.GetExtFields();
+        extFieldsDic["AccessKey"] = accessKey;
+        extFieldsDic["OnsChannel"] = onsChannel;
 
-        // ExtFields
-        var dic = cmd.Header.GetExtFields();
-        //var extFieldsDic = dic.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
-        foreach (var extFields in dic)
+        // 按照 asscii 排序已有 key
+        var comparer = Comparer<string>.Create(string.CompareOrdinal);
+        foreach (var item in extFieldsDic.OrderBy(e => e.Key, comparer).ToDictionary(e => e.Key, e => e.Value))
         {
-            if (extFields.Value != null) ms.Write(extFields.Value.GetBytes());
+            if (item.Value != null)
+            {
+                ms.Write(item.Value.GetBytes());
+            }
         }
 
         // Body
         cmd.Payload?.CopyTo(ms);
 
         var sign = sha.ComputeHash(ms.ToArray());
-        dic["Signature"] = sign.ToBase64();
-        dic["AccessKey"] = accessKey;
-        dic["OnsChannel"] = onsChannel;
+        extFieldsDic["Signature"] = sign.ToBase64();
+        cmd.Header.ExtFields = extFieldsDic;
     }
 
     /// <summary>发送指定类型的命令</summary>
