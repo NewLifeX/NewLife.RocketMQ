@@ -144,7 +144,7 @@ public class Command : IAccessor, IMessage
         else
             bn.Write(len);
 
-        if (len > 0) bn.Write(buf);
+        if (len > 0) bn.Write(buf, 0, buf.Length);
     }
 
     /// <summary>读取Body作为Json返回</summary>
