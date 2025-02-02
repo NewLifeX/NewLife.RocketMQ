@@ -79,7 +79,7 @@ public class Message
         if (DelayTimeLevel > 0) sb.AppendFormat("{0}\u0001{1}\u0002", "DELAY", DelayTimeLevel);
         sb.AppendFormat("{0}\u0001{1}\u0002", "WAIT", WaitStoreMsgOK);
 
-        return sb.Put(true);
+        return sb.Return(true);
     }
 
     /// <summary>分析字典属性</summary>
@@ -88,12 +88,39 @@ public class Message
     {
         if (properties.IsNullOrEmpty()) return null;
 
-        var dic = properties.SplitAsDictionary("\u0001", "\u0002");
+        var dic = SplitAsDictionary(properties, "\u0001", "\u0002");
 
         if (TryGetAndRemove(dic, nameof(Tags), out var str)) Tags = str;
         if (TryGetAndRemove(dic, nameof(Keys), out str)) Keys = str;
         if (TryGetAndRemove(dic, "DELAY", out str)) DelayTimeLevel = str.ToInt();
         if (TryGetAndRemove(dic, "WAIT", out str)) WaitStoreMsgOK = str.ToBoolean();
+
+        return dic;
+    }
+
+    private static IDictionary<String, String> SplitAsDictionary(String value, String nameValueSeparator, String separator)
+    {
+        var dic = new NullableDictionary<String, String>(StringComparer.OrdinalIgnoreCase);
+        if (value == null || value.IsNullOrWhiteSpace()) return dic;
+
+        var ss = value.Split([separator], StringSplitOptions.RemoveEmptyEntries);
+        if (ss == null || ss.Length <= 0) return dic;
+
+        foreach (var item in ss)
+        {
+            // 如果分隔符是 \u0001，则必须使用Ordinal，否则无法分割直接返回0
+            var p = item.IndexOf(nameValueSeparator, StringComparison.Ordinal);
+            if (p <= 0) continue;
+
+            var key = item[..p].Trim();
+            var val = item[(p + nameValueSeparator.Length)..].Trim();
+
+#if NETFRAMEWORK || NETSTANDARD2_0
+            if (!dic.ContainsKey(key)) dic.Add(key, val);
+#else
+            dic.TryAdd(key, val);
+#endif
+        }
 
         return dic;
     }

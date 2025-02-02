@@ -319,7 +319,7 @@ public class Command : IAccessor, IMessage
             sb.Append(pk.ToStr(null, 0, 256));
         }
 
-        return sb.Put(true);
+        return sb.Return(true);
     }
     #endregion
 }
