@@ -115,25 +115,13 @@ public class Consumer : MqBase
     /// <summary>
     /// 停止
     /// </summary>
-    public override void Stop()
+    protected override void OnStop()
     {
-        if (!Active) return;
+        // 停止并保存偏移
+        StopSchedule();
+        PersistAll(_Queues).Wait();
 
-        using var span = Tracer?.NewSpan($"mq:{Name}:Stop");
-        try
-        {
-            // 停止并保存偏移
-            StopSchedule();
-            PersistAll(_Queues).Wait();
-
-            base.Stop();
-        }
-        catch (Exception ex)
-        {
-            span?.SetError(ex, null);
-
-            throw;
-        }
+        base.OnStop();
     }
 
     /// <summary>创建Broker客户端，已重载，设置更大的超时时间</summary>

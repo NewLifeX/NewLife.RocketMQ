@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
@@ -31,7 +32,7 @@ public abstract class MqBase : DisposeBase
     /// <summary>主题</summary>
     /// <remarks>阿里云目前需要在Topic前面带上实例ID并用【%】连接,组成路由Topic[用来路由到实例Topic]</remarks>
     public String Topic { get; set; } = DefaultTopic;
-    
+
     /// <summary>默认的主题队列数量</summary>
     public Int32 DefaultTopicQueueNums { get; set; } = 4;
 
@@ -255,10 +256,28 @@ public abstract class MqBase : DisposeBase
 
     /// <summary>停止</summary>
     /// <returns></returns>
-    public virtual void Stop()
+    public void Stop()
     {
         if (!Active) return;
 
+        using var span = Tracer?.NewSpan($"mq:{Name}:Stop");
+        try
+        {
+            OnStop();
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+
+            throw;
+        }
+
+        Active = false;
+    }
+
+    /// <summary>停止</summary>
+    protected virtual void OnStop()
+    {
         foreach (var item in _Brokers)
         {
             try
@@ -272,8 +291,6 @@ public abstract class MqBase : DisposeBase
             }
         }
         _Brokers.Clear();
-
-        Active = false;
     }
     #endregion
 
