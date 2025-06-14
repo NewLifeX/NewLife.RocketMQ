@@ -51,6 +51,18 @@ public class SendMessageRequestHeader
     /// <summary>单元模式</summary>
     [XmlElement("k")]
     public Boolean UnitMode { get; set; }
+
+    /// <summary>消费重试次数</summary>
+    [XmlElement("l")]
+    public Int32 ConsumeRetryTimes { get; set; }
+
+    /// <summary>批操作</summary>
+    [XmlElement("m")]
+    public Boolean Batch { get; set; }
+
+    /// <summary>Broker名称</summary>
+    [XmlElement("n")]
+    public String BrokerName { get; set; }
     #endregion
 
     #region 方法

@@ -69,6 +69,7 @@ public class Producer : MqBase
             var mq = queue ?? SelectQueue();
             mq.Topic = Topic;
             header.QueueId = mq.QueueId;
+            header.BrokerName = mq.BrokerName;
 
             // 性能埋点
             using var span = Tracer?.NewSpan($"mq:{Name}:Publish", message.BodyString);

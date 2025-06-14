@@ -35,6 +35,9 @@ public class Message
 
     /// <summary>延迟时间等级</summary>
     public Int32 DelayTimeLevel { get; set; }
+
+    /// <summary>事务标识</summary>
+    public String TransactionId { get; set; }
     #endregion
 
     #region 构造
@@ -74,10 +77,11 @@ public class Message
     {
         var sb = Pool.StringBuilder.Get();
 
+        if (!TransactionId.IsNullOrEmpty()) sb.AppendFormat("{0}\u0001{1}\u0002", "UNIQ_KEY", TransactionId);
+        sb.AppendFormat("{0}\u0001{1}\u0002", "WAIT", WaitStoreMsgOK);
         if (!Tags.IsNullOrEmpty()) sb.AppendFormat("{0}\u0001{1}\u0002", "TAGS", Tags);
         if (!Keys.IsNullOrEmpty()) sb.AppendFormat("{0}\u0001{1}\u0002", "KEYS", Keys);
         if (DelayTimeLevel > 0) sb.AppendFormat("{0}\u0001{1}\u0002", "DELAY", DelayTimeLevel);
-        sb.AppendFormat("{0}\u0001{1}\u0002", "WAIT", WaitStoreMsgOK);
 
         return sb.Return(true);
     }

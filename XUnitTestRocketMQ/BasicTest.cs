@@ -1,7 +1,4 @@
-﻿using System;
-using System.Linq;
-using NewLife;
-using NewLife.Log;
+﻿using NewLife.Log;
 using NewLife.RocketMQ;
 using Xunit;
 

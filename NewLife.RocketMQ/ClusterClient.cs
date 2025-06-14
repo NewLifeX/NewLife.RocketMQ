@@ -330,7 +330,10 @@ public abstract class ClusterClient : DisposeBase
             var dic = header.GetExtFields();
             foreach (var item in extFields.ToDictionary())
             {
-                dic[item.Key] = item.Value + "";
+                if (item.Value != null && item.Value.GetType() == typeof(Boolean))
+                    dic[item.Key] = item.Value.ToBoolean() ? "true" : "false";
+                else
+                    dic[item.Key] = item.Value + "";
             }
         }
 
