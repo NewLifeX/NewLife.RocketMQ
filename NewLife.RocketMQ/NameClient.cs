@@ -107,8 +107,14 @@ public class NameClient : ClusterClient
                 foreach (IDictionary<String, Object> item in bs)
                 {
                     var name = item["brokerName"] + "";
+                    var cluster = item["cluster"] + "";
                     if (item["brokerAddrs"] is IDictionary<String, Object> addrs)
-                        list.Add(new BrokerInfo { Name = name, Addresses = addrs.Select(e => e.Value + "").ToArray() });
+                        list.Add(new BrokerInfo
+                        {
+                            Name = name,
+                            Cluster = cluster,
+                            Addresses = addrs.Select(e => e.Value + "").ToArray()
+                        });
                 }
             }
 
@@ -143,7 +149,7 @@ public class NameClient : ClusterClient
 
             // 有改变，重新平衡队列
             OnBrokerChange?.Invoke(this, EventArgs.Empty);
-            
+
             return list.OrderBy(t => t.Name).ToList();
         }
         catch (ResponseException ex)

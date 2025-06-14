@@ -18,6 +18,9 @@ public class BrokerInfo
     /// <summary>名称</summary>
     public String Name { get; set; }
 
+    /// <summary>集群</summary>
+    public String Cluster { get; set; }
+
     /// <summary>地址集合</summary>
     public String[] Addresses { get; set; }
 
