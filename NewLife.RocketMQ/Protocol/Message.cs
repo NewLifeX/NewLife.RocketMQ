@@ -74,10 +74,10 @@ public class Message
     {
         var sb = Pool.StringBuilder.Get();
 
-        if (!Tags.IsNullOrEmpty()) sb.AppendFormat("{0}\u0001{1}\u0002", "TAGS", Tags);
-        if (!Keys.IsNullOrEmpty()) sb.AppendFormat("{0}\u0001{1}\u0002", "KEYS", Keys);
-        if (DelayTimeLevel > 0) sb.AppendFormat("{0}\u0001{1}\u0002", "DELAY", DelayTimeLevel);
-        sb.AppendFormat("{0}\u0001{1}\u0002", "WAIT", WaitStoreMsgOK);
+        if (!Tags.IsNullOrEmpty()) sb.AppendFormat("{0}\\u0001{1}\\u0002", "TAGS", Tags);
+        if (!Keys.IsNullOrEmpty()) sb.AppendFormat("{0}\\u0001{1}\\u0002", "KEYS", Keys);
+        if (DelayTimeLevel > 0) sb.AppendFormat("{0}\\u0001{1}\\u0002", "DELAY", DelayTimeLevel);
+        sb.AppendFormat("{0}\\u0001{1}\\u0002", "WAIT", WaitStoreMsgOK);
 
         return sb.Return(true);
     }
