@@ -37,7 +37,7 @@ class Program
             Log = XTrace.Log,
         };
 
-        producer.Configure(MqSetting.Current);
+        //producer.Configure(MqSetting.Current);
         producer.Start();
 
         //mq.CreateTopic("nx_test", 2);
@@ -60,7 +60,7 @@ class Program
 
         consumer.OnConsume = OnConsume;
 
-        consumer.Configure(MqSetting.Current);
+        //consumer.Configure(MqSetting.Current);
         consumer.Start();
         Thread.Sleep(1000);
 

@@ -353,4 +353,68 @@ public class CommandTests
         var pk = cmd.Payload;
         Assert.Null(pk);
     }
+
+    [Fact]
+    public void DecodeRouteInfo_v520_Dotnet()
+    {
+        var data = """
+            00 00 01 68 00 00 00 5f 7b 22 63 6f 64 65 22 3a
+            30 2c 22 66 6c 61 67 22 3a 31 2c 22 6c 61 6e 67
+            75 61 67 65 22 3a 22 4a 41 56 41 22 2c 22 6f 70
+            61 71 75 65 22 3a 31 2c 22 73 65 72 69 61 6c 69
+            7a 65 54 79 70 65 43 75 72 72 65 6e 74 52 50 43
+            22 3a 22 4a 53 4f 4e 22 2c 22 76 65 72 73 69 6f
+            6e 22 3a 34 35 33 7d 7b 22 62 72 6f 6b 65 72 44
+            61 74 61 73 22 3a 5b 7b 22 62 72 6f 6b 65 72 41
+            64 64 72 73 22 3a 7b 30 3a 22 31 30 2e 32 2e 33
+            2e 31 31 37 3a 31 30 39 31 31 22 7d 2c 22 62 72
+            6f 6b 65 72 4e 61 6d 65 22 3a 22 62 72 6f 6b 65
+            72 2d 61 22 2c 22 63 6c 75 73 74 65 72 22 3a 22
+            44 65 66 61 75 6c 74 43 6c 75 73 74 65 72 22 2c
+            22 65 6e 61 62 6c 65 41 63 74 69 6e 67 4d 61 73
+            74 65 72 22 3a 66 61 6c 73 65 7d 5d 2c 22 66 69
+            6c 74 65 72 53 65 72 76 65 72 54 61 62 6c 65 22
+            3a 7b 7d 2c 22 71 75 65 75 65 44 61 74 61 73 22
+            3a 5b 7b 22 62 72 6f 6b 65 72 4e 61 6d 65 22 3a
+            22 62 72 6f 6b 65 72 2d 61 22 2c 22 70 65 72 6d
+            22 3a 36 2c 22 72 65 61 64 51 75 65 75 65 4e 75
+            6d 73 22 3a 38 2c 22 74 6f 70 69 63 53 79 73 46
+            6c 61 67 22 3a 30 2c 22 77 72 69 74 65 51 75 65
+            75 65 4e 75 6d 73 22 3a 38 7d 5d 7d
+            """;
+        var ms = new MemoryStream(data.ToHex());
+
+        var cmd = new Command();
+        var rs = cmd.Read(ms);
+        Assert.True(rs);
+        Assert.True(cmd.Reply);
+        Assert.Equal("""
+            {"code":0,"flag":1,"language":"JAVA","opaque":1,"serializeTypeCurrentRPC":"JSON","version":453}
+            """, cmd.RawJson);
+
+        var header = cmd.Header;
+        Assert.NotNull(header);
+        Assert.Equal(0, header.Code);
+        Assert.Equal(1, header.Flag);
+        Assert.Equal(LanguageCode.JAVA + "", header.Language);
+        Assert.Equal(SerializeType.JSON + "", header.SerializeTypeCurrentRPC);
+        Assert.Equal(MQVersion.V5_2_0, header.Version);
+        Assert.Null(header.Remark);
+
+        var ext = header.GetExtFields();
+        Assert.Empty(ext);
+
+        var pk = cmd.Payload;
+        Assert.NotNull(pk);
+
+        var target = """
+            {"brokerDatas":[{"brokerAddrs":{0:"10.2.3.117:10911"},"brokerName":"broker-a","cluster":"DefaultCluster","enableActingMaster":false}],"filterServerTable":{},"queueDatas":[{"brokerName":"broker-a","perm":6,"readQueueNums":8,"topicSysFlag":0,"writeQueueNums":8}]}
+            """;
+        var json = pk.ToStr();
+        Assert.Equal(target, json);
+
+        var dic = cmd.ReadBodyAsJson();
+        Assert.True(dic.ContainsKey("brokerDatas"));
+        Assert.True(dic.ContainsKey("queueDatas"));
+    }
 }
