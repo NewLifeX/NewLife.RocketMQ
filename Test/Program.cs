@@ -27,7 +27,7 @@ class Program
 
     static void Test1()
     {
-        JsonHelper.Default = new SystemJson();
+        //JsonHelper.Default = new SystemJson();
 
         XTrace.WriteLine("");
         XTrace.WriteLine("创建生产者……");
@@ -36,6 +36,7 @@ class Program
             Topic = "nx_test",
             NameServerAddress = "rocketmq.newlifex.com:9876",
             Version = MQVersion.V5_2_0,
+            ExternalBroker = true,
 
             Log = XTrace.Log,
         };
@@ -52,6 +53,7 @@ class Program
             Topic = producer.Topic,
             Group = "test",
             NameServerAddress = producer.NameServerAddress,
+            ExternalBroker = true,
 
             FromLastOffset = false,
             //SkipOverStoredMsgCount = 0,

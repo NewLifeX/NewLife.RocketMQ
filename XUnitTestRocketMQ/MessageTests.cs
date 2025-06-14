@@ -1,5 +1,8 @@
-﻿using NewLife;
+﻿using System;
+using NewLife;
+using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
+using NewLife.Serialization;
 using Xunit;
 
 namespace XUnitTestRocketMQ;
@@ -55,6 +58,27 @@ public class MessageTests
         Assert.Contains("KEYS\u0001Key1\u0002", properties);
         Assert.Contains("DELAY\u00012\u0002", properties);
         Assert.Contains("WAIT\u0001False\u0002", properties);
+
+        var header = new SendMessageRequestHeader
+        {
+            ProducerGroup = "TestGroup",
+            Topic = "TestTopic",
+            SysFlag = 0,
+            BornTimestamp = DateTime.UtcNow.ToLong(),
+            Flag = message.Flag,
+            Properties = message.GetProperties(),
+        };
+
+        var ext = header.GetProperties();
+        //Assert.Equal(11, ext.Count);
+        Assert.Equal("WAIT\u0001False\u0002TAGS\u0001Tag1\u0002KEYS\u0001Key1\u0002DELAY\u00012\u0002", ext["i"]);
+
+        var broker = new BrokerClient([""]);
+        var cmd = broker.CreateCommand(RequestCode.SEND_MESSAGE_V2, null, ext);
+        var json = cmd.Header.ToJson(false, false, false);
+        var js = new SystemJson();
+        var json2 = js.Write(cmd.Header, false, false, true);
+        //Assert.Equal(json, json2);
     }
 
     [Fact]

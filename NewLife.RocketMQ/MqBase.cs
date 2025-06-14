@@ -325,7 +325,7 @@ public abstract class MqBase : DisposeBase
                 for (var i = 0; i < addrs.Length; i++)
                 {
                     var addr = addrs[i];
-                    if (addr.StartsWithIgnoreCase("10.", "192.", "172.") && !ext.IsNullOrEmpty())
+                    if (addr.StartsWithIgnoreCase("127.", "10.", "192.", "172.") && !ext.IsNullOrEmpty())
                     {
                         var p = addr.IndexOf(':');
                         addrs[i] = p > 0 ? ext + addr[p..] : ext;

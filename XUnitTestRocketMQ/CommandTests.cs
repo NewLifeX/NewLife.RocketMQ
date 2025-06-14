@@ -512,6 +512,7 @@ public class CommandTests
         Assert.Equal("R01_producer_123", ext["a"]);
         Assert.Equal("TeZ_Test_Lng", ext["b"]);
         Assert.Equal("TBW102", ext["c"]);
+        Assert.Equal("UNIQ_KEY\u00012400DD02100800152B2B7D0419D6DD5E9EFC18B4AAC246212A7D0000\u0002WAIT\u0001true\u0002TAGS\u0001*\u0002", ext["i"]);
 
         var pk = cmd.Payload;
         Assert.NotNull(pk);
@@ -640,5 +641,64 @@ public class CommandTests
 
         var json = pk.ToStr();
         Assert.Equal("2025-06-13 22:54:12", json);
+    }
+
+    [Fact]
+    public void SendMessageV2_v520_Dotnet2()
+    {
+        var data = """
+            00 00 01 45 00 00 01 2e 7b 22 43 6f 64 65 22 3a
+            33 31 30 2c 22 45 78 74 46 69 65 6c 64 73 22 3a
+            7b 22 61 22 3a 22 52 30 31 5f 70 72 6f 64 75 63
+            65 72 5f 31 32 33 22 2c 22 62 22 3a 22 54 65 5a
+            5f 54 65 73 74 5f 4c 6e 67 22 2c 22 63 22 3a 22
+            54 42 57 31 30 32 22 2c 22 64 22 3a 22 34 22 2c
+            22 65 22 3a 22 30 22 2c 22 66 22 3a 22 30 22 2c
+            22 67 22 3a 22 31 37 34 39 39 32 33 33 35 32 34
+            38 36 22 2c 22 68 22 3a 22 30 22 2c 22 69 22 3a
+            22 54 41 47 53 5c 75 30 30 30 31 2a 5c 75 30 30
+            30 32 57 41 49 54 5c 75 30 30 30 31 54 72 75 65
+            5c 75 30 30 30 32 22 2c 22 6a 22 3a 22 30 22 2c
+            22 6b 22 3a 22 46 61 6c 73 65 22 7d 2c 22 4c 61
+            6e 67 75 61 67 65 22 3a 22 44 4f 54 4e 45 54 22
+            2c 22 4f 70 61 71 75 65 22 3a 31 2c 22 53 65 72
+            69 61 6c 69 7a 65 54 79 70 65 43 75 72 72 65 6e
+            74 52 50 43 22 3a 22 4a 53 4f 4e 22 2c 22 56 65
+            72 73 69 6f 6e 22 3a 34 35 33 2c 22 52 65 6d 61
+            72 6b 22 3a 22 53 45 4e 44 5f 4d 45 53 53 41 47
+            45 5f 56 32 22 7d 32 30 32 35 2d 30 36 2d 31 35
+            20 30 31 3a 34 39 3a 30 39
+            """;
+        var ms = new MemoryStream(data.ToHex());
+
+        var cmd = new Command();
+        var rs = cmd.Read(ms);
+        Assert.True(rs);
+        Assert.False(cmd.Reply);
+        Assert.Equal("""
+            {"Code":310,"ExtFields":{"a":"R01_producer_123","b":"TeZ_Test_Lng","c":"TBW102","d":"4","e":"0","f":"0","g":"1749923352486","h":"0","i":"TAGS\u0001*\u0002WAIT\u0001True\u0002","j":"0","k":"False"},"Language":"DOTNET","Opaque":1,"SerializeTypeCurrentRPC":"JSON","Version":453,"Remark":"SEND_MESSAGE_V2"}
+            """, cmd.RawJson);
+
+        var header = cmd.Header;
+        Assert.NotNull(header);
+        Assert.Equal((Int32)RequestCode.SEND_MESSAGE_V2, header.Code);
+        Assert.Equal(0, header.Flag);
+        Assert.Equal(LanguageCode.DOTNET + "", header.Language);
+        Assert.Equal(SerializeType.JSON + "", header.SerializeTypeCurrentRPC);
+        Assert.Equal(MQVersion.V5_2_0, header.Version);
+        //Assert.Null(header.Remark);
+        Assert.Equal("SEND_MESSAGE_V2", header.Remark);
+
+        var ext = header.GetExtFields();
+        //Assert.Equal(13, ext.Count);
+        Assert.Equal("R01_producer_123", ext["a"]);
+        Assert.Equal("TeZ_Test_Lng", ext["b"]);
+        Assert.Equal("TBW102", ext["c"]);
+
+        var pk = cmd.Payload;
+        Assert.NotNull(pk);
+
+        var json = pk.ToStr();
+        Assert.Equal("2025-06-15 01:49:09", json);
     }
 }
