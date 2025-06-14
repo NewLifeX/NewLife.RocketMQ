@@ -521,6 +521,70 @@ public class CommandTests
     }
 
     [Fact]
+    public void DecodeSendMessageV2_v520_Java()
+    {
+        var data = """
+            00 00 01 36 00 00 01 32 7b 22 63 6f 64 65 22 3a
+            30 2c 22 65 78 74 46 69 65 6c 64 73 22 3a 7b 22
+            71 75 65 75 65 49 64 22 3a 22 30 22 2c 22 74 72
+            61 6e 73 61 63 74 69 6f 6e 49 64 22 3a 22 32 34
+            30 30 44 44 30 32 31 30 30 38 30 30 31 35 32 42
+            32 42 37 44 30 34 31 39 44 36 44 44 35 45 39 45
+            46 43 31 38 42 34 41 41 43 32 34 36 32 31 32 41
+            37 44 30 30 30 30 22 2c 22 6d 73 67 49 64 22 3a
+            22 30 41 30 32 30 33 37 35 30 30 30 30 32 41 39
+            46 30 30 30 30 30 30 30 30 30 31 45 43 31 38 46
+            43 22 2c 22 54 52 41 43 45 5f 4f 4e 22 3a 22 74
+            72 75 65 22 2c 22 4d 53 47 5f 52 45 47 49 4f 4e
+            22 3a 22 44 65 66 61 75 6c 74 52 65 67 69 6f 6e
+            22 2c 22 71 75 65 75 65 4f 66 66 73 65 74 22 3a
+            22 30 22 7d 2c 22 66 6c 61 67 22 3a 31 2c 22 6c
+            61 6e 67 75 61 67 65 22 3a 22 4a 41 56 41 22 2c
+            22 6f 70 61 71 75 65 22 3a 32 2c 22 73 65 72 69
+            61 6c 69 7a 65 54 79 70 65 43 75 72 72 65 6e 74
+            52 50 43 22 3a 22 4a 53 4f 4e 22 2c 22 76 65 72
+            73 69 6f 6e 22 3a 34 35 33 7d
+            """;
+        var ms = new MemoryStream(data.ToHex());
+
+        var cmd = new Command();
+        var rs = cmd.Read(ms);
+        Assert.True(rs);
+        Assert.True(cmd.Reply);
+        Assert.Equal("""
+            {"code":0,"extFields":{"queueId":"0","transactionId":"2400DD02100800152B2B7D0419D6DD5E9EFC18B4AAC246212A7D0000","msgId":"0A02037500002A9F0000000001EC18FC","TRACE_ON":"true","MSG_REGION":"DefaultRegion","queueOffset":"0"},"flag":1,"language":"JAVA","opaque":2,"serializeTypeCurrentRPC":"JSON","version":453}
+            """, cmd.RawJson);
+
+        var header = cmd.Header;
+        Assert.NotNull(header);
+        Assert.Equal(0, header.Code);
+        Assert.Equal(1, header.Flag);
+        Assert.Equal(LanguageCode.JAVA + "", header.Language);
+        Assert.Equal(SerializeType.JSON + "", header.SerializeTypeCurrentRPC);
+        Assert.Equal(MQVersion.V5_2_0, header.Version);
+        Assert.Null(header.Remark);
+
+        var ext = header.GetExtFields();
+        Assert.Equal(6, ext.Count);
+        Assert.Equal("0", ext["queueId"]);
+        Assert.Equal("2400DD02100800152B2B7D0419D6DD5E9EFC18B4AAC246212A7D0000", ext["transactionId"]);
+        Assert.Equal("0A02037500002A9F0000000001EC18FC", ext["msgId"]);
+        Assert.Equal("true", ext["TRACE_ON"]);
+        Assert.Equal("DefaultRegion", ext["MSG_REGION"]);
+        Assert.Equal("0", ext["queueOffset"]);
+
+        var result = new SendResult();
+        result.Read(ext);
+        Assert.Equal("2400DD02100800152B2B7D0419D6DD5E9EFC18B4AAC246212A7D0000", result.TransactionId);
+        Assert.Equal("0A02037500002A9F0000000001EC18FC", result.MsgId);
+        Assert.Equal("DefaultRegion", result.RegionId);
+        Assert.Equal(0, result.QueueOffset);
+
+        var pk = cmd.Payload;
+        Assert.Null(pk);
+    }
+
+    [Fact]
     public void SendMessageV2_v520_Dotnet()
     {
         var data = """

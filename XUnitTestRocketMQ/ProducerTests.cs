@@ -1,4 +1,7 @@
-﻿using NewLife.Log;
+﻿using Moq;
+using NewLife;
+using NewLife.Data;
+using NewLife.Log;
 using NewLife.RocketMQ;
 using Xunit;
 
