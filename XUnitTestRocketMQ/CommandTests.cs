@@ -206,7 +206,7 @@ public class CommandTests
     }
 
     [Fact]
-    public void GetRouteInfo()
+    public void GetRouteInfo_v520_Java()
     {
         var data = """
             00 00 00 8a 00 00 00 86 7b 22 63 6f 64 65 22 3a
@@ -235,16 +235,55 @@ public class CommandTests
         Assert.Equal(LanguageCode.JAVA + "", header.Language);
         Assert.Equal(SerializeType.JSON + "", header.SerializeTypeCurrentRPC);
         Assert.Equal(MQVersion.V5_2_0, header.Version);
-        //Assert.Empty(header.Remark);
-        Assert.Equal("HEART_BEAT", header.Remark);
+        Assert.Null(header.Remark);
 
         var ext = header.GetExtFields();
-        Assert.Empty(ext);
+        Assert.Single(ext);
+        Assert.Equal("TeZ_Test_Lng", ext["topic"]);
 
         var pk = cmd.Payload;
-        Assert.NotNull(pk);
+        Assert.Null(pk);
+    }
 
-        var dic = JsonParser.Decode(pk.ToStr());
-        Assert.Equal(3, dic.Count);
+    [Fact]
+    public void GetRouteInfo_v520_Dotnet()
+    {
+        var data = """
+            00 00 00 a5 00 00 00 a1 7b 22 63 6f 64 65 22 3a
+            31 30 35 2c 22 65 78 74 46 69 65 6c 64 73 22 3a
+            7b 22 74 6f 70 69 63 22 3a 22 54 65 5a 5f 54 65
+            73 74 5f 4c 6e 67 22 7d 2c 22 6c 61 6e 67 75 61
+            67 65 22 3a 22 44 4f 54 4e 45 54 22 2c 22 6f 70
+            61 71 75 65 22 3a 31 2c 22 73 65 72 69 61 6c 69
+            7a 65 54 79 70 65 43 75 72 72 65 6e 74 52 50 43
+            22 3a 22 4a 53 4f 4e 22 2c 22 76 65 72 73 69 6f
+            6e 22 3a 33 37 33 2c 22 72 65 6d 61 72 6b 22 3a
+            22 47 45 54 5f 52 4f 55 54 45 49 4e 54 4f 5f 42
+            59 5f 54 4f 50 49 43 22 7d
+            """;
+        var ms = new MemoryStream(data.ToHex());
+
+        var cmd = new Command();
+        var rs = cmd.Read(ms);
+        Assert.True(rs);
+        Assert.Equal("""
+            {"code":105,"extFields":{"topic":"TeZ_Test_Lng"},"language":"DOTNET","opaque":1,"serializeTypeCurrentRPC":"JSON","version":373,"remark":"GET_ROUTEINTO_BY_TOPIC"}
+            """, cmd.RawJson);
+
+        var header = cmd.Header;
+        Assert.NotNull(header);
+        Assert.Equal((Int32)RequestCode.GET_ROUTEINTO_BY_TOPIC, header.Code);
+        Assert.Equal(0, header.Flag);
+        Assert.Equal(LanguageCode.DOTNET + "", header.Language);
+        Assert.Equal(SerializeType.JSON + "", header.SerializeTypeCurrentRPC);
+        Assert.Equal(MQVersion.V5_2_0, header.Version);
+        Assert.Null(header.Remark);
+
+        var ext = header.GetExtFields();
+        Assert.Single(ext);
+        Assert.Equal("TeZ_Test_Lng", ext["topic"]);
+
+        var pk = cmd.Payload;
+        Assert.Null(pk);
     }
 }

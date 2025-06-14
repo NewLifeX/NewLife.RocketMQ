@@ -1,13 +1,13 @@
-﻿using NewLife;
-using NewLife.Log;
-using NewLife.RocketMQ;
-using NewLife.RocketMQ.Common;
-using NewLife.RocketMQ.Protocol;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using NewLife;
+using NewLife.Log;
+using NewLife.RocketMQ;
+using NewLife.RocketMQ.Common;
+using NewLife.RocketMQ.Protocol;
 
 namespace Test;
 
@@ -32,6 +32,7 @@ class Program
         {
             Topic = "nx_test",
             NameServerAddress = "rocketmq.newlifex.com:9876",
+            Version = MQVersion.V5_2_0,
 
             Log = XTrace.Log,
         };

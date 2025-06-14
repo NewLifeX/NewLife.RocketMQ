@@ -279,6 +279,7 @@ public class Command : IAccessor, IMessage
         {
             Opaque = Header.Opaque,
             SerializeTypeCurrentRPC = Header.SerializeTypeCurrentRPC,
+            Version = Header.Version,
         };
 
         var cmd = new Command

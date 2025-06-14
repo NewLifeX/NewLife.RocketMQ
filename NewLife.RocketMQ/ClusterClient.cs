@@ -303,6 +303,7 @@ public abstract class ClusterClient : DisposeBase
         {
             Code = (Int32)request,
             SerializeTypeCurrentRPC = _serializeType + "",
+            Version = Config.Version,
             Remark = request + "",
         };
 

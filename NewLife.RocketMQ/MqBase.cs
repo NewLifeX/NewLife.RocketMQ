@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
+using System.Xml.Serialization;
 using NewLife.Log;
 using NewLife.Net;
 using NewLife.RocketMQ.Protocol;
@@ -60,6 +61,9 @@ public abstract class MqBase : DisposeBase
 
     /// <summary>序列化类型。默认Json，支持RocketMQ二进制</summary>
     public SerializeType SerializeType { get; set; } = SerializeType.JSON;
+
+    /// <summary>让通信层知道对方的版本号，响应方可以以此做兼容老版本等的特殊操作</summary>
+    public MQVersion Version { get; set; } = MQVersion.V4_8_0;
 
     /// <summary>SSL协议。默认None</summary>
     public SslProtocols SslProtocol { get; set; } = SslProtocols.None;

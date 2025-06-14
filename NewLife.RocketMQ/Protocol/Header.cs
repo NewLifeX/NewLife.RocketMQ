@@ -12,7 +12,7 @@ public class Header
 
     /// <summary>扩展字段</summary>
     /// <remarks>
-    /// 这个字段不通的请求/响应不一样，完全自定义。数据结构上是java的hashmap。
+    /// 这个字段在不同的请求/响应不一样，完全自定义。数据结构上是java的hashmap。
     /// 在Java的每个RemotingCammand中，其实都带有一个CommandCustomHeader的属性成员，可以认为他是一个强类型的extFields，
     /// 在最后传输的时候，这个CommandCustomHeader会被忽略，而传输前会把其中的所有字段全部都原封不动塞到extFields中，以作传输。
     /// </remarks>
@@ -40,7 +40,7 @@ public class Header
     [XmlElement("serializeTypeCurrentRPC")]
     public String SerializeTypeCurrentRPC { get; set; } = "JSON";
 
-    /// <summary>给通信层知道对方的版本号，响应方可以以此做兼容老版本等的特殊操作</summary>
+    /// <summary>让通信层知道对方的版本号，响应方可以以此做兼容老版本等的特殊操作</summary>
     [XmlElement("version")]
     public MQVersion Version { get; set; } = MQVersion.V4_8_0;
 
