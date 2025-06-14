@@ -18,6 +18,10 @@ public class Command : IAccessor, IMessage
     /// <summary>主体</summary>
     [XmlIgnore, IgnoreDataMember]
     public IPacket Payload { get; set; }
+
+    /// <summary>原始Json</summary>
+    [XmlIgnore, IgnoreDataMember]
+    public String RawJson { get; private set; }
     #endregion
 
     #region 扩展属性
@@ -66,6 +70,8 @@ public class Command : IAccessor, IMessage
             if (type == SerializeType.JSON)
             {
                 var json = bn.ReadBytes(headerLen).ToStr();
+                RawJson = json;
+
                 var header = json.ToJsonEntity<Header>();
                 if (header.SerializeTypeCurrentRPC.IsNullOrEmpty()) header.SerializeTypeCurrentRPC = type + "";
 
@@ -116,9 +122,9 @@ public class Command : IAccessor, IMessage
             else
                 throw new NotSupportedException($"不支持[{type}]序列化");
         }
-        catch
+        catch (Exception ex)
         {
-            XTrace.WriteLine("序列化错误！");
+            XTrace.WriteLine("序列化错误！{0}", ex.Message);
             return false;
         }
 

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace NewLife.RocketMQ.Protocol;
+﻿namespace NewLife.RocketMQ.Protocol;
 
 /// <summary>语言类型</summary>
 public enum LanguageCode : Byte
