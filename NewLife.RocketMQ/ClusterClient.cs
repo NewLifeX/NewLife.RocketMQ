@@ -297,15 +297,20 @@ public abstract class ClusterClient : DisposeBase
         return rs;
     }
 
-    private Command CreateCommand(RequestCode request, Object body, Object extFields)
+    /// <summary>创建命令</summary>
+    /// <param name="request"></param>
+    /// <param name="body"></param>
+    /// <param name="extFields"></param>
+    /// <returns></returns>
+    public virtual Command CreateCommand(RequestCode request, Object body, Object extFields)
     {
         var header = new Header
         {
             Code = (Int32)request,
             SerializeTypeCurrentRPC = _serializeType + "",
-            Version = Config.Version,
             Remark = request + "",
         };
+        if (Config != null && Config.Version > 0) header.Version = Config.Version;
 
         var cmd = new Command
         {

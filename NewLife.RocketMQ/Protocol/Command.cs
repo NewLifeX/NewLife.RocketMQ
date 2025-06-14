@@ -181,6 +181,7 @@ public class Command : IAccessor, IMessage
             // 计算头部
             //var json = Header.ToJson();
             var json = Header.ToJson(false, false, false);
+            RawJson = json;
             var hs = json.GetBytes();
 
             // 计算长度

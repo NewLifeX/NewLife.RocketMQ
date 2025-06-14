@@ -8,6 +8,7 @@ using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Common;
 using NewLife.RocketMQ.Protocol;
+using NewLife.Serialization;
 
 namespace Test;
 
@@ -26,6 +27,8 @@ class Program
 
     static void Test1()
     {
+        JsonHelper.Default = new SystemJson();
+
         XTrace.WriteLine("");
         XTrace.WriteLine("创建生产者……");
         var producer = new Producer
