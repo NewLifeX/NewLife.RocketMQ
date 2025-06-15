@@ -701,4 +701,105 @@ public class CommandTests
         var json = pk.ToStr();
         Assert.Equal("2025-06-15 01:49:09", json);
     }
+
+    [Fact]
+    public void HeartBeat_v520_Java()
+    {
+        var data = """
+            00 00 01 3c 00 00 00 6f 7b 22 63 6f 64 65 22 3a
+            33 34 2c 22 65 78 74 46 69 65 6c 64 73 22 3a 7b
+            7d 2c 22 66 6c 61 67 22 3a 30 2c 22 6c 61 6e 67
+            75 61 67 65 22 3a 22 4a 41 56 41 22 2c 22 6f 70
+            61 71 75 65 22 3a 33 2c 22 73 65 72 69 61 6c 69
+            7a 65 54 79 70 65 43 75 72 72 65 6e 74 52 50 43
+            22 3a 22 4a 53 4f 4e 22 2c 22 76 65 72 73 69 6f
+            6e 22 3a 34 35 33 7d 7b 22 63 6c 69 65 6e 74 49
+            44 22 3a 22 31 30 2e 31 2e 35 2e 39 40 34 30 37
+            30 30 23 39 35 35 32 32 30 30 38 37 38 32 32 35
+            30 30 22 2c 22 63 6f 6e 73 75 6d 65 72 44 61 74
+            61 53 65 74 22 3a 5b 5d 2c 22 68 65 61 72 74 62
+            65 61 74 46 69 6e 67 65 72 70 72 69 6e 74 22 3a
+            30 2c 22 70 72 6f 64 75 63 65 72 44 61 74 61 53
+            65 74 22 3a 5b 7b 22 67 72 6f 75 70 4e 61 6d 65
+            22 3a 22 43 4c 49 45 4e 54 5f 49 4e 4e 45 52 5f
+            50 52 4f 44 55 43 45 52 22 7d 2c 7b 22 67 72 6f
+            75 70 4e 61 6d 65 22 3a 22 52 30 31 5f 70 72 6f
+            64 75 63 65 72 5f 31 32 33 22 7d 5d 2c 22 77 69
+            74 68 6f 75 74 53 75 62 22 3a 66 61 6c 73 65 7d
+            """;
+        var ms = new MemoryStream(data.ToHex());
+
+        var cmd = new Command();
+        var rs = cmd.Read(ms);
+        Assert.True(rs);
+        Assert.False(cmd.Reply);
+        Assert.Equal("""
+            {"code":34,"extFields":{},"flag":0,"language":"JAVA","opaque":3,"serializeTypeCurrentRPC":"JSON","version":453}
+            """, cmd.RawJson);
+
+        var header = cmd.Header;
+        Assert.NotNull(header);
+        Assert.Equal((Int32)RequestCode.HEART_BEAT, header.Code);
+        Assert.Equal(0, header.Flag);
+        Assert.Equal(LanguageCode.JAVA + "", header.Language);
+        Assert.Equal(SerializeType.JSON + "", header.SerializeTypeCurrentRPC);
+        Assert.Equal(MQVersion.V5_2_0, header.Version);
+        Assert.Null(header.Remark);
+
+        var ext = header.GetExtFields();
+        Assert.Empty(ext);
+
+        var pk = cmd.Payload;
+        Assert.NotNull(pk);
+
+        var json = pk.ToStr();
+        Assert.NotEmpty(json);
+        Assert.Equal("""
+            {"clientID":"10.1.5.9@40700#955220087822500","consumerDataSet":[],"heartbeatFingerprint":0,"producerDataSet":[{"groupName":"CLIENT_INNER_PRODUCER"},{"groupName":"R01_producer_123"}],"withoutSub":false}
+            """, json);
+    }
+
+    [Fact]
+    public void DecodeHeartBeat_v520_Java()
+    {
+        var data = """
+            00 00 00 aa 00 00 00 a6 7b 22 63 6f 64 65 22 3a
+            30 2c 22 65 78 74 46 69 65 6c 64 73 22 3a 7b 22
+            49 53 5f 53 55 50 50 4f 52 54 5f 48 45 41 52 54
+            5f 42 45 41 54 5f 56 32 22 3a 22 74 72 75 65 22
+            2c 22 49 53 5f 53 55 42 5f 43 48 41 4e 47 45 22
+            3a 22 74 72 75 65 22 7d 2c 22 66 6c 61 67 22 3a
+            31 2c 22 6c 61 6e 67 75 61 67 65 22 3a 22 4a 41
+            56 41 22 2c 22 6f 70 61 71 75 65 22 3a 33 2c 22
+            73 65 72 69 61 6c 69 7a 65 54 79 70 65 43 75 72
+            72 65 6e 74 52 50 43 22 3a 22 4a 53 4f 4e 22 2c
+            22 76 65 72 73 69 6f 6e 22 3a 34 35 33 7d
+            """;
+        var ms = new MemoryStream(data.ToHex());
+
+        var cmd = new Command();
+        var rs = cmd.Read(ms);
+        Assert.True(rs);
+        Assert.True(cmd.Reply);
+        Assert.Equal("""
+            {"code":0,"extFields":{"IS_SUPPORT_HEART_BEAT_V2":"true","IS_SUB_CHANGE":"true"},"flag":1,"language":"JAVA","opaque":3,"serializeTypeCurrentRPC":"JSON","version":453}
+            """, cmd.RawJson);
+
+        var header = cmd.Header;
+        Assert.NotNull(header);
+        Assert.Equal(0, header.Code);
+        Assert.Equal(1, header.Flag);
+        Assert.Equal(LanguageCode.JAVA + "", header.Language);
+        Assert.Equal(SerializeType.JSON + "", header.SerializeTypeCurrentRPC);
+        Assert.Equal(MQVersion.V5_2_0, header.Version);
+        Assert.Null(header.Remark);
+
+        var ext = header.GetExtFields();
+        Assert.Equal(2, ext.Count);
+        Assert.Equal("true", ext["IS_SUPPORT_HEART_BEAT_V2"]);
+        Assert.Equal("true", ext["IS_SUB_CHANGE"]);
+
+        var pk = cmd.Payload;
+        Assert.Null(pk);
+    }
 }
