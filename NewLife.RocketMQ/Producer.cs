@@ -2,6 +2,7 @@
 using NewLife.Reflection;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Common;
+using NewLife.RocketMQ.MessageTrace;
 using NewLife.RocketMQ.Models;
 using NewLife.RocketMQ.Protocol;
 
@@ -29,6 +30,9 @@ public class Producer : MqBase
 
     /// <summary>最大消息大小。默认4*1024*1024</summary>
     public Int32 MaxMessageSize { get; set; } = 4 * 1024 * 1024;
+
+    private readonly IList<ISendMessageHook> _sendMessageHooks = new List<ISendMessageHook>();
+    private AsyncTraceDispatcher _traceDispatcher;
     #endregion
 
     #region 基础方法
@@ -37,6 +41,13 @@ public class Producer : MqBase
     protected override void OnStart()
     {
         base.OnStart();
+
+        if (EnableMessageTrace)
+        {
+            _traceDispatcher = new AsyncTraceDispatcher();
+            _traceDispatcher.Start(NameServerAddress);
+            _sendMessageHooks.Add(new MessageTraceHook(_traceDispatcher));
+        }
 
         LoadBalance ??= new WeightRoundRobin();
 
@@ -74,10 +85,29 @@ public class Producer : MqBase
             // 性能埋点
             using var span = Tracer?.NewSpan($"mq:{Name}:Publish", message.BodyString);
             span?.AppendTag($"queue={mq}");
+
+            SendMessageContext context = null;
             try
             {
                 // 根据队列获取Broker客户端
                 var bk = GetBroker(mq.BrokerName);
+
+                context = new SendMessageContext
+                {
+                    ProducerGroup = Group,
+                    Message = message,
+                    Mq = mq,
+                    BrokerAddr = bk.Name,
+                };
+                foreach (var hook in _sendMessageHooks)
+                {
+                    try { hook.ExecuteHookBefore(context); }
+                    catch (Exception e) 
+                    { 
+                        if (Log.Enable) Log.Error(e.Message); 
+                    }
+                }
+
                 var rs = bk.Invoke(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties(), true);
 
                 // 包装结果
@@ -96,6 +126,13 @@ public class Producer : MqBase
                 };
                 result.Read(rs.Header?.ExtFields);
 
+                context.SendResult = result;
+                foreach (var hook in _sendMessageHooks)
+                {
+                    try { hook.ExecuteHookAfter(context); }
+                    catch (Exception e) { if (Log.Enable) Log.Error(e.Message); }
+                }
+
                 span?.AppendTag($"Status={result.Status}");
                 span?.AppendTag($"MsgId={result.MsgId}");
                 span?.AppendTag($"OffsetMsgId={result.OffsetMsgId}");
@@ -108,6 +145,16 @@ public class Producer : MqBase
             }
             catch (Exception ex)
             {
+                if (context != null)
+                {
+                    context.E = ex;
+                    foreach (var hook in _sendMessageHooks)
+                    {
+                        try { hook.ExecuteHookAfter(context); }
+                        catch (Exception e) { if (Log.Enable) Log.Error(e.Message); }
+                    }
+                }
+
                 // 如果网络异常，则延迟重发
                 if (i < RetryTimesWhenSendFailed)
                 {
@@ -182,9 +229,34 @@ public class Producer : MqBase
             using var span = Tracer?.NewSpan($"mq:{Name}:PublishAsync", message.BodyString);
             try
             {
-                // 根据队列获取Broker客户端
                 var bk = GetBroker(mq.BrokerName);
+
+                var context = new SendMessageContext();
+                foreach (var hook in _sendMessageHooks)
+                {
+                    try
+                    {
+                        hook.ExecuteHookBefore(context);
+                    }
+                    catch (Exception e)
+                    {
+                        if (Log.Enable) Log.Error(e.Message);
+                    }
+                }
+
                 var rs = await bk.InvokeAsync(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties(), true, cancellationToken).ConfigureAwait(false);
+
+                foreach (var hook in _sendMessageHooks)
+                {
+                    try
+                    {
+                        hook.ExecuteHookAfter(context);
+                    }
+                    catch (Exception e)
+                    {
+                        if (Log.Enable) Log.Error(e.Message);
+                    }
+                }
 
                 // 包装结果
                 var sendResult = new SendResult
@@ -265,7 +337,28 @@ public class Producer : MqBase
             {
                 // 根据队列获取Broker客户端
                 var bk = GetBroker(mq.BrokerName);
+
+                var context = new SendMessageContext
+                {
+                    ProducerGroup = Group,
+                    Message = message,
+                    Mq = mq,
+                    BrokerAddr = bk.Name,
+                };
+                foreach (var hook in _sendMessageHooks)
+                {
+                    try
+                    {
+                        hook.ExecuteHookBefore(context);
+                    }
+                    catch (Exception e)
+                    {
+                        if (Log.Enable) Log.Error(e.Message);
+                    }
+                }
+
                 var rs = bk.InvokeOneway(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties());
+
                 // 包装结果
                 var sendResult = new SendResult
                 {
@@ -278,6 +371,20 @@ public class Producer : MqBase
                         _ => SendStatus.SendOK,
                     }
                 };
+
+                context.SendResult = sendResult;
+                foreach (var hook in _sendMessageHooks)
+                {
+                    try
+                    {
+                        hook.ExecuteHookAfter(context);
+                    }
+                    catch (Exception e)
+                    {
+                        if (Log.Enable) Log.Error(e.Message);
+                    }
+                }
+
                 if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("{0}", sendResult);
 
                 return sendResult;
@@ -338,7 +445,28 @@ public class Producer : MqBase
             {
                 // 根据队列获取Broker客户端
                 var bk = GetBroker(mq.BrokerName);
+
+                var context = new SendMessageContext
+                {
+                    ProducerGroup = Group,
+                    Message = message,
+                    Mq = mq,
+                    BrokerAddr = bk.Name,
+                };
+                foreach (var hook in _sendMessageHooks)
+                {
+                    try
+                    {
+                        hook.ExecuteHookBefore(context);
+                    }
+                    catch (Exception e)
+                    {
+                        if (Log.Enable) Log.Error(e.Message);
+                    }
+                }
+
                 var rs = bk.InvokeOneway(RequestCode.SEND_MESSAGE_V2, message.Body, header.GetProperties());
+
                 // 包装结果
                 var sendResult = new SendResult
                 {
@@ -351,6 +479,20 @@ public class Producer : MqBase
                         _ => SendStatus.SendOK,
                     }
                 };
+
+                context.SendResult = sendResult;
+                foreach (var hook in _sendMessageHooks)
+                {
+                    try
+                    {
+                        hook.ExecuteHookAfter(context);
+                    }
+                    catch (Exception e)
+                    {
+                        if (Log.Enable) Log.Error(e.Message);
+                    }
+                }
+
                 if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("{0}", sendResult);
 
                 return sendResult;

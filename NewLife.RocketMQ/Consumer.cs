@@ -11,6 +11,8 @@ using NewLife.RocketMQ.Protocol.ConsumerStates;
 using NewLife.Serialization;
 using NewLife.Threading;
 
+using NewLife.RocketMQ.MessageTrace;
+
 namespace NewLife.RocketMQ;
 
 /// <summary>消费者</summary>
@@ -54,6 +56,9 @@ public class Consumer : MqBase
 
     /// <summary>消费事件</summary>
     public event EventHandler<ConsumeEventArgs> Consumed;
+
+    private readonly IList<IConsumeMessageHook> _consumeMessageHooks = new List<IConsumeMessageHook>();
+    private AsyncTraceDispatcher _traceDispatcher;
     #endregion
 
     #region 构造
@@ -84,6 +89,13 @@ public class Consumer : MqBase
     {
         WriteLog("正在准备消费 {0}", Topic);
 
+        if (EnableMessageTrace)
+        {
+            _traceDispatcher = new AsyncTraceDispatcher();
+            _traceDispatcher.Start(NameServerAddress);
+            _consumeMessageHooks.Add(new MessageTraceHook(_traceDispatcher));
+        }
+
         var list = Data;
         if (list == null)
         {
@@ -98,10 +110,10 @@ public class Consumer : MqBase
                 GroupName = Group,
                 ConsumeFromWhere = FromLastOffset ? "CONSUME_FROM_LAST_OFFSET" : "CONSUME_FROM_FIRST_OFFSET",
                 MessageModel = MessageModel.ToString().ToUpper(),
-                SubscriptionDataSet = [sd],
+                SubscriptionDataSet = new[] { sd },
             };
 
-            list = [cd];
+            list = new[] { cd };
 
             Data = list;
         }
@@ -518,10 +530,44 @@ public class Consumer : MqBase
     {
         if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("{0}", result);
 
+        var context = new ConsumeMessageContext
+        {
+            ConsumerGroup = Group,
+            Mq = queue,
+            MsgList = result.Messages.ToList(),
+        };
+
+        foreach (var hook in _consumeMessageHooks)
+        {
+            try
+            {
+                hook.ExecuteHookBefore(context);
+            }
+            catch (Exception e)
+            {
+                if (Log.Enable) Log.Error(e.Message);
+            }
+        }
+
         Consumed?.Invoke(this, new ConsumeEventArgs { Queue = queue, Messages = result.Messages, Result = result });
 
-        if (OnConsume != null) return OnConsume(queue, result.Messages);
-        if (OnConsumeAsync != null) return await OnConsumeAsync(queue, result.Messages, cancellationToken).ConfigureAwait(false);
+        var success = false;
+        if (OnConsume != null) success = OnConsume(queue, result.Messages);
+        if (OnConsumeAsync != null) success = await OnConsumeAsync(queue, result.Messages, cancellationToken).ConfigureAwait(false);
+
+        context.Success = success;
+
+        foreach (var hook in _consumeMessageHooks)
+        {
+            try
+            {
+                hook.ExecuteHookAfter(context);
+            }
+            catch (Exception e)
+            {
+                if (Log.Enable) Log.Error(e.Message);
+            }
+        }
 
         return true;
     }
@@ -548,6 +594,8 @@ public class Consumer : MqBase
 
         await Task.WhenAll(ts).ConfigureAwait(false);
     }
+
+    
 
     #endregion
 
