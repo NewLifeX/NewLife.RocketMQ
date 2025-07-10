@@ -98,8 +98,11 @@ public abstract class MqBase : DisposeBase
     /// <summary>Json序列化主机</summary>
     public IJsonHost JsonHost { get; set; } = JsonHelper.Default;
 
-    /// <summary>性能跟踪</summary>
+    /// <summary>性能追踪器</summary>
     public ITracer Tracer { get; set; } = DefaultTracer.Instance;
+
+    /// <summary>是否启用消息轨迹</summary>
+    public Boolean EnableMessageTrace { get; set; }
 
     private String _group;
     private String _topic;
