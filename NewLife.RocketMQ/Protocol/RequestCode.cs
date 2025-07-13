@@ -11,6 +11,7 @@ public enum RequestCode
 
     /// <summary>查询消息</summary>
     QUERY_MESSAGE = 12,
+
     /// <summary>查询Broker偏移</summary>
     QUERY_BROKER_OFFSET = 13,
 
@@ -19,11 +20,13 @@ public enum RequestCode
 
     /// <summary>更新消费者偏移</summary>
     UPDATE_CONSUMER_OFFSET = 15,
+
     /// <summary>更新或创建Topic</summary>
     UPDATE_AND_CREATE_TOPIC = 17,
 
     /// <summary>用于向brokers查询所有的topic和它们的配置</summary>
     GET_ALL_TOPIC_CONFIG = 21,
+
     /// <summary>获取Topic配置列表</summary>
     GET_TOPIC_CONFIG_LIST = 22,
 
@@ -41,6 +44,7 @@ public enum RequestCode
 
     /// <summary>获取代理运行时信息,包括broker版本、磁盘容量、系统负载等</summary>
     GET_BROKER_RUNTIME_INFO = 28,
+
     /// <summary>按时间戳搜索偏移</summary>
     SEARCH_OFFSET_BY_TIMESTAMP = 29,
 
@@ -120,10 +124,13 @@ public enum RequestCode
 
     /// <summary>查询topic相关的统计信息</summary>
     GET_TOPIC_STATS_INFO = 202,
+
     /// <summary>获取消费者连接列表</summary>
     GET_CONSUMER_CONNECTION_LIST = 203,
+
     /// <summary>获取生产者连接列表</summary>
     GET_PRODUCER_CONNECTION_LIST = 204,
+
     /// <summary>写Broker权限</summary>
     WIPE_WRITE_PERM_OF_BROKER = 205,
 
@@ -132,6 +139,7 @@ public enum RequestCode
 
     /// <summary>删除订阅组</summary>
     DELETE_SUBSCRIPTIONGROUP = 207,
+
     /// <summary>获取消费者状态</summary>
     GET_CONSUME_STATS = 208,
 
@@ -140,8 +148,10 @@ public enum RequestCode
 
     /// <summary>恢复消费者</summary>
     RESUME_CONSUMER = 210,
+
     /// <summary>重置消费者偏移</summary>
     RESET_CONSUMER_OFFSET_IN_CONSUMER = 211,
+
     /// <summary>重置Broker中的消费者偏移</summary>
     RESET_CONSUMER_OFFSET_IN_BROKER = 212,
 
@@ -156,6 +166,7 @@ public enum RequestCode
 
     /// <summary>在Name服务器中删除Topic</summary>
     DELETE_TOPIC_IN_NAMESRV = 216,
+
     /// <summary>根据命名空间获取KV列表</summary>
     GET_KVLIST_BY_NAMESPACE = 219,
 
@@ -179,6 +190,7 @@ public enum RequestCode
 
     /// <summary>注册文件服务器</summary>
     REGISTER_FILTER_SERVER = 301,
+
     /// <summary>注册消息过滤类</summary>
     REGISTER_MESSAGE_FILTER_CLASS = 302,
 
@@ -187,6 +199,7 @@ public enum RequestCode
 
     /// <summary>从名称服务器查询系统Topic列表</summary>
     GET_SYSTEM_TOPIC_LIST_FROM_NS = 304,
+
     /// <summary>从Broker服务器查询系统Topic列表</summary>
     GET_SYSTEM_TOPIC_LIST_FROM_BROKER = 305,
 
@@ -198,6 +211,7 @@ public enum RequestCode
 
     /// <summary>查询协调器偏移</summary>
     QUERY_CORRECTION_OFFSET = 308,
+
     /// <summary>直接消费消息</summary>
     CONSUME_MESSAGE_DIRECTLY = 309,
 

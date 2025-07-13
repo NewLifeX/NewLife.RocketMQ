@@ -569,7 +569,7 @@ public class Consumer : MqBase
             }
         }
 
-        return true;
+        return success;
     }
 
     private async Task PersistAll(IEnumerable<QueueStore> stores)
@@ -594,9 +594,6 @@ public class Consumer : MqBase
 
         await Task.WhenAll(ts).ConfigureAwait(false);
     }
-
-    
-
     #endregion
 
     #region 消费端负载均衡
