@@ -298,8 +298,8 @@ public class Consumer : MqBase
             topic = Topic,
         }, false, cancellationToken).ConfigureAwait(false);
 
-        var dic = rs?.Header?.ExtFields;
-        if (dic == null) return false;
+        //var dic = rs?.Header?.ExtFields;
+        //if (dic == null) return false;
 
         return true;
     }
@@ -376,7 +376,8 @@ public class Consumer : MqBase
         Interlocked.Increment(ref _version);
 
         // 关线程
-        Stop();
+        //Stop();
+        StopSchedule();
 
         // 如果有多个消费者，则等一段时间让大家停止消费，尽量避免重复消费
         //if (_Consumers != null && _Consumers.Length > 1) Thread.Sleep(10_000);
@@ -389,17 +390,17 @@ public class Consumer : MqBase
         }
 
         var source = new CancellationTokenSource();
+        WriteLog("正在创建[{0}]个消费线程，Group={1}，Topic={2}", qs.Length, Group, Topic);
 
         // 开线程
         var tasks = new Task[qs.Length];
         for (var i = 0; i < qs.Length; i++)
         {
             var queueStore = qs[i];
-            var task = Task.Run(async () =>
+            tasks[i] = Task.Factory.StartNew(async () =>
             {
                 await DoPull(queueStore, source.Token).ConfigureAwait(false);
-            });
-            tasks[i] = task;
+            }, TaskCreationOptions.LongRunning);
         }
         _tasks = tasks;
 
@@ -443,6 +444,7 @@ public class Consumer : MqBase
     private async Task DoPull(QueueStore st, CancellationToken cancellationToken)
     {
         var mq = st.Queue;
+        WriteLog("开始消费[{0}]，Group={1}，{2}，Offset={3}，CommitOffset={4}", Topic, Group, mq, st.Offset, st.CommitOffset);
 
         var currentVersion = _version;
         while (currentVersion == _version && !cancellationToken.IsCancellationRequested)
@@ -518,7 +520,13 @@ public class Consumer : MqBase
         }
 
         // 保存消费进度
-        if (st.Offset >= 0 && st.Offset != st.CommitOffset) await UpdateOffset(mq, st.Offset, cancellationToken).ConfigureAwait(false);
+        if (st.Offset >= 0 && st.Offset != st.CommitOffset)
+        {
+            var rs = await UpdateOffset(mq, st.Offset, cancellationToken).ConfigureAwait(false);
+            st.CommitOffset = st.Offset;
+        }
+
+        WriteLog("消费[{0}]结束", Topic);
     }
 
     /// <summary>拉取到一批消息</summary>
