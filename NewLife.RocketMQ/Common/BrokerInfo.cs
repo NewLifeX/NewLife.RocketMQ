@@ -35,6 +35,9 @@ public class BrokerInfo
 
     /// <summary>主题同步标记</summary>
     public Int32 TopicSynFlag { get; set; }
+
+    /// <summary>是否主节点</summary>
+    public Boolean IsMaster { get; set; }
     #endregion
 
     #region 相等
