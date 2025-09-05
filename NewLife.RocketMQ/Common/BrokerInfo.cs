@@ -51,7 +51,8 @@ public class BrokerInfo
 
         return x.Name == y.Name && (x.Addresses == y.Addresses || x.Addresses != null && y.Addresses != null && x.Addresses.SequenceEqual(y.Addresses))
             && x.Permission == y.Permission && x.TopicSynFlag == y.TopicSynFlag
-            && x.ReadQueueNums == y.ReadQueueNums && x.WriteQueueNums == y.WriteQueueNums;
+            && x.ReadQueueNums == y.ReadQueueNums && x.WriteQueueNums == y.WriteQueueNums
+            && x.IsMaster == y.IsMaster;
     }
 
     /// <summary>计算哈希</summary>
@@ -61,7 +62,7 @@ public class BrokerInfo
         var obj = this;
         return obj.Name.GetHashCode() ^ obj.Addresses.GetHashCode()
             ^ obj.Permission.GetHashCode() ^ obj.TopicSynFlag
-            ^ obj.ReadQueueNums ^ obj.WriteQueueNums;
+            ^ obj.ReadQueueNums ^ obj.WriteQueueNums ^ obj.IsMaster.GetHashCode();
     }
     #endregion
 }
