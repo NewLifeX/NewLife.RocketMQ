@@ -109,12 +109,18 @@ public class NameClient : ClusterClient
                     var name = item["brokerName"] + "";
                     var cluster = item["cluster"] + "";
                     if (item["brokerAddrs"] is IDictionary<String, Object> addrs)
+                    {
+                        // key==0为Master
+                        var addresses = addrs.Select(e => e.Value + "").ToArray();
+                        var isMaster = addrs.ContainsKey("0");
                         list.Add(new BrokerInfo
                         {
                             Name = name,
                             Cluster = cluster,
-                            Addresses = addrs.Select(e => e.Value + "").ToArray()
+                            Addresses = addresses,
+                            IsMaster = isMaster
                         });
+                    }
                 }
             }
 

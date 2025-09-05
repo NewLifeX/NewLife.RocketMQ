@@ -583,7 +583,8 @@ public class Producer : MqBase
         var lb = LoadBalance;
         if (!lb.Ready)
         {
-            var list = Brokers.Where(e => e.Permission.HasFlag(Permissions.Write) && e.WriteQueueNums > 0).ToList();
+            // 只选择主节点且可写
+            var list = Brokers.Where(e => e.IsMaster && e.Permission.HasFlag(Permissions.Write) && e.WriteQueueNums > 0).ToList();
             if (list.Count == 0) return null;
 
             var total = list.Sum(e => e.WriteQueueNums);
