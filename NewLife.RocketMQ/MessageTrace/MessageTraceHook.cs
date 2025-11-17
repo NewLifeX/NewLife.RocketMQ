@@ -36,7 +36,7 @@ namespace NewLife.RocketMQ.MessageTrace
         public void ExecuteHookAfter(SendMessageContext context)
         {
 
-            if (context.Message.Topic.Equals("RMQ_SYS_TRACE_TOPIC"))
+            if (context.Message?.Topic?.Equals("RMQ_SYS_TRACE_TOPIC") == true)
             {
                 return;
             }
