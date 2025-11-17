@@ -48,6 +48,9 @@ public class Consumer : MqBase
     /// <summary>消息模型。广播/集群</summary>
     public MessageModels MessageModel { get; set; } = MessageModels.Clustering;
 
+    /// <summary>消费类型。CONSUME_PASSIVELY/CONSUME_ACTIVELY</summary>
+    public String ConsumeType { get; set; } = "CONSUME_PASSIVELY";
+
     /// <summary>消费委托</summary>
     public Func<MessageQueue, MessageExt[], Boolean> OnConsume;
 
@@ -111,6 +114,7 @@ public class Consumer : MqBase
                 ConsumeFromWhere = FromLastOffset ? "CONSUME_FROM_LAST_OFFSET" : "CONSUME_FROM_FIRST_OFFSET",
                 MessageModel = MessageModel.ToString().ToUpper(),
                 SubscriptionDataSet = new[] { sd },
+                ConsumeType = ConsumeType,
             };
 
             list = new[] { cd };
