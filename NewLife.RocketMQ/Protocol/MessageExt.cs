@@ -45,9 +45,6 @@ public class MessageExt : Message, IAccessor
     /// <summary>准备事务偏移</summary>
     public Int64 PreparedTransactionOffset { get; set; }
 
-    /// <summary>属性</summary>
-    public IDictionary<String, String> Properties { get; set; }
-
     /// <summary>消息编号</summary>
     public String MsgId { get; set; }
     #endregion
@@ -112,8 +109,7 @@ public class MessageExt : Message, IAccessor
 
         var len2 = bn.Read<Int16>();
         var str = bn.ReadBytes(len2).ToStr();
-        var dic = ParseProperties(str);
-        if (dic != null && dic.Count > 0) Properties = dic;
+        ParseProperties(str);
 
         // MsgId
         var ms = Pool.MemoryStream.Get();
