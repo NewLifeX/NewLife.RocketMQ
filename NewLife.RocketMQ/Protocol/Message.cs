@@ -117,6 +117,26 @@ public class Message
         return sb.Return(true);
     }
 
+    /// <summary>设置属性</summary>
+    /// <param name="key"></param>
+    /// <param name="value"></param>
+    public void PutUserProperty(String key, String value)
+    {
+        if (String.IsNullOrEmpty(key)) throw new ArgumentNullException(nameof(key));
+        if (String.IsNullOrEmpty(value)) throw new ArgumentNullException(nameof(value));
+
+        Properties[key] = value;
+    }
+
+    /// <summary>获取属性</summary>
+    /// <param name="key"></param>
+    /// <returns></returns>
+    public String GetUserProperty(String key)
+    {
+        Properties.TryGetValue(key, out var value);
+        return value;
+    }
+
     /// <summary>分析字典属性</summary>
     /// <param name="properties"></param>
     public IDictionary<String, String> ParseProperties(String properties)
