@@ -1011,4 +1011,102 @@ public class Consumer : MqBase
     }
 
     #endregion
+
+    #region Request-Reply 请求响应模式
+    /// <summary>发送回复消息</summary>
+    /// <param name="requestMessage">原始请求消息</param>
+    /// <param name="replyBody">回复消息体</param>
+    /// <returns>发送结果</returns>
+    public virtual SendResult SendReply(MessageExt requestMessage, Object replyBody)
+    {
+        if (requestMessage == null) throw new ArgumentNullException(nameof(requestMessage));
+        if (replyBody == null) throw new ArgumentNullException(nameof(replyBody));
+
+        // 检查是否有回复地址
+        var replyToClient = requestMessage.ReplyToClient;
+        if (String.IsNullOrEmpty(replyToClient))
+        {
+            throw new InvalidOperationException("Request message does not have ReplyToClient property");
+        }
+
+        var correlationId = requestMessage.CorrelationId;
+        if (String.IsNullOrEmpty(correlationId))
+        {
+            throw new InvalidOperationException("Request message does not have CorrelationId property");
+        }
+
+        // 创建回复消息
+        var replyMessage = new Message
+        {
+            Topic = requestMessage.Topic,
+            CorrelationId = correlationId,
+            MessageType = "REPLY"
+        };
+        replyMessage.SetBody(replyBody);
+
+        // 使用临时Producer发送回复
+        using var producer = new Producer
+        {
+            NameServerAddress = NameServerAddress,
+            Topic = requestMessage.Topic,
+            Group = Group + "_REPLY",
+            ClientIP = ClientIP,
+            InstanceName = InstanceName,
+            Log = Log,
+            Tracer = Tracer
+        };
+        producer.Start();
+
+        return producer.Publish(replyMessage);
+    }
+
+    /// <summary>发送回复消息(异步)</summary>
+    /// <param name="requestMessage">原始请求消息</param>
+    /// <param name="replyBody">回复消息体</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>发送结果</returns>
+    public virtual async Task<SendResult> SendReplyAsync(MessageExt requestMessage, Object replyBody, CancellationToken cancellationToken = default)
+    {
+        if (requestMessage == null) throw new ArgumentNullException(nameof(requestMessage));
+        if (replyBody == null) throw new ArgumentNullException(nameof(replyBody));
+
+        // 检查是否有回复地址
+        var replyToClient = requestMessage.ReplyToClient;
+        if (String.IsNullOrEmpty(replyToClient))
+        {
+            throw new InvalidOperationException("Request message does not have ReplyToClient property");
+        }
+
+        var correlationId = requestMessage.CorrelationId;
+        if (String.IsNullOrEmpty(correlationId))
+        {
+            throw new InvalidOperationException("Request message does not have CorrelationId property");
+        }
+
+        // 创建回复消息
+        var replyMessage = new Message
+        {
+            Topic = requestMessage.Topic,
+            CorrelationId = correlationId,
+            MessageType = "REPLY"
+        };
+        replyMessage.SetBody(replyBody);
+
+        // 使用临时Producer发送回复
+        using var producer = new Producer
+        {
+            NameServerAddress = NameServerAddress,
+            Topic = requestMessage.Topic,
+            Group = Group + "_REPLY",
+            ClientIP = ClientIP,
+            InstanceName = InstanceName,
+            Log = Log,
+            Tracer = Tracer
+        };
+        producer.Start();
+
+        return await producer.PublishAsync(replyMessage, null, cancellationToken).ConfigureAwait(false);
+    }
+
+    #endregion
 }
