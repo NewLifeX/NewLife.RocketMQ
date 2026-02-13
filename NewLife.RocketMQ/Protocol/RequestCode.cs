@@ -253,4 +253,13 @@ public enum RequestCode
 
     /// <summary>查询数据版本</summary>
     QUERY_DATA_VERSION = 322,
+
+    /// <summary>请求消息(Request-Reply特性)</summary>
+    REQUEST_MESSAGE = 323,
+
+    /// <summary>发送回复消息</summary>
+    SEND_REPLY_MESSAGE = 324,
+
+    /// <summary>发送回复消息V2</summary>
+    SEND_REPLY_MESSAGE_V2 = 325,
 }

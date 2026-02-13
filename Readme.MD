@@ -8,7 +8,59 @@
 
 RocketMQ，支持`.Net Framework/.netstandard/Mono`。
 
+**支持 RocketMQ 4.6.0+ 和 5.0+ 版本**
+
+## 主要特性
+
+- 支持 Apache RocketMQ 和阿里云消息队列
+- 支持生产者（Producer）和消费者（Consumer）
+- 支持消息发送、消费、负载均衡等核心功能
+- **新增：支持 Request-Reply 特性（RocketMQ 4.6.0+）**
+- 支持消息轨迹追踪
+- 支持延迟消息
+- 支持顺序消息
+- 支持事务消息
+- 兼容 RocketMQ 5.0+
+
 教程：[https://newlifex.com/core/rocketmq](https://newlifex.com/core/rocketmq)  
+
+## Request-Reply 特性
+
+从 RocketMQ 4.6.0 开始支持的 Request-Reply 特性，允许生产者发送请求后同步或异步等待消费者的响应，实现类似 RPC 的调用效果。
+
+详细使用说明请参考：[Request-Reply 使用指南](Doc/RequestReply_Guide.md)
+
+### 快速示例
+
+**生产者端：**
+```csharp
+var producer = new Producer { Topic = "request_topic", NameServerAddress = "127.0.0.1:9876" };
+producer.Start();
+
+// 同步请求
+var response = producer.Request("请求消息", timeout: 5000);
+Console.WriteLine($"收到响应: {response.BodyString}");
+```
+
+**消费者端：**
+```csharp
+var consumer = new Consumer { Topic = "request_topic", Group = "request_group", NameServerAddress = "127.0.0.1:9876" };
+
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        if (!String.IsNullOrEmpty(msg.CorrelationId))
+        {
+            var result = ProcessRequest(msg.BodyString);
+            consumer.SendReply(msg, result);
+        }
+    }
+    return true;
+};
+
+consumer.Start();
+```  
 
 ## 新生命项目矩阵
 各项目默认支持net9.0/netstandard2.1/netstandard2.0/net4.62/net4.5，旧版（2024.0801）支持net4.0/net2.0  
