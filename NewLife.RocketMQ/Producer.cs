@@ -708,13 +708,19 @@ public class Producer : MqBase
             // 发送请求消息
             await PublishAsync(message, null, cancellationToken).ConfigureAwait(false);
 
-            // 等待响应
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(timeout);
-
-            return await tcs.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+            // 等待响应，使用兼容的方式
+            var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(timeout, cancellationToken)).ConfigureAwait(false);
+            
+            if (completedTask == tcs.Task)
+            {
+                return await tcs.Task.ConfigureAwait(false);
+            }
+            else
+            {
+                throw new TimeoutException($"Request timeout after {timeout}ms, correlationId={correlationId}");
+            }
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException)
         {
             throw new TimeoutException($"Request timeout after {timeout}ms, correlationId={correlationId}");
         }
