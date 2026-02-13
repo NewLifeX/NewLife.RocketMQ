@@ -720,7 +720,7 @@ public class Producer : MqBase
                 throw new TimeoutException($"Request timeout after {timeout}ms, correlationId={correlationId}");
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             throw new TimeoutException($"Request timeout after {timeout}ms, correlationId={correlationId}");
         }

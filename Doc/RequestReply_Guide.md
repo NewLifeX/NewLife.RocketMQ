@@ -293,7 +293,8 @@ finally
 - 支持 .NET Standard 2.0+
 - 支持 .NET Core 2.0+
 - 支持 .NET 5.0+
-- 兼容 RocketMQ 4.6.0+ 和 5.0+
+- 兼容 RocketMQ 4.6.0 或以上版本
+- 兼容 RocketMQ 5.0 或以上版本
 
 ## 性能建议
 
