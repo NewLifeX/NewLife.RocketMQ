@@ -1,4 +1,5 @@
-﻿using NewLife.Log;
+﻿using System.Collections.Concurrent;
+using NewLife.Log;
 using NewLife.Reflection;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Common;
@@ -33,6 +34,13 @@ public class Producer : MqBase
 
     private readonly IList<ISendMessageHook> _sendMessageHooks = new List<ISendMessageHook>();
     private AsyncTraceDispatcher _traceDispatcher;
+
+    /// <summary>请求超时时间。默认3000ms</summary>
+    public Int32 RequestTimeout { get; set; } = 3_000;
+
+    private readonly ConcurrentDictionary<String, TaskCompletionSource<MessageExt>> _requestCallbacks = new();
+    private Consumer _replyConsumer;
+    private String _replyTopic;
     #endregion
 
     #region 基础方法
@@ -60,6 +68,23 @@ public class Producer : MqBase
                 LoadBalance.Ready = false;
             };
         }
+
+        // 初始化回复消息消费者
+        _replyTopic = $"{Topic}_REPLY_{ClientId}";
+    }
+
+    /// <summary>停止</summary>
+    protected override void OnStop()
+    {
+        // 停止回复消息消费者
+        if (_replyConsumer != null)
+        {
+            _replyConsumer.Stop();
+            _replyConsumer.Dispose();
+            _replyConsumer = null;
+        }
+
+        base.OnStop();
     }
     #endregion
 
@@ -602,6 +627,128 @@ public class Producer : MqBase
             var idx = lb.Get(out var times);
             var bk = _brokers[idx];
             return new MessageQueue { BrokerName = bk.Name, QueueId = (times - 1) % bk.WriteQueueNums };
+        }
+    }
+    #endregion
+
+    #region Request-Reply 请求响应模式
+    /// <summary>发送请求消息，同步等待响应</summary>
+    /// <param name="message">请求消息</param>
+    /// <param name="timeout">超时时间(毫秒)，默认使用RequestTimeout</param>
+    /// <returns>响应消息</returns>
+    public virtual MessageExt Request(Message message, Int32 timeout = -1)
+    {
+        if (message == null) throw new ArgumentNullException(nameof(message));
+
+        if (timeout <= 0) timeout = RequestTimeout;
+
+        // 生成关联ID
+        var correlationId = Guid.NewGuid().ToString("N");
+        message.CorrelationId = correlationId;
+        message.ReplyToClient = ClientId;
+        message.MessageType = "REQUEST";
+        message.RequestTimeout = timeout;
+
+        // 注册回调
+        var tcs = new TaskCompletionSource<MessageExt>();
+        _requestCallbacks[correlationId] = tcs;
+
+        try
+        {
+            // 发送请求消息
+            var result = Publish(message, null, timeout);
+
+            // 等待响应
+            if (tcs.Task.Wait(timeout))
+            {
+                return tcs.Task.Result;
+            }
+            else
+            {
+                throw new TimeoutException($"Request timeout after {timeout}ms, correlationId={correlationId}");
+            }
+        }
+        finally
+        {
+            // 清理回调
+            _requestCallbacks.TryRemove(correlationId, out _);
+        }
+    }
+
+    /// <summary>发送请求消息，同步等待响应</summary>
+    /// <param name="body">消息体</param>
+    /// <param name="timeout">超时时间(毫秒)</param>
+    /// <returns>响应消息</returns>
+    public virtual MessageExt Request(Object body, Int32 timeout = -1) => Request(CreateMessage(body), timeout);
+
+    /// <summary>发送请求消息，异步等待响应</summary>
+    /// <param name="message">请求消息</param>
+    /// <param name="timeout">超时时间(毫秒)，默认使用RequestTimeout</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>响应消息</returns>
+    public virtual async Task<MessageExt> RequestAsync(Message message, Int32 timeout = -1, CancellationToken cancellationToken = default)
+    {
+        if (message == null) throw new ArgumentNullException(nameof(message));
+
+        if (timeout <= 0) timeout = RequestTimeout;
+
+        // 生成关联ID
+        var correlationId = Guid.NewGuid().ToString("N");
+        message.CorrelationId = correlationId;
+        message.ReplyToClient = ClientId;
+        message.MessageType = "REQUEST";
+        message.RequestTimeout = timeout;
+
+        // 注册回调
+        var tcs = new TaskCompletionSource<MessageExt>();
+        _requestCallbacks[correlationId] = tcs;
+
+        try
+        {
+            // 发送请求消息
+            await PublishAsync(message, null, cancellationToken).ConfigureAwait(false);
+
+            // 等待响应，使用兼容的方式
+            var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(timeout, cancellationToken)).ConfigureAwait(false);
+            
+            if (completedTask == tcs.Task)
+            {
+                return await tcs.Task.ConfigureAwait(false);
+            }
+            else
+            {
+                throw new TimeoutException($"Request timeout after {timeout}ms, correlationId={correlationId}");
+            }
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException($"Request timeout after {timeout}ms, correlationId={correlationId}");
+        }
+        finally
+        {
+            // 清理回调
+            _requestCallbacks.TryRemove(correlationId, out _);
+        }
+    }
+
+    /// <summary>发送请求消息，异步等待响应</summary>
+    /// <param name="body">消息体</param>
+    /// <param name="timeout">超时时间(毫秒)</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>响应消息</returns>
+    public virtual Task<MessageExt> RequestAsync(Object body, Int32 timeout = -1, CancellationToken cancellationToken = default)
+        => RequestAsync(CreateMessage(body), timeout, cancellationToken);
+
+    /// <summary>处理回复消息</summary>
+    /// <param name="message">回复消息</param>
+    internal void HandleReplyMessage(MessageExt message)
+    {
+        var correlationId = message.CorrelationId;
+        if (String.IsNullOrEmpty(correlationId)) return;
+
+        if (_requestCallbacks.TryGetValue(correlationId, out var tcs))
+        {
+            tcs.TrySetResult(message);
         }
     }
     #endregion

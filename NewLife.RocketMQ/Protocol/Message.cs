@@ -59,6 +59,34 @@ public class Message
         set => Properties["UNIQ_KEY"] = value;
     }
 
+    /// <summary>回复地址。用于Request-Reply模式，指示回复消息应发送到的客户端ID</summary>
+    public String ReplyToClient
+    {
+        get => Properties.TryGetValue("REPLY_TO_CLIENT", out var str) ? str : null;
+        set => Properties["REPLY_TO_CLIENT"] = value;
+    }
+
+    /// <summary>关联ID。用于Request-Reply模式，将回复消息与请求消息关联</summary>
+    public String CorrelationId
+    {
+        get => Properties.TryGetValue("CORRELATION_ID", out var str) ? str : null;
+        set => Properties["CORRELATION_ID"] = value;
+    }
+
+    /// <summary>消息类型。用于区分普通消息和回复消息</summary>
+    public String MessageType
+    {
+        get => Properties.TryGetValue("MSG_TYPE", out var str) ? str : null;
+        set => Properties["MSG_TYPE"] = value;
+    }
+
+    /// <summary>请求超时时间(毫秒)。用于Request-Reply模式</summary>
+    public Int32 RequestTimeout
+    {
+        get => Properties.TryGetValue("REQUEST_TIMEOUT", out var str) ? str.ToInt() : 0;
+        set => Properties["REQUEST_TIMEOUT"] = value.ToString();
+    }
+
     /// <summary>附加属性</summary>
     public IDictionary<String, String> Properties { get; set; }
     #endregion
