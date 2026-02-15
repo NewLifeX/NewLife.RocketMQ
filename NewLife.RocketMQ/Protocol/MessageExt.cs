@@ -76,14 +76,18 @@ public class MessageExt : Message, IAccessor
         CommitLogOffset = bn.Read<Int64>();
         SysFlag = bn.Read<Int32>();
 
+        // SysFlag第2位(0x04)标识IPv6地址。IPv4=4字节，IPv6=16字节
+        var isIPv6 = (SysFlag & 4) != 0;
+        var ipLen = isIPv6 ? 16 : 4;
+
         BornTimestamp = bn.Read<Int64>();
-        var buf = bn.ReadBytes(4);
+        var buf = bn.ReadBytes(ipLen);
         var ip = new IPAddress(buf);
         var port = bn.Read<Int32>();
         BornHost = $"{ip}:{port}";
 
         StoreTimestamp = bn.Read<Int64>();
-        var buf2 = bn.ReadBytes(4);
+        var buf2 = bn.ReadBytes(ipLen);
         var ip2 = new IPAddress(buf2);
         var port2 = bn.Read<Int32>();
         StoreHost = $"{ip2}:{port2}";
@@ -111,13 +115,14 @@ public class MessageExt : Message, IAccessor
         var str = bn.ReadBytes(len2).ToStr();
         ParseProperties(str);
 
-        // MsgId
+        // MsgId：IPv4为16字节(4+4+8)，IPv6为28字节(16+4+8)
         var ms = Pool.MemoryStream.Get();
         ms.Write(buf);
         ms.Write(port.GetBytes(false));
         ms.Write(CommitLogOffset.GetBytes(false));
 
-        MsgId = ms.Return(true).ToHex(0, 16);
+        var idLen = isIPv6 ? 28 : 16;
+        MsgId = ms.Return(true).ToHex(0, idLen);
 
         return true;
     }
@@ -141,7 +146,90 @@ public class MessageExt : Message, IAccessor
             var msg = new MessageExt();
             if (!msg.Read(ms, bn)) break;
 
-            list.Add(msg);
+            // SysFlag第4位(0x10)标识批量消息，Body内嵌多条子消息
+            if ((msg.SysFlag & 0x10) != 0 && msg.Body != null && msg.Body.Length > 0)
+            {
+                var batches = DecodeBatch(msg);
+                list.AddRange(batches);
+            }
+            else
+            {
+                list.Add(msg);
+            }
+        }
+
+        return list;
+    }
+
+    /// <summary>解码批量消息。BatchMessage 的 Body 内嵌多条子消息</summary>
+    /// <param name="parent">父消息，批量消息的外层容器</param>
+    /// <returns></returns>
+    public static IList<MessageExt> DecodeBatch(MessageExt parent)
+    {
+        if (parent == null) throw new ArgumentNullException(nameof(parent));
+        if (parent.Body == null || parent.Body.Length == 0) return [];
+
+        var list = new List<MessageExt>();
+        var ms = new MemoryStream(parent.Body);
+        var bn = new Binary { Stream = ms, IsLittleEndian = false };
+
+        while (ms.Position < ms.Length)
+        {
+            try
+            {
+                // 批量消息内部格式：
+                // 4字节 TotalSize（含自身）
+                // 4字节 MagicCode
+                // 4字节 BodyCRC
+                // 4字节 Flag
+                // 4字节 Body长度 + Body
+                // 1字节 Topic长度 + Topic
+                // 2字节 Properties长度 + Properties
+                var totalSize = bn.Read<Int32>();
+                if (totalSize <= 0) break;
+
+                var magicCode = bn.Read<Int32>();
+                var bodyCrc = bn.Read<Int32>();
+                var flag = bn.Read<Int32>();
+
+                var bodyLen = bn.Read<Int32>();
+                var body = bn.ReadBytes(bodyLen);
+
+                var topicLen = bn.Read<Byte>();
+                var topic = bn.ReadBytes(topicLen).ToStr();
+
+                var propsLen = bn.Read<Int16>();
+                var propsStr = propsLen > 0 ? bn.ReadBytes(propsLen).ToStr() : "";
+
+                var sub = new MessageExt
+                {
+                    // 从父消息继承上下文信息
+                    QueueId = parent.QueueId,
+                    CommitLogOffset = parent.CommitLogOffset,
+                    SysFlag = parent.SysFlag & ~0x10, // 清除批量标志
+                    BornTimestamp = parent.BornTimestamp,
+                    BornHost = parent.BornHost,
+                    StoreTimestamp = parent.StoreTimestamp,
+                    StoreHost = parent.StoreHost,
+
+                    // 子消息自身信息
+                    StoreSize = totalSize,
+                    BodyCRC = bodyCrc,
+                    Flag = flag,
+                    Body = body,
+                    Topic = topic,
+                };
+                sub.ParseProperties(propsStr);
+
+                // 使用 UNIQ_KEY 作为 MsgId（如果存在）
+                sub.MsgId = sub.TransactionId ?? parent.MsgId;
+
+                list.Add(sub);
+            }
+            catch
+            {
+                break;
+            }
         }
 
         return list;

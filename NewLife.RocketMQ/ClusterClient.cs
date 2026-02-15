@@ -194,31 +194,42 @@ public abstract class ClusterClient : DisposeBase
 
     private void SetSignature(Command cmd)
     {
-        // 阿里签名。阿里云ONS需要反射消息具体字段，把值转字符串后拼起来，再加上body后，取HmacSHA1
-        // Apache RocketMQ ACL 签名机制跟阿里一致，需要排序然后再加上body后，取HmacSHA1
+        // 各云厂商和Apache ACL统一使用HMAC-SHA1签名：
+        // 将扩展字段按ASCII排序拼接值，再加上body，计算HmacSHA1
 
         String accessKey;
         String secretKey;
         String onsChannel;
 
-        // 根据配置判断是阿里版本还是Apache开源版本
-        var aliyun = Config.Aliyun;
-        if (aliyun == null || aliyun.AccessKey.IsNullOrEmpty())
+        // 优先使用新的 CloudProvider 接口
+        var provider = Config.CloudProvider;
+        if (provider != null && !provider.AccessKey.IsNullOrEmpty())
         {
-            // Apache RocketMQ:如果未配置签名AccessKey信息直接返回，不加密
-            var acl = Config.AclOptions;
-            if (acl == null || acl.AccessKey.IsNullOrEmpty()) return;
-
-            accessKey = acl.AccessKey;
-            secretKey = acl.SecretKey;
-            onsChannel = acl.OnsChannel;
+            accessKey = provider.AccessKey;
+            secretKey = provider.SecretKey;
+            onsChannel = provider.OnsChannel;
         }
         else
         {
-            // 阿里版本RocketMQ
-            accessKey = aliyun.AccessKey;
-            secretKey = aliyun.SecretKey;
-            onsChannel = aliyun.OnsChannel;
+            // 兼容旧版：依次检查 Aliyun / AclOptions
+#pragma warning disable CS0618
+            var aliyun = Config.Aliyun;
+            if (aliyun != null && !aliyun.AccessKey.IsNullOrEmpty())
+            {
+                accessKey = aliyun.AccessKey;
+                secretKey = aliyun.SecretKey;
+                onsChannel = aliyun.OnsChannel;
+            }
+            else
+            {
+                var acl = Config.AclOptions;
+                if (acl == null || acl.AccessKey.IsNullOrEmpty()) return;
+
+                accessKey = acl.AccessKey;
+                secretKey = acl.SecretKey;
+                onsChannel = acl.OnsChannel;
+            }
+#pragma warning restore CS0618
         }
 
         var sha = new HMACSHA1(secretKey.GetBytes());

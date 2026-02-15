@@ -1,4 +1,5 @@
-﻿using NewLife.Data;
+﻿using System.Collections.Concurrent;
+using NewLife.Data;
 using NewLife.Log;
 using NewLife.Net;
 using NewLife.RocketMQ.Client;
@@ -17,6 +18,11 @@ public class NameClient : ClusterClient
 
     /// <summary>代理改变时触发</summary>
     public event EventHandler OnBrokerChange;
+
+    /// <summary>额外需要轮询路由的主题列表。多Topic订阅时使用</summary>
+    public String[] ExtraTopics { get; set; }
+
+    private readonly ConcurrentDictionary<String, IList<BrokerInfo>> _topicBrokers = new();
 
     #endregion
 
@@ -85,6 +91,36 @@ public class NameClient : ClusterClient
                 WriteLog("发现Broker[{0}]: {1}, reads={2}, writes={3}", item.Name, item.Addresses.Join(), item.ReadQueueNums, item.WriteQueueNums);
             }
         }
+
+        // 轮询额外主题的路由
+        var extras = ExtraTopics;
+        if (extras != null && extras.Length > 0)
+        {
+            foreach (var topic in extras)
+            {
+                if (!String.IsNullOrEmpty(topic) && topic != Config.Topic)
+                {
+                    try
+                    {
+                        GetRouteInfo(topic);
+                    }
+                    catch (Exception ex)
+                    {
+                        WriteLog("获取主题[{0}]路由失败：{1}", topic, ex.Message);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>获取指定主题的Broker信息（从缓存）</summary>
+    /// <param name="topic">主题名</param>
+    /// <returns></returns>
+    public IList<BrokerInfo> GetTopicBrokers(String topic)
+    {
+        if (_topicBrokers.TryGetValue(topic, out var list)) return list;
+
+        return Brokers;
     }
 
     /// <summary>获取主题的路由信息，含登录验证</summary>
@@ -110,14 +146,24 @@ public class NameClient : ClusterClient
                     var cluster = item["cluster"] + "";
                     if (item["brokerAddrs"] is IDictionary<String, Object> addrs)
                     {
-                        // key==0为Master
+                        // key==0为Master，key>0为Slave
                         var addresses = addrs.Select(e => e.Value + "").ToArray();
                         var isMaster = addrs.ContainsKey("0");
+                        var masterAddr = addrs.TryGetValue("0", out var ma) ? ma + "" : null;
+                        var slaveAddrs = addrs.Where(e => e.Key != "0").Select(e => e.Value + "").ToArray();
+
+                        // 优先 Master 在前
+                        var ordered = new List<String>();
+                        if (!String.IsNullOrEmpty(masterAddr)) ordered.Add(masterAddr);
+                        ordered.AddRange(slaveAddrs);
+
                         list.Add(new BrokerInfo
                         {
                             Name = name,
                             Cluster = cluster,
-                            Addresses = addresses,
+                            Addresses = ordered.ToArray(),
+                            MasterAddress = masterAddr,
+                            SlaveAddresses = slaveAddrs,
                             IsMaster = isMaster
                         });
                     }
@@ -145,6 +191,9 @@ public class NameClient : ClusterClient
             if (Brokers.SequenceEqual(list)) return list.OrderBy(t => t.Name).ToList();
 
             Brokers = list;
+
+            // 缓存每个主题的Broker信息
+            _topicBrokers[topic] = list;
 
             // 结果检查
             if (list.Count == 0)

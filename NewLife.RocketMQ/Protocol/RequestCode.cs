@@ -262,4 +262,16 @@ public enum RequestCode
 
     /// <summary>发送回复消息V2</summary>
     SEND_REPLY_MESSAGE_V2 = 325,
+
+    /// <summary>Pop消费消息。5.0新增的轻量消费模式，无需Rebalance</summary>
+    POP_MESSAGE = 200050,
+
+    /// <summary>确认Pop消息。确认消费完成</summary>
+    ACK_MESSAGE = 200051,
+
+    /// <summary>修改Pop消息不可见时间。延长处理窗口</summary>
+    CHANGE_MESSAGE_INVISIBLETIME = 200052,
+
+    /// <summary>批量确认Pop消息</summary>
+    BATCH_ACK_MESSAGE = 200151,
 }

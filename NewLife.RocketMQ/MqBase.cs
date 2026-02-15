@@ -63,7 +63,7 @@ public abstract class MqBase : DisposeBase
     public SerializeType SerializeType { get; set; } = SerializeType.JSON;
 
     /// <summary>让通信层知道对方的版本号，响应方可以以此做兼容老版本等的特殊操作</summary>
-    public MQVersion Version { get; set; } = MQVersion.V4_8_0;
+    public MQVersion Version { get; set; } = MQVersion.V4_9_7;
 
     /// <summary>SSL协议。默认None</summary>
     public SslProtocols SslProtocol { get; set; } = SslProtocols.None;
@@ -89,11 +89,41 @@ public abstract class MqBase : DisposeBase
     /// <summary>代理集合</summary>
     public IList<BrokerInfo> Brokers => _NameServer?.Brokers.OrderBy(t => t.Name).ToList();
 
-    /// <summary>阿里云选项。使用阿里云RocketMQ的参数有些不一样</summary>
-    public AliyunOptions Aliyun { get; set; }
+    /// <summary>云厂商适配器。用于统一签名认证和实例路由逻辑</summary>
+    /// <remarks>
+    /// 支持阿里云（AliyunProvider）、腾讯云（TencentProvider）、Apache ACL（AclProvider）等。
+    /// 设置后自动处理签名、实例ID路由等厂商特有逻辑。
+    /// </remarks>
+    public ICloudProvider CloudProvider { get; set; }
 
-    /// <summary> Apache RocketMQ ACL 客户端配置。在Borker服务器配置设置为AclEnable = true 时配置生效。</summary>
-    public AclOptions AclOptions { get; set; }
+    /// <summary>阿里云选项。使用阿里云RocketMQ的参数有些不一样</summary>
+    [Obsolete("请使用 CloudProvider = new AliyunProvider { ... } 替代")]
+    public AliyunOptions Aliyun
+    {
+        get => _aliyunOptions;
+        set
+        {
+            _aliyunOptions = value;
+            // 自动同步到 CloudProvider
+            if (value != null && !value.AccessKey.IsNullOrEmpty())
+                CloudProvider ??= AliyunProvider.FromOptions(value);
+        }
+    }
+    private AliyunOptions _aliyunOptions;
+
+    /// <summary>Apache RocketMQ ACL 客户端配置。在Borker服务器配置设置为AclEnable = true 时配置生效。</summary>
+    [Obsolete("请使用 CloudProvider = new AclProvider { ... } 替代")]
+    public AclOptions AclOptions
+    {
+        get => _aclOptions;
+        set
+        {
+            _aclOptions = value;
+            if (value != null && !value.AccessKey.IsNullOrEmpty())
+                CloudProvider ??= AclProvider.FromOptions(value);
+        }
+    }
+    private AclOptions _aclOptions;
 
     /// <summary>Json序列化主机</summary>
     public IJsonHost JsonHost { get; set; } = JsonHelper.Default;
@@ -103,6 +133,18 @@ public abstract class MqBase : DisposeBase
 
     /// <summary>是否启用消息轨迹</summary>
     public Boolean EnableMessageTrace { get; set; }
+
+#if NETSTANDARD2_1_OR_GREATER
+    /// <summary>gRPC Proxy地址。设置后使用gRPC协议连接RocketMQ 5.x</summary>
+    /// <remarks>
+    /// 格式如 http://host:8081 或 https://host:8081。
+    /// 设置此属性后，将使用gRPC协议替代Remoting协议，支持RocketMQ 5.x新特性。
+    /// </remarks>
+    public String GrpcProxyAddress { get; set; }
+
+    /// <summary>gRPC消息服务客户端</summary>
+    protected Grpc.GrpcMessagingService _GrpcService;
+#endif
 
     private String _group;
     private String _topic;
@@ -148,6 +190,9 @@ public abstract class MqBase : DisposeBase
     {
         base.Dispose(disposing);
 
+#if NETSTANDARD2_1_OR_GREATER
+        _GrpcService.TryDispose();
+#endif
         _NameServer.TryDispose();
 
         //foreach (var item in _Brokers)
@@ -171,10 +216,13 @@ public abstract class MqBase : DisposeBase
         if (!setting.Topic.IsNullOrEmpty()) Topic = setting.Topic;
         if (!setting.Group.IsNullOrEmpty()) Group = setting.Group;
 
+        // 兼容旧版配置方式
+#pragma warning disable CS0618
         Aliyun ??= new AliyunOptions();
         if (!setting.Server.IsNullOrEmpty()) Aliyun.Server = setting.Server;
         if (!setting.AccessKey.IsNullOrEmpty()) Aliyun.AccessKey = setting.AccessKey;
         if (!setting.SecretKey.IsNullOrEmpty()) Aliyun.SecretKey = setting.SecretKey;
+#pragma warning restore CS0618
     }
 
     /// <summary>开始</summary>
@@ -187,27 +235,48 @@ public abstract class MqBase : DisposeBase
         _topic = Topic;
         if (Name.IsNullOrEmpty()) Name = Topic;
 
-        // 解析阿里云实例
-        var aliyun = Aliyun;
-        if (aliyun != null && !aliyun.AccessKey.IsNullOrEmpty())
+        // 解析阿里云实例ID（兼容旧版 AliyunOptions）
+        if (CloudProvider is AliyunProvider ap)
         {
             var ns = NameServerAddress;
-            if (aliyun.InstanceId.IsNullOrEmpty() && !ns.IsNullOrEmpty() && ns.Contains("MQ_INST_"))
+            if (ap.InstanceId.IsNullOrEmpty() && !ns.IsNullOrEmpty() && ns.Contains("MQ_INST_"))
             {
-                aliyun.InstanceId = ns.Substring("://", ".");
+                ap.InstanceId = ns.Substring("://", ".");
             }
         }
+#pragma warning disable CS0618
+        else if (_aliyunOptions != null && !_aliyunOptions.AccessKey.IsNullOrEmpty())
+        {
+            var ns = NameServerAddress;
+            if (_aliyunOptions.InstanceId.IsNullOrEmpty() && !ns.IsNullOrEmpty() && ns.Contains("MQ_INST_"))
+            {
+                _aliyunOptions.InstanceId = ns.Substring("://", ".");
+            }
+        }
+#pragma warning restore CS0618
 
         using var span = Tracer?.NewSpan($"mq:{Name}:Start");
         try
         {
-            // 阿里云目前需要在Topic前面带上实例ID并用【%】连接,组成路由Topic[用来路由到实例Topic]
-            var ins = Aliyun?.InstanceId;
-            if (!ins.IsNullOrEmpty())
+            // 通过 CloudProvider 转换 Topic/Group
+            var provider = CloudProvider;
+            if (provider != null)
             {
-                if (!Topic.StartsWith(ins)) Topic = $"{ins}%{Topic}";
-                if (!Group.StartsWith(ins)) Group = $"{ins}%{Group}";
+                Topic = provider.TransformTopic(Topic);
+                Group = provider.TransformGroup(Group);
             }
+#pragma warning disable CS0618
+            else
+            {
+                // 兼容旧版：阿里云实例ID前缀
+                var ins = _aliyunOptions?.InstanceId;
+                if (!ins.IsNullOrEmpty())
+                {
+                    if (!Topic.StartsWith(ins)) Topic = $"{ins}%{Topic}";
+                    if (!Group.StartsWith(ins)) Group = $"{ins}%{Group}";
+                }
+            }
+#pragma warning restore CS0618
 
             OnStart();
         }
@@ -224,17 +293,60 @@ public abstract class MqBase : DisposeBase
     /// <summary>开始</summary>
     protected virtual void OnStart()
     {
+#if NETSTANDARD2_1_OR_GREATER
+        // 使用gRPC协议时，初始化gRPC客户端
+        if (!GrpcProxyAddress.IsNullOrEmpty())
+        {
+            WriteLog("使用gRPC协议连接Proxy[{0}]", GrpcProxyAddress);
+
+            var svc = new Grpc.GrpcMessagingService(GrpcProxyAddress)
+            {
+                Namespace = CloudProvider is AliyunProvider ap ? ap.InstanceId : null,
+                Log = Log,
+                Tracer = Tracer,
+            };
+
+            // 设置认证信息
+            if (CloudProvider != null && !CloudProvider.AccessKey.IsNullOrEmpty())
+            {
+                svc.Client.AccessKey = CloudProvider.AccessKey;
+                svc.Client.SecretKey = CloudProvider.SecretKey;
+            }
+            svc.Client.ClientId = ClientId;
+
+            // 查询路由验证连通性
+            var route = svc.QueryRouteAsync(Topic).ConfigureAwait(false).GetAwaiter().GetResult();
+            if (route.Status?.Code != Grpc.GrpcCode.OK)
+                throw new InvalidOperationException($"gRPC QueryRoute failed: {route.Status}");
+
+            WriteLog("gRPC路由查询成功，发现[{0}]个队列", route.MessageQueues.Count);
+            _GrpcService = svc;
+            return;
+        }
+#endif
+
         if (NameServerAddress.IsNullOrEmpty())
         {
-            // 获取阿里云ONS的名称服务器地址
-            var addr = Aliyun?.Server;
-            if (!addr.IsNullOrEmpty() && addr.StartsWithIgnoreCase("http"))
+            // 通过 CloudProvider 获取 NameServer 地址
+            var addr = CloudProvider?.GetNameServerAddress();
+            if (!addr.IsNullOrEmpty())
             {
-                var http = new System.Net.Http.HttpClient();
-                var html = http.GetStringAsync(addr).Result;
-
-                if (!html.IsNullOrWhiteSpace()) NameServerAddress = html.Trim();
+                NameServerAddress = addr;
             }
+#pragma warning disable CS0618
+            else
+            {
+                // 兼容旧版：从阿里云 HTTP 接口获取
+                var server = _aliyunOptions?.Server;
+                if (!server.IsNullOrEmpty() && server.StartsWithIgnoreCase("http"))
+                {
+                    var http = new System.Net.Http.HttpClient();
+                    var html = http.GetStringAsync(server).ConfigureAwait(false).GetAwaiter().GetResult();
+
+                    if (!html.IsNullOrWhiteSpace()) NameServerAddress = html.Trim();
+                }
+            }
+#pragma warning restore CS0618
         }
 
         WriteLog("正在从名称服务器[{0}]查找该Topic所在Broker服务器地址列表", NameServerAddress);
@@ -427,6 +539,222 @@ public abstract class MqBase : DisposeBase
         }
 
         return count;
+    }
+
+    /// <summary>删除主题</summary>
+    /// <param name="topic">主题</param>
+    public virtual Int32 DeleteTopic(String topic)
+    {
+        var count = 0;
+        using var span = Tracer?.NewSpan($"mq:{Name}:DeleteTopic", topic);
+        try
+        {
+            // 从所有Broker上删除
+            foreach (var item in Brokers)
+            {
+                WriteLog("在Broker[{0}]上删除主题：{1}", item.Name, topic);
+                try
+                {
+                    var bk = GetBroker(item.Name);
+                    var rs = bk.Invoke(RequestCode.DELETE_TOPIC_IN_BROKER, null, new { topic });
+                    if (rs != null && rs.Header.Code == (Int32)ResponseCode.SUCCESS) count++;
+                }
+                catch (Exception ex)
+                {
+                    XTrace.WriteException(ex);
+                }
+            }
+
+            // 从NameServer上删除
+            try
+            {
+                _NameServer?.Invoke(RequestCode.DELETE_TOPIC_IN_NAMESRV, null, new { topic });
+            }
+            catch (Exception ex)
+            {
+                XTrace.WriteException(ex);
+            }
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+
+        return count;
+    }
+
+    /// <summary>创建或更新消费组</summary>
+    /// <param name="groupName">消费组名</param>
+    /// <param name="consumeBroadcastEnable">是否允许广播消费</param>
+    /// <param name="retryMaxTimes">最大重试次数</param>
+    /// <param name="retryQueueNums">重试队列数</param>
+    public virtual Int32 CreateSubscriptionGroup(String groupName, Boolean consumeBroadcastEnable = true, Int32 retryMaxTimes = 16, Int32 retryQueueNums = 1)
+    {
+        var count = 0;
+        using var span = Tracer?.NewSpan($"mq:{Name}:CreateSubscriptionGroup", groupName);
+        try
+        {
+            var header = new
+            {
+                groupName,
+                consumeBroadcastEnable,
+                consumeEnable = true,
+                retryMaxTimes,
+                retryQueueNums,
+            };
+
+            foreach (var item in Brokers)
+            {
+                WriteLog("在Broker[{0}]上创建消费组：{1}", item.Name, groupName);
+                try
+                {
+                    var bk = GetBroker(item.Name);
+                    var rs = bk.Invoke(RequestCode.UPDATE_AND_CREATE_SUBSCRIPTIONGROUP, null, header);
+                    if (rs != null && rs.Header.Code == (Int32)ResponseCode.SUCCESS) count++;
+                }
+                catch (Exception ex)
+                {
+                    XTrace.WriteException(ex);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+
+        return count;
+    }
+
+    /// <summary>删除消费组</summary>
+    /// <param name="groupName">消费组名</param>
+    public virtual Int32 DeleteSubscriptionGroup(String groupName)
+    {
+        var count = 0;
+        using var span = Tracer?.NewSpan($"mq:{Name}:DeleteSubscriptionGroup", groupName);
+        try
+        {
+            foreach (var item in Brokers)
+            {
+                WriteLog("在Broker[{0}]上删除消费组：{1}", item.Name, groupName);
+                try
+                {
+                    var bk = GetBroker(item.Name);
+                    var rs = bk.Invoke(RequestCode.DELETE_SUBSCRIPTIONGROUP, null, new { groupName });
+                    if (rs != null && rs.Header.Code == (Int32)ResponseCode.SUCCESS) count++;
+                }
+                catch (Exception ex)
+                {
+                    XTrace.WriteException(ex);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+
+        return count;
+    }
+
+    /// <summary>按消息ID查看消息</summary>
+    /// <param name="msgId">消息编号</param>
+    /// <returns></returns>
+    public virtual MessageExt ViewMessage(String msgId)
+    {
+        using var span = Tracer?.NewSpan($"mq:{Name}:ViewMessage", msgId);
+        try
+        {
+            foreach (var item in Brokers)
+            {
+                try
+                {
+                    var bk = GetBroker(item.Name);
+                    var rs = bk.Invoke(RequestCode.VIEW_MESSAGE_BY_ID, null, new { offset = msgId }, true);
+                    if (rs?.Payload != null)
+                    {
+                        var msgs = MessageExt.ReadAll(rs.Payload);
+                        if (msgs?.Count > 0) return msgs[0];
+                    }
+                }
+                catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+
+        return null;
+    }
+
+    /// <summary>获取集群信息</summary>
+    /// <returns></returns>
+    public virtual IDictionary<String, Object> GetClusterInfo()
+    {
+        using var span = Tracer?.NewSpan($"mq:{Name}:GetClusterInfo");
+        try
+        {
+            var rs = _NameServer?.Invoke(RequestCode.GET_BROKER_CLUSTER_INFO, null);
+            if (rs?.Payload != null) return rs.ReadBodyAsJson();
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+
+        return null;
+    }
+
+    /// <summary>按Key查询消息</summary>
+    /// <param name="topic">主题</param>
+    /// <param name="key">消息Key</param>
+    /// <param name="maxNum">最大返回数量</param>
+    /// <param name="beginTimestamp">起始时间戳（毫秒）</param>
+    /// <param name="endTimestamp">结束时间戳（毫秒）</param>
+    /// <returns>匹配的消息列表</returns>
+    public virtual IList<MessageExt> QueryMessageByKey(String topic, String key, Int32 maxNum = 32, Int64 beginTimestamp = 0, Int64 endTimestamp = 0)
+    {
+        if (String.IsNullOrEmpty(key)) throw new ArgumentNullException(nameof(key));
+        if (String.IsNullOrEmpty(topic)) topic = Topic;
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:QueryMessageByKey", key);
+        try
+        {
+            foreach (var item in Brokers)
+            {
+                try
+                {
+                    var bk = GetBroker(item.Name);
+                    var rs = bk.Invoke(RequestCode.QUERY_MESSAGE, null, new
+                    {
+                        topic,
+                        key,
+                        maxNum,
+                        beginTimestamp,
+                        endTimestamp,
+                    }, true);
+                    if (rs?.Payload != null)
+                    {
+                        var msgs = MessageExt.ReadAll(rs.Payload);
+                        if (msgs?.Count > 0) return msgs;
+                    }
+                }
+                catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+
+        return [];
     }
     #endregion
 

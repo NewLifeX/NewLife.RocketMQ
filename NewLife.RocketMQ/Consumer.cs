@@ -25,6 +25,13 @@ public class Consumer : MqBase
     /// <summary>标签集合</summary>
     public String[] Tags { get; set; }
 
+    /// <summary>多主题订阅列表。设置后一个Consumer可同时消费多个Topic，每个Topic使用相同的Tags和ExpressionType</summary>
+    /// <remarks>
+    /// 设置 Topics 后，原 Topic 属性作为默认主题，Topics 中的所有主题都会被订阅。
+    /// 如果 Topics 未设置，则保持原有单 Topic 行为不变。
+    /// </remarks>
+    public String[] Topics { get; set; }
+
     /// <summary>消费挂起超时。每次拉取消息，服务端如果没有消息时的挂起时间，默认15_000ms</summary>
     public Int32 SuspendTimeout { get; set; } = 15_000;
 
@@ -42,6 +49,9 @@ public class Consumer : MqBase
     /// </summary>
     public String Subscription { get; set; } = "*";
 
+    /// <summary>表达式类型。TAG或SQL92，默认TAG。使用SQL92时Subscription填写SQL表达式</summary>
+    public String ExpressionType { get; set; } = "TAG";
+
     /// <summary>启动消费者时自动开始调度。默认true</summary>
     public Boolean AutoSchedule { get; set; } = true;
 
@@ -50,6 +60,21 @@ public class Consumer : MqBase
 
     /// <summary>消费类型。CONSUME_PASSIVELY/CONSUME_ACTIVELY</summary>
     public String ConsumeType { get; set; } = "CONSUME_PASSIVELY";
+
+    /// <summary>最大重试次数。默认16次，超过后进入死信队列</summary>
+    public Int32 MaxReconsumeTimes { get; set; } = 16;
+
+    /// <summary>是否启用消费重试。默认true，消费失败时自动将消息发回Broker的RETRY Topic</summary>
+    public Boolean EnableRetry { get; set; } = true;
+
+    /// <summary>重试延迟等级。默认0表示由Broker根据重试次数决定延迟，大于0时使用指定等级</summary>
+    public Int32 RetryDelayLevel { get; set; }
+
+    /// <summary>是否顺序消费。启用后消费前自动锁定队列，确保同一时刻只有一个消费者</summary>
+    public Boolean OrderConsume { get; set; }
+
+    /// <summary>最大并发消费数。0表示不限制，每个队列一个消费线程。大于0时使用信号量控制所有队列的总并发</summary>
+    public Int32 MaxConcurrentConsume { get; set; }
 
     /// <summary>消费委托</summary>
     public Func<MessageQueue, MessageExt[], Boolean> OnConsume;
@@ -62,6 +87,19 @@ public class Consumer : MqBase
 
     private readonly IList<IConsumeMessageHook> _consumeMessageHooks = new List<IConsumeMessageHook>();
     private AsyncTraceDispatcher _traceDispatcher;
+
+    /// <summary>本地偏移存储路径。广播模式时使用，默认当前目录下的 .offsets/{Group}.json</summary>
+    public String OffsetStorePath { get; set; }
+
+    private SemaphoreSlim _concurrentSemaphore;
+
+    /// <summary>获取所有有效的订阅主题</summary>
+    private String[] GetEffectiveTopics()
+    {
+        var topics = Topics;
+        if (topics != null && topics.Length > 0) return topics;
+        return [Topic];
+    }
     #endregion
 
     #region 构造
@@ -90,7 +128,8 @@ public class Consumer : MqBase
     /// <returns></returns>
     protected override void OnStart()
     {
-        WriteLog("正在准备消费 {0}", Topic);
+        var allTopics = GetEffectiveTopics();
+        WriteLog("正在准备消费 {0}", allTopics.Join(","));
 
         if (EnableMessageTrace)
         {
@@ -102,18 +141,19 @@ public class Consumer : MqBase
         var list = Data;
         if (list == null)
         {
-            // 建立消费者数据，用于心跳
-            var sd = new SubscriptionData
+            // 为每个Topic建立订阅数据
+            var sds = allTopics.Select(t => new SubscriptionData
             {
-                Topic = Topic,
+                Topic = t,
                 TagsSet = Tags
-            };
+            }).ToArray();
+
             var cd = new ConsumerData
             {
                 GroupName = Group,
                 ConsumeFromWhere = FromLastOffset ? "CONSUME_FROM_LAST_OFFSET" : "CONSUME_FROM_FIRST_OFFSET",
                 MessageModel = MessageModel.ToString().ToUpper(),
-                SubscriptionDataSet = new[] { sd },
+                SubscriptionDataSet = sds,
                 ConsumeType = ConsumeType,
             };
 
@@ -123,6 +163,26 @@ public class Consumer : MqBase
         }
 
         base.OnStart();
+
+        // 多Topic时，通知NameClient轮询额外主题的路由
+        if (allTopics.Length > 1 && _NameServer != null)
+        {
+            var extras = allTopics.Where(t => t != Topic).ToArray();
+            _NameServer.ExtraTopics = extras;
+
+            // 首次获取额外主题的路由
+            foreach (var topic in extras)
+            {
+                try
+                {
+                    _NameServer.GetRouteInfo(topic);
+                }
+                catch (Exception ex)
+                {
+                    WriteLog("获取主题[{0}]路由失败：{1}", topic, ex.Message);
+                }
+            }
+        }
 
         // 默认自动开始调度
         if (AutoSchedule) StartSchedule();
@@ -167,8 +227,9 @@ public class Consumer : MqBase
         var header = new PullMessageRequestHeader
         {
             ConsumerGroup = Group,
-            Topic = Topic,
+            Topic = mq.Topic ?? Topic,
             Subscription = Subscription,
+            ExpressionType = ExpressionType,
             QueueId = mq.QueueId,
             QueueOffset = offset,
             MaxMsgNums = maxNums,
@@ -223,7 +284,7 @@ public class Consumer : MqBase
         var rs = await bk.InvokeAsync(RequestCode.QUERY_CONSUMER_OFFSET, null, new
         {
             consumerGroup = Group,
-            topic = Topic,
+            topic = mq.Topic ?? Topic,
             queueId = mq.QueueId,
         }, true, cancellationToken).ConfigureAwait(false);
 
@@ -245,7 +306,7 @@ public class Consumer : MqBase
         var rs = await bk.InvokeAsync(RequestCode.GET_MAX_OFFSET, null, new
         {
             consumerGroup = Group,
-            topic = Topic,
+            topic = mq.Topic ?? Topic,
             queueId = mq.QueueId,
         }, true, cancellationToken).ConfigureAwait(false);
 
@@ -267,7 +328,7 @@ public class Consumer : MqBase
         var rs = await bk.InvokeAsync(RequestCode.GET_MIN_OFFSET, null, new
         {
             consumerGroup = Group,
-            topic = Topic,
+            topic = mq.Topic ?? Topic,
             queueId = mq.QueueId,
         }, true, cancellationToken).ConfigureAwait(false);
 
@@ -278,12 +339,24 @@ public class Consumer : MqBase
     }
 
     /// <summary>根据时间戳查询偏移</summary>
-    /// <param name="mq"></param>
-    /// <param name="timestamp"></param>
+    /// <param name="mq">队列</param>
+    /// <param name="timestamp">时间戳（毫秒）</param>
+    /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public Int64 SearchOffset(MessageQueue mq, Int64 timestamp)
+    public async Task<Int64> SearchOffset(MessageQueue mq, Int64 timestamp, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var bk = GetBroker(mq.BrokerName);
+        var rs = await bk.InvokeAsync(RequestCode.SEARCH_OFFSET_BY_TIMESTAMP, null, new
+        {
+            topic = mq.Topic ?? Topic,
+            queueId = mq.QueueId,
+            timestamp,
+        }, true, cancellationToken).ConfigureAwait(false);
+
+        var dic = rs.Header?.ExtFields;
+        if (dic == null) return -1;
+
+        return dic.TryGetValue("offset", out var str) ? str.ToLong() : -1;
     }
 
     /// <summary>更新队列的偏移</summary>
@@ -299,7 +372,7 @@ public class Consumer : MqBase
             commitOffset,
             consumerGroup = Group,
             queueId = mq.QueueId,
-            topic = Topic,
+            topic = mq.Topic ?? Topic,
         }, false, cancellationToken).ConfigureAwait(false);
 
         //var dic = rs?.Header?.ExtFields;
@@ -351,6 +424,156 @@ public class Consumer : MqBase
         return cs;
     }
 
+    /// <summary>获取消费者连接列表</summary>
+    /// <param name="group">消费组名</param>
+    /// <returns></returns>
+    public async Task<IDictionary<String, Object>> GetConsumerConnectionList(String group = null)
+    {
+        if (group.IsNullOrEmpty()) group = Group;
+
+        foreach (var item in Brokers)
+        {
+            using var span = Tracer?.NewSpan($"mq:{Name}:GetConsumerConnectionList", item.Name);
+            try
+            {
+                var bk = GetBroker(item.Name);
+                var rs = await bk.InvokeAsync(RequestCode.GET_CONSUMER_CONNECTION_LIST, null, new { consumerGroup = group }).ConfigureAwait(false);
+                if (rs?.Payload != null) return rs.ReadBodyAsJson();
+            }
+            catch (Exception ex)
+            {
+                span?.SetError(ex, null);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>重置消费偏移</summary>
+    /// <param name="timestamp">时间戳（毫秒），将偏移重置到该时间点</param>
+    /// <param name="group">消费组名</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns></returns>
+    public async Task<Boolean> ResetConsumerOffset(Int64 timestamp, String group = null, CancellationToken cancellationToken = default)
+    {
+        if (group.IsNullOrEmpty()) group = Group;
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:ResetConsumerOffset", timestamp);
+        try
+        {
+            foreach (var item in Brokers)
+            {
+                var bk = GetBroker(item.Name);
+                await bk.InvokeAsync(RequestCode.INVOKE_BROKER_TO_RESET_OFFSET, null, new
+                {
+                    topic = Topic,
+                    group,
+                    timestamp,
+                    isForce = false,
+                }, true, cancellationToken).ConfigureAwait(false);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            WriteLog("重置消费偏移失败：{0}", ex.Message);
+            return false;
+        }
+    }
+
+    #endregion
+
+    #region 顺序消费锁定
+    /// <summary>批量锁定队列。顺序消费时确保同一队列同一时刻只有一个消费者</summary>
+    /// <param name="mqs">待锁定的队列集合</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>成功锁定的队列集合</returns>
+    public async Task<IList<MessageQueue>> LockBatchMQAsync(IList<MessageQueue> mqs, CancellationToken cancellationToken = default)
+    {
+        if (mqs == null || mqs.Count == 0) return [];
+
+        var locked = new List<MessageQueue>();
+        var groups = mqs.GroupBy(e => e.BrokerName);
+
+        foreach (var g in groups)
+        {
+            using var span = Tracer?.NewSpan($"mq:{Name}:LockBatchMQ", g.Key);
+            try
+            {
+                var bk = GetBroker(g.Key);
+                if (bk == null) continue;
+
+                var body = new
+                {
+                    consumerGroup = Group,
+                    clientId = ClientId,
+                    mqSet = g.Select(e => new { topic = e.Topic, brokerName = e.BrokerName, queueId = e.QueueId }).ToArray(),
+                };
+
+                var rs = await bk.InvokeAsync(RequestCode.LOCK_BATCH_MQ, body, null, true, cancellationToken).ConfigureAwait(false);
+                if (rs?.Payload != null)
+                {
+                    var js = rs.ReadBodyAsJson();
+                    if (js != null && js["lockOKMQSet"] is IList<Object> list)
+                    {
+                        foreach (IDictionary<String, Object> item in list)
+                        {
+                            locked.Add(new MessageQueue
+                            {
+                                Topic = item["topic"] + "",
+                                BrokerName = item["brokerName"] + "",
+                                QueueId = item["queueId"].ToInt(),
+                            });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                span?.SetError(ex, null);
+                WriteLog("锁定队列失败[{0}]：{1}", g.Key, ex.Message);
+            }
+        }
+
+        return locked;
+    }
+
+    /// <summary>批量解锁队列</summary>
+    /// <param name="mqs">待解锁的队列集合</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns></returns>
+    public async Task UnlockBatchMQAsync(IList<MessageQueue> mqs, CancellationToken cancellationToken = default)
+    {
+        if (mqs == null || mqs.Count == 0) return;
+
+        var groups = mqs.GroupBy(e => e.BrokerName);
+
+        foreach (var g in groups)
+        {
+            using var span = Tracer?.NewSpan($"mq:{Name}:UnlockBatchMQ", g.Key);
+            try
+            {
+                var bk = GetBroker(g.Key);
+                if (bk == null) continue;
+
+                var body = new
+                {
+                    consumerGroup = Group,
+                    clientId = ClientId,
+                    mqSet = g.Select(e => new { topic = e.Topic, brokerName = e.BrokerName, queueId = e.QueueId }).ToArray(),
+                };
+
+                await bk.InvokeAsync(RequestCode.UNLOCK_BATCH_MQ, body, null, false, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                span?.SetError(ex, null);
+                WriteLog("解锁队列失败[{0}]：{1}", g.Key, ex.Message);
+            }
+        }
+    }
     #endregion
 
     #region 消费调度
@@ -394,7 +617,18 @@ public class Consumer : MqBase
         }
 
         var source = new CancellationTokenSource();
-        WriteLog("正在创建[{0}]个消费线程，Group={1}，Topic={2}", qs.Length, Group, Topic);
+        WriteLog("正在创建[{0}]个消费线程，Group={1}，Topics={2}", qs.Length, Group, GetEffectiveTopics().Join(","));
+
+        // 初始化并发限流信号量
+        if (MaxConcurrentConsume > 0)
+        {
+            _concurrentSemaphore = new SemaphoreSlim(MaxConcurrentConsume, MaxConcurrentConsume);
+            WriteLog("消费限流已启用，最大并发数={0}", MaxConcurrentConsume);
+        }
+        else
+        {
+            _concurrentSemaphore = null;
+        }
 
         // 开线程
         var tasks = new Task[qs.Length];
@@ -448,7 +682,18 @@ public class Consumer : MqBase
     private async Task DoPull(QueueStore st, CancellationToken cancellationToken)
     {
         var mq = st.Queue;
-        WriteLog("开始消费[{0}]，Group={1}，{2}，Offset={3}，CommitOffset={4}", Topic, Group, mq, st.Offset, st.CommitOffset);
+        WriteLog("开始消费[{0}]，Group={1}，{2}，Offset={3}，CommitOffset={4}", mq.Topic ?? Topic, Group, mq, st.Offset, st.CommitOffset);
+
+        // 顺序消费时先锁定队列
+        if (OrderConsume)
+        {
+            var locked = await LockBatchMQAsync([mq], cancellationToken).ConfigureAwait(false);
+            if (locked.Count == 0)
+            {
+                WriteLog("顺序消费锁定队列失败[{0}]，跳过消费", mq);
+                return;
+            }
+        }
 
         var currentVersion = _version;
         while (currentVersion == _version && !cancellationToken.IsCancellationRequested)
@@ -466,6 +711,10 @@ public class Consumer : MqBase
                             if (pr.Messages != null && pr.Messages.Length > 0)
                             {
                                 DefaultSpan.Current = null;
+
+                                // 限流：等待信号量
+                                if (_concurrentSemaphore != null)
+                                    await _concurrentSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                                 // 性能埋点
                                 using var span = Tracer?.NewSpan($"mq:{Name}:Consume", pr.Messages);
@@ -487,6 +736,10 @@ public class Consumer : MqBase
                                     span?.SetError(ex, mq);
 
                                     throw;
+                                }
+                                finally
+                                {
+                                    _concurrentSemaphore?.Release();
                                 }
                             }
 
@@ -530,7 +783,13 @@ public class Consumer : MqBase
             st.CommitOffset = st.Offset;
         }
 
-        WriteLog("消费[{0}]结束", Topic);
+        // 顺序消费结束时解锁队列
+        if (OrderConsume)
+        {
+            await UnlockBatchMQAsync([mq], cancellationToken).ConfigureAwait(false);
+        }
+
+        WriteLog("消费[{0}]结束", mq.Topic ?? Topic);
     }
 
     /// <summary>拉取到一批消息</summary>
@@ -567,6 +826,30 @@ public class Consumer : MqBase
         if (OnConsume != null) success = OnConsume(queue, result.Messages);
         if (OnConsumeAsync != null) success = await OnConsumeAsync(queue, result.Messages, cancellationToken).ConfigureAwait(false);
 
+        // 消费失败且启用了重试时，将消息回退到RETRY Topic
+        if (!success && EnableRetry && result.Messages != null)
+        {
+            foreach (var msg in result.Messages)
+            {
+                if (msg.ReconsumeTimes < MaxReconsumeTimes)
+                {
+                    try
+                    {
+                        await SendMessageBackAsync(msg, RetryDelayLevel, MaxReconsumeTimes, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        WriteLog("消息回退失败[{0}]：{1}", msg.MsgId, ex.Message);
+                    }
+                }
+                else
+                {
+                    // 超过最大重试次数，消息将进入死信队列 %DLQ%{ConsumerGroup}
+                    WriteLog("消息[{0}]超过最大重试次数[{1}]，将进入死信队列", msg.MsgId, MaxReconsumeTimes);
+                }
+            }
+        }
+
         context.Success = success;
 
         foreach (var hook in _consumeMessageHooks)
@@ -587,6 +870,13 @@ public class Consumer : MqBase
     private async Task PersistAll(IEnumerable<QueueStore> stores)
     {
         if (stores == null) return;
+
+        // 广播模式保存到本地文件
+        if (MessageModel == MessageModels.Broadcasting)
+        {
+            SaveLocalOffsets(stores.ToArray());
+            return;
+        }
 
         var ts = new List<Task>();
         using var source = new CancellationTokenSource(5_000);
@@ -653,14 +943,23 @@ public class Consumer : MqBase
         var cs = await GetConsumers(Group).ConfigureAwait(false);
         if (cs.Count == 0) return false;
 
+        // 为所有订阅主题构建队列列表，按Topic分别分配
+        var allTopics = GetEffectiveTopics();
         var qs = new List<MessageQueue>();
-        foreach (var br in Brokers)
+        foreach (var topic in allTopics)
         {
-            if (br.Permission.HasFlag(Permissions.Read))
+            // 获取该Topic对应的Broker信息
+            var topicBrokers = _NameServer?.GetTopicBrokers(topic) ?? Brokers;
+            if (topicBrokers == null) continue;
+
+            foreach (var br in topicBrokers)
             {
-                for (var i = 0; i < br.ReadQueueNums; i++)
+                if (br.Permission.HasFlag(Permissions.Read))
                 {
-                    qs.Add(new MessageQueue { Topic = Topic, BrokerName = br.Name, QueueId = i, });
+                    for (var i = 0; i < br.ReadQueueNums; i++)
+                    {
+                        qs.Add(new MessageQueue { Topic = topic, BrokerName = br.Name, QueueId = i, });
+                    }
                 }
             }
         }
@@ -772,22 +1071,65 @@ public class Consumer : MqBase
         var qs = _Queues;
         if (qs == null || qs.Length == 0) return;
 
-        var offsetTables = new Dictionary<MessageQueueModel, OffsetWrapperModel>();
-        // 获取当前消费这分配到的服务器及服务器队列
-        var queueBrokers = qs.Select(t => t.Queue.BrokerName).Distinct().ToList();
-        foreach (var brokerName in queueBrokers)
+        // 广播模式优先从本地加载偏移
+        if (MessageModel == MessageModels.Broadcasting)
         {
-            var broker = GetBroker(brokerName);
-            var command = await broker.InvokeAsync(RequestCode.GET_CONSUME_STATS, null, new
+            var localOffsets = LoadLocalOffsets();
+            foreach (var store in qs)
             {
-                consumerGroup = Group,
-                topic = Topic
-            }, true, cancellationToken).ConfigureAwait(false);
-            var consumerStates = ConsumerStatesSpecialJsonHandler(command.Payload);
-            //foreach (var (key, value) in consumerStates.OffsetTable) offsetTables.Add(key, value);
-            foreach (var item in consumerStates.OffsetTable)
+                if (store.Offset >= 0) continue;
+
+                var key = $"{store.Queue.Topic ?? Topic}@{store.Queue.BrokerName}@{store.Queue.QueueId}";
+                // 兼容旧格式（不含Topic前缀）
+                if (!localOffsets.TryGetValue(key, out var offset) || offset < 0)
+                {
+                    var oldKey = $"{store.Queue.BrokerName}@{store.Queue.QueueId}";
+                    localOffsets.TryGetValue(oldKey, out offset);
+                }
+                if (offset >= 0)
+                {
+                    store.Offset = store.CommitOffset = offset;
+                    WriteLog("从本地加载offset[{0}@{1}] Offset={2:n0}", store.Queue.BrokerName, store.Queue.QueueId, store.Offset);
+                }
+                else
+                {
+                    // 本地没有，从服务端查询
+                    var off = FromLastOffset
+                        ? await QueryMaxOffset(store.Queue, cancellationToken).ConfigureAwait(false)
+                        : await QueryMinOffset(store.Queue, cancellationToken).ConfigureAwait(false);
+
+                    store.Offset = store.CommitOffset = off;
+                    WriteLog("初始化offset[{0}@{1}] Offset={2:n0}（广播模式）", store.Queue.BrokerName, store.Queue.QueueId, store.Offset);
+                }
+            }
+
+            return;
+        }
+
+        var offsetTables = new Dictionary<MessageQueueModel, OffsetWrapperModel>();
+        // 获取当前消费者分配到的服务器及服务器队列，按Topic+Broker分组查询
+        var topicBrokerGroups = qs.Select(t => new { t.Queue.Topic, t.Queue.BrokerName })
+            .Distinct()
+            .GroupBy(t => t.Topic);
+        foreach (var topicGroup in topicBrokerGroups)
+        {
+            var queryTopic = topicGroup.Key ?? Topic;
+            foreach (var tb in topicGroup)
             {
-                offsetTables.Add(item.Key, item.Value);
+                var broker = GetBroker(tb.BrokerName);
+                var command = await broker.InvokeAsync(RequestCode.GET_CONSUME_STATS, null, new
+                {
+                    consumerGroup = Group,
+                    topic = queryTopic
+                }, true, cancellationToken).ConfigureAwait(false);
+                var consumerStates = ConsumerStatesSpecialJsonHandler(command.Payload);
+                //foreach (var (key, value) in consumerStates.OffsetTable) offsetTables.Add(key, value);
+                foreach (var item in consumerStates.OffsetTable)
+                {
+                    // 避免重复添加（同一个Broker上不同Topic的key可能相同）
+                    if (!offsetTables.ContainsKey(item.Key))
+                        offsetTables.Add(item.Key, item.Value);
+                }
             }
         }
 
@@ -798,8 +1140,13 @@ public class Consumer : MqBase
         {
             if (store.Offset >= 0) continue;
 
+            // 先按BrokerName精确匹配，如果找不到（阿里云公网版BrokerName可能不一致），则按QueueId模糊匹配
             var item = offsetTables.FirstOrDefault(t => t.Key.BrokerName == store.Queue.BrokerName && t.Key.QueueId == store.Queue.QueueId);
-            //!! 阿里云公网版RocketMQ，消费者状态返回的是真正brokerName，而前面Broker得到的是网关名，导致这里无法匹配
+            if (item.Value == null)
+            {
+                // 阿里云公网版RocketMQ，消费者状态返回的是真正brokerName，而前面Broker得到的是网关名
+                item = offsetTables.FirstOrDefault(t => t.Key.QueueId == store.Queue.QueueId);
+            }
             var offsetTable = item.Value ?? new OffsetWrapperModel();
             if (neverConsumed)
             {
@@ -893,6 +1240,58 @@ public class Consumer : MqBase
         return consumerStatesModel;
     }
 
+    /// <summary>获取本地偏移存储路径</summary>
+    private String GetOffsetFilePath()
+    {
+        var path = OffsetStorePath;
+        if (String.IsNullOrEmpty(path))
+            path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".offsets", $"{Group}.json");
+
+        return path;
+    }
+
+    /// <summary>从本地文件加载偏移。广播模式使用</summary>
+    private Dictionary<String, Int64> LoadLocalOffsets()
+    {
+        var file = GetOffsetFilePath();
+        if (!File.Exists(file)) return [];
+
+        try
+        {
+            var json = File.ReadAllText(file);
+            if (String.IsNullOrWhiteSpace(json)) return [];
+
+            return JsonHelper.Default.Read<Dictionary<String, Int64>>(json) ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    /// <summary>保存偏移到本地文件。广播模式使用</summary>
+    private void SaveLocalOffsets(QueueStore[] stores)
+    {
+        if (stores == null || stores.Length == 0) return;
+
+        var dic = new Dictionary<String, Int64>();
+        foreach (var st in stores)
+        {
+            if (st.Offset >= 0)
+            {
+                var key = $"{st.Queue.Topic ?? Topic}@{st.Queue.BrokerName}@{st.Queue.QueueId}";
+                dic[key] = st.Offset;
+            }
+        }
+
+        var file = GetOffsetFilePath();
+        var dir = Path.GetDirectoryName(file);
+        if (!String.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            Directory.CreateDirectory(dir);
+
+        File.WriteAllText(file, JsonHelper.Default.Write(dic));
+    }
+
     #endregion
 
     #region 下行指令
@@ -962,7 +1361,7 @@ public class Consumer : MqBase
 
         var asm = Assembly.GetExecutingAssembly();
         dic["PROP_CLIENT_VERSION"] = asm.GetName().Version + "";
-        dic["PROP_CONSUMEORDERLY"] = "false";
+        dic["PROP_CONSUMEORDERLY"] = OrderConsume ? "true" : "false";
         dic["PROP_CONSUMER_START_TIMESTAMP"] = StartTime.ToInt() + "";
         dic["PROP_CONSUME_TYPE"] = "CONSUME_PASSIVELY";
         dic["PROP_NAMESERVER_ADDR"] = NameServerAddress;
@@ -971,7 +1370,7 @@ public class Consumer : MqBase
         ci.Properties = dic;
 
         var sd = new SubscriptionData { Topic = Topic, };
-        ci.SubscriptionSet = [sd];
+        ci.SubscriptionSet = GetEffectiveTopics().Select(t => new SubscriptionData { Topic = t }).ToArray();
 
         var sb = new StringBuilder();
         sb.Append('{');
@@ -1011,6 +1410,289 @@ public class Consumer : MqBase
     }
 
     #endregion
+
+    #region 消费重试
+    /// <summary>将消费失败的消息发回Broker，进入RETRY Topic延迟后重新消费</summary>
+    /// <param name="msg">消费失败的消息</param>
+    /// <param name="delayLevel">延迟等级。0=由Broker决定，大于0指定等级（1~18）</param>
+    /// <param name="maxReconsumeTimes">最大重试次数。-1表示使用默认值</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>是否成功</returns>
+    public async Task<Boolean> SendMessageBackAsync(MessageExt msg, Int32 delayLevel = 0, Int32 maxReconsumeTimes = -1, CancellationToken cancellationToken = default)
+    {
+        if (msg == null) throw new ArgumentNullException(nameof(msg));
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:SendMessageBack", msg.MsgId);
+        try
+        {
+            var bk = GetBroker(msg.StoreHost?.Split(':').FirstOrDefault() ?? Brokers?.FirstOrDefault()?.Name);
+            if (bk == null)
+            {
+                // 尝试在所有Broker上发送
+                bk = Clients?.FirstOrDefault();
+            }
+            if (bk == null) return false;
+
+            var header = new
+            {
+                group = Group,
+                offset = msg.CommitLogOffset,
+                delayLevel = delayLevel > 0 ? delayLevel : RetryDelayLevel,
+                originMsgId = msg.MsgId ?? "",
+                originTopic = msg.Topic ?? Topic,
+                unitMode = UnitMode,
+                maxReconsumeTimes = maxReconsumeTimes >= 0 ? maxReconsumeTimes : MaxReconsumeTimes,
+            };
+
+            await bk.InvokeAsync(RequestCode.CONSUMER_SEND_MSG_BACK, null, header, true, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            WriteLog("消息回退失败：{0}", ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>将消费失败的消息发回Broker，进入RETRY Topic延迟后重新消费</summary>
+    /// <param name="msg">消费失败的消息</param>
+    /// <param name="delayLevel">延迟等级</param>
+    /// <param name="maxReconsumeTimes">最大重试次数</param>
+    /// <returns>是否成功</returns>
+    public Boolean SendMessageBack(MessageExt msg, Int32 delayLevel = 0, Int32 maxReconsumeTimes = -1)
+        => SendMessageBackAsync(msg, delayLevel, maxReconsumeTimes).ConfigureAwait(false).GetAwaiter().GetResult();
+    #endregion
+
+    #region Pop消费模式
+    /// <summary>Pop方式拉取消息。5.0新增的轻量消费模式，无需客户端Rebalance</summary>
+    /// <param name="brokerName">Broker名称</param>
+    /// <param name="maxNums">最大拉取数</param>
+    /// <param name="invisibleTime">不可见时间（毫秒），消息被拉取后在此时间内不会被其他消费者看到</param>
+    /// <param name="pollTime">长轮询等待时间（毫秒）</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>拉取结果</returns>
+    public async Task<PullResult> PopMessageAsync(String brokerName, Int32 maxNums = 32, Int64 invisibleTime = 60_000, Int32 pollTime = 15_000, CancellationToken cancellationToken = default)
+    {
+        if (String.IsNullOrEmpty(brokerName)) throw new ArgumentNullException(nameof(brokerName));
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:PopMessage", brokerName);
+        try
+        {
+            var bk = GetBroker(brokerName);
+            if (bk == null) return null;
+
+            var header = new
+            {
+                consumerGroup = Group,
+                topic = Topic,
+                maxMsgNums = maxNums,
+                invisibleTime,
+                pollTime,
+                bornTime = DateTime.Now.ToLong(),
+                initMode = FromLastOffset ? 1 : 0,
+                expType = ExpressionType,
+                exp = Subscription,
+            };
+
+            var rs = await bk.InvokeAsync(RequestCode.POP_MESSAGE, null, header, true, cancellationToken).ConfigureAwait(false);
+            if (rs?.Header == null) return null;
+
+            var pr = new PullResult();
+            if (rs.Header.Code == 0)
+                pr.Status = PullStatus.Found;
+            else if (rs.Header.Code == (Int32)ResponseCode.PULL_NOT_FOUND)
+                pr.Status = PullStatus.NoNewMessage;
+            else
+                pr.Status = PullStatus.Unknown;
+
+            pr.Read(rs.Header?.ExtFields);
+
+            if (rs.Payload != null) pr.Messages = MessageExt.ReadAll(rs.Payload).ToArray();
+
+            return pr;
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+    }
+
+    /// <summary>确认Pop消息消费完成</summary>
+    /// <param name="brokerName">Broker名称</param>
+    /// <param name="extraInfo">消息额外信息，Pop拉取时返回</param>
+    /// <param name="offset">消息偏移</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns></returns>
+    public async Task<Boolean> AckMessageAsync(String brokerName, String extraInfo, Int64 offset, CancellationToken cancellationToken = default)
+    {
+        using var span = Tracer?.NewSpan($"mq:{Name}:AckMessage", offset);
+        try
+        {
+            var bk = GetBroker(brokerName);
+            if (bk == null) return false;
+
+            var header = new
+            {
+                consumerGroup = Group,
+                topic = Topic,
+                extraInfo,
+                offset,
+            };
+
+            await bk.InvokeAsync(RequestCode.ACK_MESSAGE, null, header, true, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            WriteLog("确认Pop消息失败：{0}", ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>修改Pop消息不可见时间，延长消费处理窗口</summary>
+    /// <param name="brokerName">Broker名称</param>
+    /// <param name="extraInfo">消息额外信息</param>
+    /// <param name="offset">消息偏移</param>
+    /// <param name="invisibleTime">新的不可见时间（毫秒）</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns></returns>
+    public async Task<Boolean> ChangeInvisibleTimeAsync(String brokerName, String extraInfo, Int64 offset, Int64 invisibleTime, CancellationToken cancellationToken = default)
+    {
+        using var span = Tracer?.NewSpan($"mq:{Name}:ChangeInvisibleTime", offset);
+        try
+        {
+            var bk = GetBroker(brokerName);
+            if (bk == null) return false;
+
+            var header = new
+            {
+                consumerGroup = Group,
+                topic = Topic,
+                extraInfo,
+                offset,
+                invisibleTime,
+            };
+
+            await bk.InvokeAsync(RequestCode.CHANGE_MESSAGE_INVISIBLETIME, null, header, true, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            WriteLog("修改不可见时间失败：{0}", ex.Message);
+            return false;
+        }
+    }
+    #endregion
+
+#if NETSTANDARD2_1_OR_GREATER
+    #region gRPC消费模式
+    /// <summary>通过gRPC协议接收消息。需要先设置GrpcProxyAddress</summary>
+    /// <param name="queue">gRPC消息队列</param>
+    /// <param name="filterExpression">过滤表达式。默认Tag=*</param>
+    /// <param name="batchSize">批量大小。默认32</param>
+    /// <param name="invisibleDuration">不可见时间。默认30秒</param>
+    /// <param name="longPollingTimeout">长轮询超时。默认20秒</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>gRPC消息列表</returns>
+    public async Task<IList<Grpc.GrpcMessage>> ReceiveMessageViaGrpcAsync(
+        Grpc.GrpcMessageQueue queue,
+        Grpc.GrpcFilterExpression filterExpression = null,
+        Int32 batchSize = 32,
+        TimeSpan? invisibleDuration = null,
+        TimeSpan? longPollingTimeout = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:ReceiveMessage:grpc");
+        try
+        {
+            return await _GrpcService.ReceiveMessageAsync(
+                Group,
+                queue,
+                filterExpression,
+                batchSize,
+                invisibleDuration,
+                longPollingTimeout,
+                cancellationToken
+            ).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+    }
+
+    /// <summary>通过gRPC协议确认消息</summary>
+    /// <param name="topic">主题</param>
+    /// <param name="entries">确认条目列表</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>确认结果</returns>
+    public async Task<Grpc.AckMessageResponse> AckMessageViaGrpcAsync(
+        String topic,
+        IList<Grpc.AckMessageEntry> entries,
+        CancellationToken cancellationToken = default)
+    {
+        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:AckMessage:grpc");
+        try
+        {
+            return await _GrpcService.AckMessageAsync(topic, Group, entries, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+    }
+
+    /// <summary>通过gRPC协议查询队列分配</summary>
+    /// <param name="topic">主题。默认使用当前Topic</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>分配结果</returns>
+    public async Task<Grpc.QueryAssignmentResponse> QueryAssignmentViaGrpcAsync(String topic = null, CancellationToken cancellationToken = default)
+    {
+        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        return await _GrpcService.QueryAssignmentAsync(topic ?? Topic, Group, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>通过gRPC协议修改消息不可见时间</summary>
+    /// <param name="topic">主题</param>
+    /// <param name="receiptHandle">收据句柄</param>
+    /// <param name="messageId">消息ID</param>
+    /// <param name="invisibleDuration">新的不可见时间</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns></returns>
+    public async Task<Grpc.ChangeInvisibleDurationResponse> ChangeInvisibleDurationViaGrpcAsync(
+        String topic,
+        String receiptHandle,
+        String messageId,
+        TimeSpan invisibleDuration,
+        CancellationToken cancellationToken = default)
+    {
+        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        return await _GrpcService.ChangeInvisibleDurationAsync(topic, Group, receiptHandle, messageId, invisibleDuration, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>通过gRPC协议发送心跳</summary>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns></returns>
+    public async Task<Grpc.HeartbeatResponse> HeartbeatViaGrpcAsync(CancellationToken cancellationToken = default)
+    {
+        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        return await _GrpcService.HeartbeatAsync(Group, Grpc.GrpcClientType.SIMPLE_CONSUMER, cancellationToken).ConfigureAwait(false);
+    }
+    #endregion
+#endif
 
     #region Request-Reply 请求响应模式
     /// <summary>发送回复消息</summary>

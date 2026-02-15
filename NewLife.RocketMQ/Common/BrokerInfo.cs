@@ -24,6 +24,12 @@ public class BrokerInfo
     /// <summary>地址集合</summary>
     public String[] Addresses { get; set; }
 
+    /// <summary>主节点地址（BrokerId=0）</summary>
+    public String MasterAddress { get; set; }
+
+    /// <summary>从节点地址集合（BrokerId>0）</summary>
+    public String[] SlaveAddresses { get; set; }
+
     /// <summary>权限</summary>
     public Permissions Permission { get; set; }
 

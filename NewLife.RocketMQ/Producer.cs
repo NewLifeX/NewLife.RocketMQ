@@ -35,11 +35,20 @@ public class Producer : MqBase
     /// <summary>最大消息大小。默认4*1024*1024</summary>
     public Int32 MaxMessageSize { get; set; } = 4 * 1024 * 1024;
 
+    /// <summary>消息体压缩阈值（字节）。超过该大小自动ZLIB压缩，默认4096。设为0则禁用压缩</summary>
+    public Int32 CompressOverBytes { get; set; } = 4096;
+
     private readonly IList<ISendMessageHook> _sendMessageHooks = new List<ISendMessageHook>();
     private AsyncTraceDispatcher _traceDispatcher;
 
     /// <summary>请求超时时间。默认3000ms</summary>
     public Int32 RequestTimeout { get; set; } = 3_000;
+
+    /// <summary>事务回查委托。Broker发起事务回查时调用，参数为消息和事务ID，返回事务状态</summary>
+    public Func<MessageExt, String, TransactionState> OnCheckTransaction;
+
+    /// <summary>异步事务回查委托。Broker发起事务回查时调用，参数为消息、事务ID和取消令牌，返回事务状态</summary>
+    public Func<MessageExt, String, CancellationToken, Task<TransactionState>> OnCheckTransactionAsync;
 
     private readonly ConcurrentDictionary<String, TaskCompletionSource<MessageExt>> _requestCallbacks = new();
     private Consumer _replyConsumer;
@@ -273,6 +282,12 @@ public class Producer : MqBase
     {
         if (message is null) throw new ArgumentNullException(nameof(message));
 
+#if NETSTANDARD2_1_OR_GREATER
+        // gRPC模式
+        if (_GrpcService != null)
+            return await PublishViaGrpcAsync(message, cancellationToken).ConfigureAwait(false);
+#endif
+
         // 构造请求头
         var header = CreateHeader(message);
 
@@ -385,6 +400,48 @@ public class Producer : MqBase
 
         return PublishAsync(message, null);
     }
+
+#if NETSTANDARD2_1_OR_GREATER
+    /// <summary>通过gRPC协议发送消息</summary>
+    /// <param name="message">消息</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns></returns>
+    private async Task<SendResult> PublishViaGrpcAsync(Message message, CancellationToken cancellationToken)
+    {
+        using var span = Tracer?.NewSpan($"mq:{Name}:PublishAsync:grpc", message.BodyString);
+        try
+        {
+            var keys = message.Keys?.Split(',').Where(k => !String.IsNullOrEmpty(k)).ToList();
+            var rs = await _GrpcService.SendMessageAsync(
+                Topic,
+                message.Body,
+                tag: message.Tags,
+                keys: keys,
+                properties: message.Properties.Count > 0 ? message.Properties : null,
+                cancellationToken: cancellationToken
+            ).ConfigureAwait(false);
+
+            if (rs.Status?.Code != Grpc.GrpcCode.OK)
+                throw new InvalidOperationException($"gRPC SendMessage failed: {rs.Status}");
+
+            var entry = rs.Entries.FirstOrDefault();
+            var result = new SendResult
+            {
+                Status = SendStatus.SendOK,
+                MsgId = entry?.MessageId,
+                TransactionId = entry?.TransactionId,
+                QueueOffset = entry?.Offset ?? 0,
+            };
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, message);
+            throw;
+        }
+    }
+#endif
     #endregion
 
     #region 发布单向消息
@@ -490,6 +547,114 @@ public class Producer : MqBase
         message.Tags = tags;
 
         PublishOneway(message, null);
+    }
+    #endregion
+
+    #region 批量发布消息
+    /// <summary>批量发布消息</summary>
+    /// <param name="messages">消息集合</param>
+    /// <param name="timeout">超时时间</param>
+    /// <returns></returns>
+    public virtual SendResult PublishBatch(IList<Message> messages, Int32 timeout = -1)
+    {
+        if (messages == null || messages.Count == 0) throw new ArgumentException("消息集合不能为空", nameof(messages));
+
+        // 编码批量消息体
+        var ms = new MemoryStream();
+        var bn = new NewLife.Serialization.Binary { Stream = ms, IsLittleEndian = false };
+        foreach (var msg in messages)
+        {
+            msg.Topic ??= Topic;
+            var body = msg.Body ?? new Byte[0];
+            var props = msg.GetProperties() ?? "";
+            var propsBytes = props.GetBytes();
+
+            // 按照 RocketMQ 批量消息编码格式
+            // TotalSize(4) + MagicCode(4) + BodyCRC(4) + Flag(4) + BodyLen(4) + Body + PropsLen(2) + Props
+            var totalSize = 4 + 4 + 4 + 4 + 4 + body.Length + 2 + propsBytes.Length;
+            bn.Write(totalSize);
+            bn.Write(0); // MagicCode
+            bn.Write(0); // BodyCRC
+            bn.Write(msg.Flag);
+            bn.Write(body.Length);
+            ms.Write(body, 0, body.Length);
+            bn.Write((Int16)propsBytes.Length);
+            ms.Write(propsBytes, 0, propsBytes.Length);
+        }
+
+        var batchBody = ms.ToArray();
+
+        // 使用第一条消息的属性作为批量消息头
+        var firstMsg = messages[0];
+        var header = new SendMessageRequestHeader
+        {
+            ProducerGroup = Group,
+            Topic = Topic,
+            SysFlag = 0,
+            BornTimestamp = DateTime.UtcNow.ToLong(),
+            Flag = firstMsg.Flag,
+            Properties = firstMsg.GetProperties(),
+            ReconsumeTimes = 0,
+            UnitMode = UnitMode,
+            Batch = true,
+            DefaultTopic = DefaultTopic,
+            DefaultTopicQueueNums = DefaultTopicQueueNums
+        };
+
+        // 选择队列分片
+        var mq = SelectQueue();
+        if (mq == null) return null;
+
+        mq.Topic = Topic;
+        header.QueueId = mq.QueueId;
+        header.BrokerName = mq.BrokerName;
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:PublishBatch", messages.Count);
+        try
+        {
+            var bk = GetBroker(mq.BrokerName);
+            var rs = bk.Invoke(RequestCode.SEND_BATCH_MESSAGE, batchBody, header.GetProperties(), true);
+
+            var result = new SendResult
+            {
+                Queue = mq,
+                Header = rs.Header,
+                Status = (ResponseCode)rs.Header.Code switch
+                {
+                    ResponseCode.SUCCESS => SendStatus.SendOK,
+                    ResponseCode.FLUSH_DISK_TIMEOUT => SendStatus.FlushDiskTimeout,
+                    ResponseCode.FLUSH_SLAVE_TIMEOUT => SendStatus.FlushSlaveTimeout,
+                    ResponseCode.SLAVE_NOT_AVAILABLE => SendStatus.SlaveNotAvailable,
+                    _ => throw rs.Header.CreateException(),
+                }
+            };
+            result.Read(rs.Header?.ExtFields);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+    }
+
+    /// <summary>批量发布字符串消息</summary>
+    /// <param name="bodies">消息体集合</param>
+    /// <param name="tags">标签</param>
+    /// <returns></returns>
+    public virtual SendResult PublishBatch(IList<String> bodies, String tags = null)
+    {
+        var messages = new List<Message>();
+        foreach (var body in bodies)
+        {
+            var msg = new Message();
+            msg.SetBody(body);
+            if (tags != null) msg.Tags = tags;
+            messages.Add(msg);
+        }
+
+        return PublishBatch(messages);
     }
     #endregion
 
@@ -680,13 +845,22 @@ public class Producer : MqBase
         var max = MaxMessageSize;
         if (max > 0 && message.Body.Length > max) throw new InvalidOperationException($"主题[{Topic}]的数据包大小[{message.Body.Length}]超过最大限制[{max}]，大key会拖累整个队列，可通过MaxMessageSize调节。");
 
+        // 消息压缩
+        var sysFlag = 0;
+        var compressOver = CompressOverBytes;
+        if (compressOver > 0 && message.Body != null && message.Body.Length > compressOver)
+        {
+            message.Body = message.Body.Compress();
+            sysFlag |= 1; // 第0位表示压缩
+        }
+
         // 构造请求头
         var smrh = new SendMessageRequestHeader
         {
             ProducerGroup = Group,
             Topic = Topic,
             //QueueId = mq.QueueId,
-            SysFlag = 0,
+            SysFlag = sysFlag,
             BornTimestamp = DateTime.UtcNow.ToLong(),
             Flag = message.Flag,
             Properties = message.GetProperties(),
@@ -864,4 +1038,208 @@ public class Producer : MqBase
         }
     }
     #endregion
+
+    #region 事务回查
+    /// <summary>收到命令</summary>
+    /// <param name="cmd"></param>
+    protected override Command OnReceive(Command cmd)
+    {
+        if (!cmd.Reply)
+        {
+            var code = (RequestCode)cmd.Header.Code;
+            if (code == RequestCode.CHECK_TRANSACTION_STATE)
+                return HandleCheckTransaction(cmd);
+        }
+
+        return null;
+    }
+
+    private Command HandleCheckTransaction(Command cmd)
+    {
+        using var span = Tracer?.NewSpan($"mq:{Name}:CheckTransaction");
+        try
+        {
+            var dic = cmd.Header?.ExtFields;
+            var transactionId = dic != null && dic.TryGetValue("transactionId", out var tid) ? tid : null;
+            var commitLogOffset = dic != null && dic.TryGetValue("commitLogOffset", out var clo) ? clo.ToLong() : 0L;
+            var tranStateTableOffset = dic != null && dic.TryGetValue("tranStateTableOffset", out var tso) ? tso.ToLong() : 0L;
+            var msgId = dic != null && dic.TryGetValue("msgId", out var mid) ? mid : null;
+
+            // 从消息体中尝试解析消息
+            MessageExt msgExt = null;
+            if (cmd.Payload != null)
+            {
+                var msgs = MessageExt.ReadAll(cmd.Payload);
+                msgExt = msgs?.FirstOrDefault();
+            }
+            msgExt ??= new MessageExt { MsgId = msgId, TransactionId = transactionId };
+
+            // 调用回查委托
+            var state = TransactionState.Rollback;
+            if (OnCheckTransactionAsync != null)
+                state = OnCheckTransactionAsync(msgExt, transactionId, default).ConfigureAwait(false).GetAwaiter().GetResult();
+            else if (OnCheckTransaction != null)
+                state = OnCheckTransaction(msgExt, transactionId);
+            else
+            {
+                WriteLog("收到事务回查但未设置OnCheckTransaction委托，事务ID={0}，将默认回滚", transactionId);
+            }
+
+            // 构造EndTransaction请求
+            var header = new EndTransactionRequestHeader
+            {
+                ProducerGroup = Group,
+                TranStateTableOffset = tranStateTableOffset,
+                CommitLogOffset = commitLogOffset,
+                CommitOrRollback = (Int32)state,
+                FromTransactionCheck = true,
+                MsgId = msgId,
+                TransactionId = transactionId,
+            };
+
+            var bk = Clients?.FirstOrDefault();
+            bk?.Invoke(RequestCode.END_TRANSACTION, null, header.GetProperties());
+
+        WriteLog("事务回查完成，事务ID={0}，状态={1}", transactionId, state);
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            WriteLog("事务回查处理异常：{0}", ex.Message);
+        }
+
+        return null;
+    }
+    #endregion
+
+#if NETSTANDARD2_1_OR_GREATER
+    #region gRPC扩展方法
+    /// <summary>通过gRPC协议发送延迟消息（任意时间）。RocketMQ 5.x新特性</summary>
+    /// <param name="body">消息体</param>
+    /// <param name="deliveryTimestamp">投递时间（UTC或本地时间）</param>
+    /// <param name="tag">标签</param>
+    /// <param name="keys">消息Key列表</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>发送结果</returns>
+    public async Task<SendResult> PublishDelayViaGrpcAsync(
+        Object body,
+        DateTime deliveryTimestamp,
+        String tag = null,
+        IList<String> keys = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        var message = CreateMessage(body);
+        using var span = Tracer?.NewSpan($"mq:{Name}:PublishDelay:grpc", new { deliveryTimestamp, body = message.BodyString });
+        try
+        {
+            var rs = await _GrpcService.SendMessageAsync(
+                Topic,
+                message.Body,
+                tag: tag,
+                keys: keys,
+                deliveryTimestamp: deliveryTimestamp,
+                cancellationToken: cancellationToken
+            ).ConfigureAwait(false);
+
+            if (rs.Status?.Code != Grpc.GrpcCode.OK)
+                throw new InvalidOperationException($"gRPC SendMessage (delay) failed: {rs.Status}");
+
+            var entry = rs.Entries.FirstOrDefault();
+            return new SendResult
+            {
+                Status = SendStatus.SendOK,
+                MsgId = entry?.MessageId,
+                TransactionId = entry?.TransactionId,
+                QueueOffset = entry?.Offset ?? 0,
+            };
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+    }
+
+    /// <summary>通过gRPC协议发送事务消息（半消息）。RocketMQ 5.x gRPC API</summary>
+    /// <param name="body">消息体</param>
+    /// <param name="tag">标签</param>
+    /// <param name="keys">消息Key列表</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>发送结果（包含TransactionId）</returns>
+    public async Task<SendResult> PublishTransactionViaGrpcAsync(
+        Object body,
+        String tag = null,
+        IList<String> keys = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        var message = CreateMessage(body);
+        using var span = Tracer?.NewSpan($"mq:{Name}:PublishTransaction:grpc", message.BodyString);
+        try
+        {
+            var rs = await _GrpcService.SendTransactionMessageAsync(
+                Topic,
+                message.Body,
+                tag: tag,
+                keys: keys,
+                cancellationToken: cancellationToken
+            ).ConfigureAwait(false);
+
+            if (rs.Status?.Code != Grpc.GrpcCode.OK)
+                throw new InvalidOperationException($"gRPC SendTransactionMessage failed: {rs.Status}");
+
+            var entry = rs.Entries.FirstOrDefault();
+            return new SendResult
+            {
+                Status = SendStatus.SendOK,
+                MsgId = entry?.MessageId,
+                TransactionId = entry?.TransactionId,
+                QueueOffset = entry?.Offset ?? 0,
+            };
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+    }
+
+    /// <summary>通过gRPC协议结束事务</summary>
+    /// <param name="messageId">消息ID</param>
+    /// <param name="transactionId">事务ID</param>
+    /// <param name="commit">是否提交。true提交，false回滚</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns></returns>
+    public async Task<Grpc.GrpcEndTransactionResponse> EndTransactionViaGrpcAsync(
+        String messageId,
+        String transactionId,
+        Boolean commit,
+        CancellationToken cancellationToken = default)
+    {
+        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        return await _GrpcService.EndTransactionAsync(
+            Topic,
+            messageId,
+            transactionId,
+            commit ? Grpc.GrpcTransactionResolution.COMMIT : Grpc.GrpcTransactionResolution.ROLLBACK,
+            cancellationToken
+        ).ConfigureAwait(false);
+    }
+
+    /// <summary>通过gRPC协议查询主题路由</summary>
+    /// <param name="topic">主题名。默认使用当前Topic</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>路由信息</returns>
+    public async Task<Grpc.QueryRouteResponse> QueryRouteViaGrpcAsync(String topic = null, CancellationToken cancellationToken = default)
+    {
+        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        return await _GrpcService.QueryRouteAsync(topic ?? Topic, cancellationToken).ConfigureAwait(false);
+    }
+    #endregion
+#endif
 }
