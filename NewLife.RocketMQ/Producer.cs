@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Globalization;
 using NewLife.Log;
 using NewLife.Reflection;
 using NewLife.RocketMQ.Client;
@@ -12,6 +13,8 @@ namespace NewLife.RocketMQ;
 /// <summary>生产者</summary>
 public class Producer : MqBase
 {
+    private const Int32 CommitLogOffsetHexLength = 16;
+
     #region 属性
     /// <summary>负载均衡。发布消息时，分发到各个队列的负载均衡算法，默认使用带权重的轮询</summary>
     public ILoadBalance LoadBalance { get; set; }
@@ -229,6 +232,36 @@ public class Producer : MqBase
 
         return Publish(message, null, timeout);
     }
+
+    /// <summary>发布事务消息（半消息）</summary>
+    /// <param name="message">消息体</param>
+    /// <param name="queue">目标队列</param>
+    /// <param name="timeout"></param>
+    /// <returns></returns>
+    public virtual SendResult PublishTransaction(Message message, MessageQueue queue = null, Int32 timeout = -1)
+    {
+        if (message is null) throw new ArgumentNullException(nameof(message));
+
+        message.Properties["TRAN_MSG"] = "true";
+        message.Properties["PGROUP"] = Group;
+
+        return Publish(message, queue, timeout);
+    }
+
+    /// <summary>发布事务消息（半消息）</summary>
+    /// <param name="body"></param>
+    /// <param name="tags"></param>
+    /// <param name="keys"></param>
+    /// <param name="timeout"></param>
+    /// <returns></returns>
+    public virtual SendResult PublishTransaction(Object body, String tags = null, String keys = null, Int32 timeout = -1)
+    {
+        var message = CreateMessage(body);
+        message.Tags = tags;
+        message.Keys = keys;
+
+        return PublishTransaction(message, null, timeout);
+    }
     #endregion
 
     #region 异步发布消息
@@ -317,6 +350,21 @@ public class Producer : MqBase
         }
 
         return null;
+    }
+
+    /// <summary>异步发布事务消息（半消息）</summary>
+    /// <param name="message">消息体</param>
+    /// <param name="queue">目标队列</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns></returns>
+    public virtual Task<SendResult> PublishTransactionAsync(Message message, MessageQueue queue = null, CancellationToken cancellationToken = default)
+    {
+        if (message is null) throw new ArgumentNullException(nameof(message));
+
+        message.Properties["TRAN_MSG"] = "true";
+        message.Properties["PGROUP"] = Group;
+
+        return PublishAsync(message, queue, cancellationToken);
     }
 
     /// <summary>发布消息</summary>
@@ -554,6 +602,60 @@ public class Producer : MqBase
     }
     #endregion
 
+    #region 结束事务消息
+    /// <summary>结束事务消息。提交或回滚事务</summary>
+    /// <param name="result">发布事务消息返回结果</param>
+    /// <param name="state">事务状态</param>
+    /// <param name="fromTransactionCheck">是否来自事务回查</param>
+    public virtual void EndTransaction(SendResult result, TransactionState state, Boolean fromTransactionCheck = false)
+    {
+        if (result is null) throw new ArgumentNullException(nameof(result));
+        if (result.Queue == null) throw new ArgumentNullException(nameof(result), "缺少队列信息");
+        if (result.Queue.BrokerName.IsNullOrEmpty()) throw new ArgumentNullException(nameof(result), "缺少BrokerName");
+
+        var header = new EndTransactionRequestHeader
+        {
+            ProducerGroup = Group,
+            TranStateTableOffset = result.QueueOffset,
+            CommitLogOffset = GetCommitLogOffset(result.OffsetMsgId),
+            CommitOrRollback = (Int32)state,
+            FromTransactionCheck = fromTransactionCheck,
+            MsgId = result.MsgId,
+            TransactionId = result.TransactionId,
+        };
+
+        var bk = GetBroker(result.Queue.BrokerName);
+        bk.Invoke(RequestCode.END_TRANSACTION, null, header.GetProperties());
+    }
+
+    /// <summary>异步结束事务消息。提交或回滚事务</summary>
+    /// <param name="result">发布事务消息返回结果</param>
+    /// <param name="state">事务状态</param>
+    /// <param name="fromTransactionCheck">是否来自事务回查</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns></returns>
+    public virtual async Task EndTransactionAsync(SendResult result, TransactionState state, Boolean fromTransactionCheck = false, CancellationToken cancellationToken = default)
+    {
+        if (result is null) throw new ArgumentNullException(nameof(result));
+        if (result.Queue == null) throw new ArgumentNullException(nameof(result), "缺少队列信息");
+        if (result.Queue.BrokerName.IsNullOrEmpty()) throw new ArgumentNullException(nameof(result), "缺少BrokerName");
+
+        var header = new EndTransactionRequestHeader
+        {
+            ProducerGroup = Group,
+            TranStateTableOffset = result.QueueOffset,
+            CommitLogOffset = GetCommitLogOffset(result.OffsetMsgId),
+            CommitOrRollback = (Int32)state,
+            FromTransactionCheck = fromTransactionCheck,
+            MsgId = result.MsgId,
+            TransactionId = result.TransactionId,
+        };
+
+        var bk = GetBroker(result.Queue.BrokerName);
+        await bk.InvokeAsync(RequestCode.END_TRANSACTION, null, header.GetProperties(), false, cancellationToken).ConfigureAwait(false);
+    }
+    #endregion
+
     #region 辅助
     /// <summary>
     /// 创建消息，设计于支持用户重载以改变消息序列化行为
@@ -594,7 +696,17 @@ public class Producer : MqBase
             DefaultTopicQueueNums = DefaultTopicQueueNums
         };
 
+        if (message.Properties.TryGetValue("TRAN_MSG", out var str) && str.ToBoolean()) smrh.SysFlag = (Int32)TransactionState.Prepared;
+
         return smrh;
+    }
+
+    private static Int64 GetCommitLogOffset(String offsetMsgId)
+    {
+        if (offsetMsgId.IsNullOrEmpty() || offsetMsgId.Length < CommitLogOffsetHexLength) return 0;
+
+        // OffsetMsgId尾部16位是8字节（Int64）的CommitLogOffset十六进制表示
+        return Int64.TryParse(offsetMsgId.Substring(offsetMsgId.Length - CommitLogOffsetHexLength), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var rs) ? rs : 0;
     }
     #endregion
 
