@@ -62,6 +62,21 @@ consumer.OnConsume = (q, messages) =>
 consumer.Start();
 ```  
 
+## 事务消息
+
+通过 `PublishTransaction` 发送半消息，本地事务执行完成后调用 `EndTransaction` 提交或回滚：
+
+```csharp
+var producer = new Producer { Topic = "tx_topic", Group = "tx_group", NameServerAddress = "127.0.0.1:9876" };
+producer.Start();
+
+var sendResult = producer.PublishTransaction("订单创建");
+
+// 本地事务成功时提交，失败时回滚
+producer.EndTransaction(sendResult, TransactionState.Commit);
+// producer.EndTransaction(sendResult, TransactionState.Rollback);
+```
+
 ## 新生命项目矩阵
 各项目默认支持net9.0/netstandard2.1/netstandard2.0/net4.62/net4.5，旧版（2024.0801）支持net4.0/net2.0  
 

@@ -1,7 +1,9 @@
 ﻿using System;
 using System.IO;
+using System.Reflection;
 using NewLife;
 using NewLife.Data;
+using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
 using Xunit;
@@ -801,5 +803,46 @@ public class CommandTests
 
         var pk = cmd.Payload;
         Assert.Null(pk);
+    }
+
+    [Fact]
+    public void CreateHeader_TransactionMessage_SetsPreparedFlag()
+    {
+        var producer = new Producer { Topic = "nx_test", Group = "nx_group" };
+        var message = new Message();
+        message.SetBody("hello");
+        message.Properties["TRAN_MSG"] = "true";
+        message.Properties["PGROUP"] = "nx_group";
+
+        var method = typeof(Producer).GetMethod("CreateHeader", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+        var header = (SendMessageRequestHeader)method.Invoke(producer, new Object[] { message });
+
+        Assert.Equal((Int32)TransactionState.Prepared, header.SysFlag);
+    }
+
+    [Fact]
+    public void EndTransactionRequestHeader_ToProperties_UsesCamelCase()
+    {
+        var header = new EndTransactionRequestHeader
+        {
+            ProducerGroup = "nx_group",
+            TranStateTableOffset = 11,
+            CommitLogOffset = 22,
+            CommitOrRollback = (Int32)TransactionState.Commit,
+            FromTransactionCheck = false,
+            MsgId = "msg_1",
+            TransactionId = "tx_1",
+        };
+
+        var ext = header.GetProperties();
+
+        Assert.Equal("nx_group", ext["producerGroup"]);
+        Assert.Equal("11", ext["tranStateTableOffset"] + "");
+        Assert.Equal("22", ext["commitLogOffset"] + "");
+        Assert.Equal("8", ext["commitOrRollback"] + "");
+        Assert.Equal("False", ext["fromTransactionCheck"] + "");
+        Assert.Equal("msg_1", ext["msgId"]);
+        Assert.Equal("tx_1", ext["transactionId"]);
     }
 }
