@@ -13,6 +13,8 @@ namespace NewLife.RocketMQ;
 /// <summary>生产者</summary>
 public class Producer : MqBase
 {
+    private const Int32 CommitLogOffsetHexLength = 16;
+
     #region 属性
     /// <summary>负载均衡。发布消息时，分发到各个队列的负载均衡算法，默认使用带权重的轮询</summary>
     public ILoadBalance LoadBalance { get; set; }
@@ -701,9 +703,10 @@ public class Producer : MqBase
 
     private static Int64 GetCommitLogOffset(String offsetMsgId)
     {
-        if (offsetMsgId.IsNullOrEmpty() || offsetMsgId.Length < 16) return 0;
+        if (offsetMsgId.IsNullOrEmpty() || offsetMsgId.Length < CommitLogOffsetHexLength) return 0;
 
-        return Int64.TryParse(offsetMsgId.Substring(offsetMsgId.Length - 16), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var rs) ? rs : 0;
+        // OffsetMsgId尾部16位是8字节（Int64）的CommitLogOffset十六进制表示
+        return Int64.TryParse(offsetMsgId.Substring(offsetMsgId.Length - CommitLogOffsetHexLength), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var rs) ? rs : 0;
     }
     #endregion
 

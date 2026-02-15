@@ -39,10 +39,7 @@ public class EndTransactionRequestHeader
         {
             if (pi.GetIndexParameters().Length > 0) continue;
             var name = pi.Name;
-            if (!name.IsNullOrEmpty() && name.Length > 1)
-                name = Char.ToLowerInvariant(name[0]) + name.Substring(1);
-            else if (name.Length == 1)
-                name = Char.ToLowerInvariant(name[0]) + "";
+            if (!name.IsNullOrEmpty()) name = Char.ToLowerInvariant(name[0]) + name.Substring(1);
 
             dic[name] = this.GetValue(pi);
         }

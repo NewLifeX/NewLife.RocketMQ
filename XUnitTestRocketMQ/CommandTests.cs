@@ -838,10 +838,10 @@ public class CommandTests
         var ext = header.GetProperties();
 
         Assert.Equal("nx_group", ext["producerGroup"]);
-        Assert.Equal("11", ext["tranStateTableOffset"] + "");
-        Assert.Equal("22", ext["commitLogOffset"] + "");
-        Assert.Equal("8", ext["commitOrRollback"] + "");
-        Assert.Equal("False", ext["fromTransactionCheck"] + "");
+        Assert.Equal("11", ext["tranStateTableOffset"]?.ToString());
+        Assert.Equal("22", ext["commitLogOffset"]?.ToString());
+        Assert.Equal("8", ext["commitOrRollback"]?.ToString());
+        Assert.Equal("False", ext["fromTransactionCheck"]?.ToString());
         Assert.Equal("msg_1", ext["msgId"]);
         Assert.Equal("tx_1", ext["transactionId"]);
     }
