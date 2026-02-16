@@ -388,6 +388,19 @@ public class GrpcMessagingService : IDisposable
     }
     #endregion
 
+    #region 客户端资源上报
+    /// <summary>上报客户端设置（Telemetry）。向Proxy上报客户端资源信息，包括设置、主题订阅等</summary>
+    /// <param name="settings">客户端设置</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>服务端返回的Telemetry命令</returns>
+    public async Task<TelemetryCommand> TelemetryAsync(GrpcSettings settings, CancellationToken cancellationToken = default)
+    {
+        var request = new TelemetryCommand { Settings = settings };
+
+        return await InvokeAsync<TelemetryCommand, TelemetryCommand>("Telemetry", request, cancellationToken).ConfigureAwait(false);
+    }
+    #endregion
+
     #region 辅助
     /// <summary>通用Unary调用封装</summary>
     /// <typeparam name="TRequest">请求类型</typeparam>

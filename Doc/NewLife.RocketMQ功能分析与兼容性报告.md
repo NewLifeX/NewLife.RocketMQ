@@ -1,53 +1,56 @@
 # NewLife.RocketMQ ¹¦ÄÜ·ÖÎöÓë¼æÈİĞÔ±¨¸æ
 
 > ÎÄµµÉú³ÉÊ±¼ä£º2026Äê2ÔÂ£¨¸üĞÂÓÚ2026Äê7ÔÂ£©  
-> µ±Ç°¿Í»§¶Ë°æ±¾£º2.9.x  
-> Ğ­Òé°æ±¾ÉùÃ÷£º`MQVersion.V4_9_7`  
-> Ä¿±ê¿ò¼Ü£ºnet45 / net461 / netstandard2.0 / netstandard2.1
+> µ±Ç°¿Í»§¶Ë°æ±¾£º3.0.x  
+> Ğ­Òé°æ±¾ÉùÃ÷£º`MQVersion.V4_9_7`£¨Ä¬ÈÏ£¬¿ÉÅäÖÃ£©  
+> Ä¿±ê¿ò¼Ü£ºnet45 / net461 / netstandard2.0 / netstandard2.1 / net10
 
 ---
 
 ## Ò»¡¢ÏîÄ¿¸ÅÊö
 
-NewLife.RocketMQ ÊÇĞÂÉúÃüÍÅ¶Ó¿ª·¢µÄ**´¿ÍĞ¹ÜÇáÁ¿¼¶ RocketMQ ¿Í»§¶Ë**£¬»ùÓÚ RocketMQ Remoting Ğ­Òé£¨TCP Ë½ÓĞĞ­Òé£©ÊµÏÖ£¬Í¬Ê±Ö§³Ö **gRPC Proxy Ğ­Òé**£¨RocketMQ 5.x£©£¬²»ÒÀÀµ Java ¿Í»§¶Ë»òµÚÈı·½ gRPC ¿â¡£
+NewLife.RocketMQ ÊÇĞÂÉúÃüÍÅ¶Ó¿ª·¢µÄ**´¿ÍĞ¹ÜÇáÁ¿¼¶ RocketMQ ¿Í»§¶Ë**£¬Í¬Ê±Ö§³Ö RocketMQ Remoting Ğ­Òé£¨TCP Ë½ÓĞĞ­Òé£©ºÍ **gRPC Proxy Ğ­Òé**£¨RocketMQ 5.x£©£¬²»ÒÀÀµ Java ¿Í»§¶Ë»òµÚÈı·½ gRPC / Protobuf ¿â¡£
 
 ### ºËĞÄ¼Ü¹¹
 
 ```
-MqBase (ÒµÎñ»ùÀà)
-©À©¤©¤ Producer (Éú²úÕß)
-©¸©¤©¤ Consumer (Ïû·ÑÕß)
+MqBase (ÒµÎñ»ùÀà£¬NameServerÁ¬½Ó/Broker¹ÜÀí/TopicÓëÏû·Ñ×éCRUD/ÏûÏ¢²éÑ¯)
+©À©¤©¤ Producer (Éú²úÕß£ºÆÕÍ¨/Òì²½/µ¥Ïò/ÑÓ³Ù/ÊÂÎñ/ÅúÁ¿/Request-Reply/gRPC)
+©¸©¤©¤ Consumer (Ïû·ÑÕß£ºPull/µ÷¶È/Rebalance/¶àTopic/Ë³Ğò/ÖØÊÔ/Pop/gRPC)
 
 ClusterClient (¼¯Èº¿Í»§¶Ë/Í¨ĞÅ²ã£¬RemotingĞ­Òé)
-©À©¤©¤ NameClient (Ãû³Æ·şÎñÆ÷¿Í»§¶Ë)
-©¸©¤©¤ BrokerClient (Broker¿Í»§¶Ë)
+©À©¤©¤ NameClient (Ãû³Æ·şÎñÆ÷¿Í»§¶Ë£ºÂ·ÓÉ·¢ÏÖ/¶¨Ê±ÂÖÑ¯/¶àTopicÂ·ÓÉ/BrokerÖ÷´Ó½âÎö)
+©¸©¤©¤ BrokerClient (Broker¿Í»§¶Ë£ºĞÄÌø/×¢Ïú/ÃüÁîÊÕ·¢)
 
 Grpc/ (gRPC´«Êä²ã£¬RocketMQ 5.x ProxyĞ­Òé£¬netstandard2.1+)
-©À©¤©¤ GrpcClient (HTTP/2 gRPC¿Í»§¶Ë£¬Ö¡±à½âÂë)
-©À©¤©¤ GrpcMessagingService (ÏûÏ¢·şÎñ£º·¢ËÍ/½ÓÊÕ/È·ÈÏ/Â·ÓÉ/ĞÄÌø)
-©À©¤©¤ ProtoWriter / ProtoReader (ÇáÁ¿¼¶Protobuf±à½âÂëÆ÷)
-©À©¤©¤ GrpcModels (Resource/Endpoints/Message/SystemPropertiesµÈ)
-©À©¤©¤ GrpcServiceMessages (Request/ResponseÏûÏ¢ÀàĞÍ)
-©¸©¤©¤ GrpcEnums (GrpcCode/GrpcMessageTypeµÈÃ¶¾Ù)
+©À©¤©¤ GrpcClient (HTTP/2 gRPC¿Í»§¶Ë£¬Ö¡±à½âÂë£¬Unary + Server Streaming)
+©À©¤©¤ GrpcMessagingService (ÏûÏ¢·şÎñ£ºÂ·ÓÉ/·¢ËÍ/½ÓÊÕ/È·ÈÏ/ĞÄÌø/ÊÂÎñ/ÑÓ³Ù/ËÀĞÅ/²»¿É¼ûÊ±¼ä/Telemetry)
+©À©¤©¤ ProtoWriter / ProtoReader (ÇáÁ¿¼¶Protobuf±à½âÂëÆ÷£¬ÎŞÍâ²¿ÒÀÀµ)
+©À©¤©¤ GrpcModels (Resource/Endpoints/Message/SystemProperties/MessageQueue µÈ)
+©À©¤©¤ GrpcServiceMessages (Request/Response ÏûÏ¢ÀàĞÍ£¬Ô¼25¸ö£¬º¬Telemetry)
+©¸©¤©¤ GrpcEnums (GrpcCode/GrpcMessageType/GrpcClientType/AddressScheme µÈ)
 
 Protocol/
 ©À©¤©¤ Command (ÃüÁîÖ¡£¬RemotingĞ­Òé±à½âÂë)
 ©À©¤©¤ MqCodec (ÍøÂç±à½âÂëÆ÷)
 ©À©¤©¤ Header (Í¨ĞÅÍ·)
-©À©¤©¤ Message / MessageExt (ÏûÏ¢Ä£ĞÍ)
-©À©¤©¤ SendMessageRequestHeader / PullMessageRequestHeader
-©À©¤©¤ EndTransactionRequestHeader
-©¸©¤©¤ RequestCode / ResponseCode (Ö¸ÁîÂë)
+©À©¤©¤ Message / MessageExt (ÏûÏ¢Ä£ĞÍ£¬º¬ÅúÁ¿½âÂë/ZLIB½âÑ¹/IPv4+IPv6/5.x MessageId)
+©À©¤©¤ SendMessageRequestHeader / PullMessageRequestHeader / EndTransactionRequestHeader
+©À©¤©¤ RequestCode (Ô¼60¸öÖ¸ÁîÂë) / ResponseCode (Ô¼20¸öÏìÓ¦Âë)
+©À©¤©¤ MQVersion (V3.0 ~ V5.9.9 + HIGHER_VERSION£¬Ô¼450¸ö°æ±¾)
+©¸©¤©¤ TransactionState / LanguageCode / SerializeType µÈ¸¨ÖúÀàĞÍ
 ```
 
 ### Í¨ĞÅ²ãÌØµã
 - »ùÓÚ `NewLife.Net` µÄ TCP ³¤Á¬½Ó£¨Remoting Ğ­Òé£©
 - »ùÓÚ `HttpClient` HTTP/2 µÄ gRPC Ğ­Òé£¨RocketMQ 5.x Proxy£¬netstandard2.1+£©
 - Ö§³Ö JSON ºÍ RocketMQ ¶ş½øÖÆÁ½ÖÖĞòÁĞ»¯¸ñÊ½
-- ÄÚÖÃÇáÁ¿¼¶ Protobuf ±à½âÂëÆ÷£¨ÎŞÍâ²¿ÒÀÀµ£©
-- Ö§³Ö SSL/TLS ¼ÓÃÜ´«Êä
+- ÄÚÖÃÇáÁ¿¼¶ Protobuf ±à½âÂëÆ÷£¨ProtoWriter/ProtoReader£¬ÎŞÍâ²¿ÒÀÀµ£©
+- Ö§³Ö SSL/TLS ¼ÓÃÜ´«Êä£¨`SslProtocol` + `Certificate`£©
 - Ö§³Ö¶àÔÆ³§ÉÌÇ©ÃûÈÏÖ¤£¨°¢ÀïÔÆ/»ªÎªÔÆ/ÌÚÑ¶ÔÆ/Apache ACL£©£¬Í³Ò»ÓÉ `ICloudProvider` ÊÊÅä
+- Í³Ò» HMAC-SHA1 Ç©Ãû»úÖÆ£¨`ClusterClient.SetSignature`£©
 - µ¥Á¬½Ó¸´ÓÃ£¬Opaque ÇëÇó-ÏìÓ¦Æ¥Åä
+- Ö§³ÖÍâ²¿´úÀíÓ³Éä£¨`ExternalBroker` ÊôĞÔ£©
 
 ---
 
@@ -74,21 +77,21 @@ Protocol/
 | **Topic ´´½¨/¸üĞÂ** | 4.0 | ? | `CreateTopic()` |
 | **Ïû·Ñ×éĞÅÏ¢²éÑ¯** | 4.0 | ? | `GetConsumers()` |
 | **Request-Reply Ä£Ê½** | 4.6 | ? | `Request()` / `RequestAsync()` |
-| **ACL È¨ÏŞ¿ØÖÆ** | 4.4 | ? | `AclOptions` HMAC-SHA1 Ç©Ãû |
+| **ACL È¨ÏŞ¿ØÖÆ** | 4.4 | ? | `AclOptions` / `AclProvider` HMAC-SHA1 Ç©Ãû |
 | **SQL92 ¹ıÂË** | 4.1 | ? | `ExpressionType=SQL92` + Subscription ÌîĞ´SQL±í´ïÊ½ |
 | **ÅúÁ¿ÏûÏ¢·¢ËÍ** | 4.5 | ? | `PublishBatch()` / `SEND_BATCH_MESSAGE (320)` |
 | **ÏûÏ¢Ñ¹Ëõ£¨·¢ËÍ¶Ë£©** | 4.0 | ? | `CompressOverBytes` ³¬¹ıãĞÖµ×Ô¶¯ZLIBÑ¹Ëõ + SysFlag±ê¼Ç |
 | **ÏûÏ¢»ØÍË£¨Ïû·ÑÊ§°Ü£©** | 4.0 | ? | `SendMessageBack()` / `CONSUMER_SEND_MSG_BACK (36)` |
 | **ÊÂÎñ»Ø²é£¨±»¶¯»Ø²é£©** | 4.3 | ? | `OnCheckTransaction` / `CHECK_TRANSACTION_STATE (39)` »Øµ÷´¦Àí |
 | **°´Ê±¼ä´ÁËÑË÷Æ«ÒÆ** | 4.0 | ? | `SearchOffset()` / `SEARCH_OFFSET_BY_TIMESTAMP` |
-| **Ïû·Ñ½ø¶È³Ö¾Ã»¯£¨±¾µØ£©** | 4.0 | ? | `OffsetStorePath` ¹ã²¥Ä£Ê½±¾µØJSONÎÄ¼ş³Ö¾Ã»¯£¬¼¯ÈºÄ£Ê½ÈÔ×ßBroker¶Ë´æ´¢ |
+| **Ïû·Ñ½ø¶È³Ö¾Ã»¯£¨±¾µØ£©** | 4.0 | ? | `OffsetStorePath` ¹ã²¥Ä£Ê½±¾µØJSONÎÄ¼ş³Ö¾Ã»¯£¬¼¯ÈºÄ£Ê½×ßBroker¶Ë´æ´¢ |
 | **Push Ä£Ê½£¨·şÎñ¶ËÍÆËÍ£©** | 4.0 | ?? | ±¾ÖÊÊÇ³¤ÂÖÑ¯ Pull Ä£Äâ£¬ÒÑÊµÏÖµ«·ÇÔ­Éú Push |
 | **Pop Ïû·ÑÄ£Ê½** | 4.9.3 | ? | `PopMessageAsync()` / `AckMessageAsync()` / `ChangeInvisibleTimeAsync()` |
 | **¶à Topic ¶©ÔÄ** | 4.0 | ? | `Topics` ÊôĞÔÖ§³Ö¶àÖ÷Ìâ¶©ÔÄ£¬Rebalance °´ Topic ·Ö±ğ·ÖÅä¶ÓÁĞ |
 | **Ïû·ÑÖØÊÔ** | 4.0 | ? | `EnableRetry` + `MaxReconsumeTimes`£¬Ïû·ÑÊ§°Ü×Ô¶¯»ØÍËµ½RETRY Topic |
 | **ËÀĞÅ¶ÓÁĞ£¨DLQ£©** | 4.0 | ? | ³¬¹ı×î´óÖØÊÔ´ÎÊıºó×Ô¶¯½øÈë `%DLQ%{ConsumerGroup}` Ö÷Ìâ |
-| **Ïû·ÑÏŞÁ÷/Ïß³Ì³Ø¿ØÖÆ** | 4.0 | ? | `MaxConcurrentConsume` ĞÅºÅÁ¿¿ØÖÆËùÓĞ¶ÓÁĞµÄ×Ü²¢·¢ |
-| **VIP Í¨µÀ** | 4.0 | ? | ´úÂëÒÑ×¢ÊÍ `VipChannelEnabled` |
+| **Ïû·ÑÏŞÁ÷/²¢·¢¿ØÖÆ** | 4.0 | ? | `MaxConcurrentConsume` ĞÅºÅÁ¿¿ØÖÆËùÓĞ¶ÓÁĞµÄ×Ü²¢·¢ |
+| **VIP Í¨µÀ** | 4.0 | ? | `VipChannelEnabled` ÊôĞÔ£¬ÆôÓÃºóÊ¹ÓÃ BrokerPort - 2 µÄVIP¶Ë¿Ú |
 | **Broker Ö÷´ÓÇĞ»»** | 4.5 | ? | `BrokerInfo.MasterAddress`/`SlaveAddresses`£¬Ïû·ÑÊ§°Ü×Ô¶¯ÇĞ»»´Ó½Úµã¶ÁÈ¡ |
 
 ### 2.2 RocketMQ 5.x£¨5.0+£©¡ª ĞÂ¼Ü¹¹
@@ -101,13 +104,13 @@ RocketMQ 5.0 ÒıÈëÁËÈ«ĞÂµÄ **gRPC Proxy** ¼Ü¹¹£¬Í¬Ê±±£³Ö¶Ô Remoting Ğ­ÒéµÄÏòºó¼æÈ
 | **Remoting Ğ­Òé¼æÈİ** | 5.0 | ? | 5.x Broker ±£ÁôÁË Remoting ½Ó¿Ú£¬µ±Ç°¿Í»§¶Ë¿ÉÁ¬½Ó |
 | **ÈÎÒâÊ±¼äÑÓ³ÙÏûÏ¢** | 5.0 | ? | `PublishDelayViaGrpcAsync()` Í¨¹ı gRPC Ğ­ÒéÖ§³ÖÈÎÒâÊ±¼ä´ÁÑÓ³ÙÏûÏ¢ |
 | **Pop Ïû·ÑÄ£Ê½** | 5.0 | ? | `PopMessageAsync()` / `AckMessageAsync()` / `ChangeInvisibleTimeAsync()` |
-| **¿Í»§¶ËÖ÷¶¯ÉÏ±¨×ÊÔ´** | 5.0 | ? | gRPC Ğ­ÒéÌØÓĞ£¬Remoting ¼æÈİÄ£Ê½²»ĞèÒª |
+| **¿Í»§¶ËÖ÷¶¯ÉÏ±¨×ÊÔ´** | 5.0 | ? | `TelemetryViaGrpcAsync()` Í¨¹ı gRPC Ğ­ÒéÉÏ±¨¿Í»§¶ËÉèÖÃ/¶©ÔÄµÈ×ÊÔ´ĞÅÏ¢£¨netstandard2.1+£© |
 | **ÏûÏ¢·Ö×é£¨FIFO£©** | 5.0 | ?? | Remoting Ä£Ê½ÏÂµÈ¼ÛÓÚË³ĞòÏûÏ¢ |
 | **·şÎñ¶Ë Rebalance** | 5.0 | ? | Ğè Broker 5.0 + gRPC Ğ­ÒéÅäºÏ |
-| **MessageId ĞÂ¸ñÊ½** | 5.0 | ? | 5.x ÒıÈëĞÂµÄ MessageId ±àÂë¹æÔò |
+| **MessageId ĞÂ¸ñÊ½** | 5.0 | ? | `MessageExt.CreateMessageId5x()` / `TryParseMessageId5x()` / `IsMessageId5x()` ±à½âÂë5.x¸ñÊ½ |
 | **Controller Ä£Ê½** | 5.0 | ?? | Ìæ´ú DLedger µÄ¸ß¿ÉÓÃ·½°¸£¬¿Í»§¶ËÎŞ¸ĞÖª |
 | **Compaction Topic** | 5.1 | ? | KV ÓïÒå Topic |
-| **Timer ÏûÏ¢£¨5.0 Ô­Éú£©** | 5.0 | ? | Í¨¹ı `TIMER_DELIVER_MS` ÊôĞÔÊµÏÖ |
+| **Timer ÏûÏ¢£¨5.0 Ô­Éú£©** | 5.0 | ? | Remoting Ä£Ê½²»Ö§³Ö¡£gRPC Ä£Ê½Í¨¹ı `PublishDelayViaGrpcAsync()` ÊµÏÖ |
 
 ### 2.3 °æ±¾¼æÈİĞÔ×Ü½á
 
@@ -115,7 +118,7 @@ RocketMQ 5.0 ÒıÈëÁËÈ«ĞÂµÄ **gRPC Proxy** ¼Ü¹¹£¬Í¬Ê±±£³Ö¶Ô Remoting Ğ­ÒéµÄÏòºó¼æÈ
 |-----------|:------:|:------:|---------|
 | **4.0 ~ 4.3** | ? | ? | ÎŞÊÂÎñÏûÏ¢Ö§³Ö |
 | **4.4 ~ 4.9** | ? | ? | ÍêÈ«¼æÈİ£¬Ö÷Á¦²âÊÔ°æ±¾ |
-| **5.0 ~ 5.x£¨RemotingÄ£Ê½£©** | ? | ? | ĞÂÌØĞÔ£¨Pop/Timer£©²»¿ÉÓÃ |
+| **5.0 ~ 5.x£¨RemotingÄ£Ê½£©** | ? | ? | ĞÂÌØĞÔ£¨TimerÏûÏ¢£©²»¿ÉÓÃ |
 | **5.0 ~ 5.x£¨gRPC ProxyÄ£Ê½£©** | ? | ? | Í¨¹ı `GrpcProxyAddress` ÊôĞÔÆôÓÃ£¬Ğè netstandard2.1+ |
 
 ---
@@ -126,12 +129,12 @@ RocketMQ 5.0 ÒıÈëÁËÈ«ĞÂµÄ **gRPC Proxy** ¼Ü¹¹£¬Í¬Ê±±£³Ö¶Ô Remoting Ğ­ÒéµÄÏòºó¼æÈ
 
 | ¹¦ÄÜ | Ö§³Ö×´Ì¬ | ÊµÏÖ·½Ê½ |
 |------|:------:|---------|
-| **ÊµÀıIDÂ·ÓÉ** | ? | `{InstanceId}%{Topic}` / `{InstanceId}%{Group}` Ç°×ºÆ´½Ó |
-| **Ãû³Æ·şÎñÆ÷·¢ÏÖ** | ? | HTTP ½Ó¿Ú `onsaddr-internet.aliyun.com` »ñÈ¡ NameServer µØÖ· |
-| **AccessKey/SecretKey Ç©Ãû** | ? | `AliyunOptions` + HMAC-SHA1 Ç©Ãû |
+| **ÊµÀıIDÂ·ÓÉ** | ? | `AliyunProvider.TransformTopic/TransformGroup`£º`{InstanceId}%{Topic}` / `{InstanceId}%{Group}` |
+| **Ãû³Æ·şÎñÆ÷·¢ÏÖ** | ? | `AliyunProvider.GetNameServerAddress()`£ºHTTP ½Ó¿Ú»ñÈ¡ NameServer µØÖ· |
+| **AccessKey/SecretKey Ç©Ãû** | ? | `ClusterClient.SetSignature()` HMAC-SHA1 Ç©Ãû |
 | **OnsChannel ±êÊ¶** | ? | Ä¬ÈÏ `ALIYUN` |
 | **ÊµÀıID×Ô¶¯½âÎö** | ? | ´Ó NameServer µØÖ·ÖĞÌáÈ¡ `MQ_INST_` Ç°×º |
-| **¹«Íø°æÏû·ÑÕß×´Ì¬** | ?? | °¢ÀïÔÆ¹«Íø°æ·µ»ØµÄ `brokerName` Óë NameServer Â·ÓÉÖĞµÄ²»Ò»ÖÂ£¬ĞèÌØÊâ´¦Àí£¨ÒÑÓĞ×¢ÊÍËµÃ÷£© |
+| **¹«Íø°æÏû·ÑÕß×´Ì¬** | ?? | °¢ÀïÔÆ¹«Íø°æ·µ»ØµÄ `brokerName` Óë NameServer Â·ÓÉÖĞµÄ²»Ò»ÖÂ£¬ĞèÌØÊâ´¦Àí£¨ÒÑÓĞÈİ´í´úÂë£© |
 | **Ïû·ÑÕß×´Ì¬JSON** | ? | `ConsumerStatesSpecialJsonHandler` ´¦Àí°¢ÀïÔÆÌØÊâJSON¸ñÊ½ |
 | **²¬½ğ°æ/¶ÀÏíÊµÀı** | ?? | ÀíÂÛ¼æÈİ£¬µ«Î´ÓĞ³ä·Ö²âÊÔ |
 | **¶à Tag ¹ıÂË** | ? | Í¨¹ı `Tags` ÊôĞÔÖ§³Ö |
@@ -141,9 +144,9 @@ RocketMQ 5.0 ÒıÈëÁËÈ«ĞÂµÄ **gRPC Proxy** ¼Ü¹¹£¬Í¬Ê±±£³Ö¶Ô Remoting Ğ­ÒéµÄÏòºó¼æÈ
 | ¹¦ÄÜ | Ö§³Ö×´Ì¬ | ±¸×¢ |
 |------|:------:|------|
 | **Remoting Ğ­Òé¼æÈİ** | ?? | °¢ÀïÔÆ 5.x ÊµÀı±£Áô Remoting ½Ó¿Ú£¬ÀíÂÛÉÏ¿ÉÁ¬½Ó |
-| **gRPC Proxy Ä£Ê½** | ? | °¢ÀïÔÆÍÆ¼öÊ¹ÓÃ gRPC ·½Ê½½ÓÈë£¬µ±Ç°²»Ö§³Ö |
+| **gRPC Proxy Ä£Ê½** | ?? | °¢ÀïÔÆÍÆ¼öÊ¹ÓÃ gRPC ·½Ê½½ÓÈë£¬¿Í»§¶ËÒÑÖ§³Ö gRPC Ğ­Òé£¬´ıÑéÖ¤¼æÈİĞÔ |
 | **ÊµÀı¼¶±ğÈÏÖ¤** | ?? | 5.x ¿ÉÄÜÊ¹ÓÃĞÂµÄÈÏÖ¤ÌåÏµ |
-| **Serverless ÊµÀı** | ? | ½öÖ§³Ö gRPC ½ÓÈë |
+| **Serverless ÊµÀı** | ? | ½öÖ§³Ö gRPC ½ÓÈë£¬´ıÑéÖ¤ |
 
 ### 3.3 µ±Ç°°¢ÀïÔÆÊÊÅäµÄÒÑÖªÎÊÌâ
 
@@ -168,12 +171,9 @@ RocketMQ 5.0 ÒıÈëÁËÈ«ĞÂµÄ **gRPC Proxy** ¼Ü¹¹£¬Í¬Ê±±£³Ö¶Ô Remoting Ğ­ÒéµÄÏòºó¼æÈ
 
 ### 4.2 »ªÎªÔÆÊÊÅä
 
-µ±Ç°¿Í»§¶ËÒÑÔö¼Ó»ªÎªÔÆ»ù´¡ÊÊÅä´úÂë£º
-- `HuaweiOptions.cs` ¡ª »ªÎªÔÆ DMS Á¬½Ó²ÎÊı£¨AccessKey/SecretKey/InstanceId£©
-- `MqBase.Huawei` ¡ª »ªÎªÔÆÅäÖÃÊôĞÔ
-- `ClusterClient.SetSignature()` ¡ª Ö§³Ö»ªÎªÔÆÇ©Ãû£¨¸´ÓÃ ACL Ç©Ãû»úÖÆ£©
+µ±Ç°¿Í»§¶ËÒÑÌá¹©»ªÎªÔÆ×¨ÓÃÊÊÅäÆ÷ `HuaweiProvider`£¨`ICloudProvider` ÊµÏÖ£©£º
 
-**Ê¹ÓÃ·½Ê½**£¨`ICloudProvider`£©£º
+**Ê¹ÓÃ·½Ê½**£º
 ```csharp
 var producer = new Producer
 {
@@ -188,8 +188,6 @@ var producer = new Producer
     }
 };
 ```
-
-> ¾É°æ `MqBase.Huawei` ÊôĞÔºÍ `HuaweiOptions` ÀàÒÑ·ÏÆú²¢ÒÆ³ı£¬ÇëÍ³Ò»Ê¹ÓÃ `CloudProvider = new HuaweiProvider()`¡£
 
 **´ıÑéÖ¤ÊÂÏî**£º
 1. »ªÎªÔÆ DMS µÄ ACL Ç©ÃûÊÇ·ñÓë Apache ACL ÍêÈ«Ò»ÖÂ
@@ -209,17 +207,13 @@ var producer = new Producer
 | **±ê×¼ Remoting Ğ­Òé** | ?? | ÌÚÑ¶ÔÆ TDMQ 4.x ¼æÈİÊµÀı£¬ÀíÂÛÉÏ¿ÉÍ¨¹ı Remoting Ğ­ÒéÁ¬½Ó |
 | **SSL/TLS ¼ÓÃÜ** | ? | ¿Í»§¶ËÖ§³Ö `SslProtocol` ºÍ `Certificate` ÅäÖÃ |
 | **HMAC-SHA1 Ç©ÃûÈÏÖ¤** | ?? | ÌÚÑ¶ÔÆÊ¹ÓÃÀàËÆ HMAC-SHA1 µÄÇ©Ãû·½Ê½£¬ĞèÑéÖ¤Óë Apache ACL ¼æÈİĞÔ |
-| **ACL ÈÏÖ¤** | ?? | ¿É³¢ÊÔÍ¨¹ı `AclOptions` ÅäÖÃ AccessKey/SecretKey |
 | **VPC ÄÚÍø·ÃÎÊ** | ? | Ö±½ÓÅäÖÃ NameServer Îª VPC ÄÚÍøµØÖ·¼´¿É |
-| **¹«Íø·ÃÎÊ** | ?? | ¿ÉÄÜĞèÒª¶îÍâµÄÈÏÖ¤»òÂ·ÓÉÅäÖÃ |
-| **Topic/Group ¹ÜÀí** | ?? | ÌÚÑ¶ÔÆÍ¨³£Í¨¹ı¿ØÖÆÌ¨¹ÜÀí£¬API ¼æÈİĞÔ´ıÑéÖ¤ |
-| **ÏûÏ¢¹ì¼£** | ?? | ÌÚÑ¶ÔÆÓĞ×Ô¼ºµÄÏûÏ¢¹ì¼£ÏµÍ³£¬¿Í»§¶Ë¹ì¼£¿ÉÄÜ²»¼æÈİ |
 | **ÑÓ³ÙÏûÏ¢** | ? | ±ê×¼ 18 ¼¶ÑÓ³ÙÏûÏ¢£¬Óë Apache 4.x Ò»ÖÂ |
 | **ÊÂÎñÏûÏ¢** | ?? | ĞèÑéÖ¤ÌÚÑ¶ÔÆ¶Ô°ëÏûÏ¢ºÍ»Ø²éµÄ´¦Àí |
 
 ### 5.2 ÌÚÑ¶ÔÆÊÊÅä
 
-µ±Ç°¿Í»§¶ËÒÑÌá¹©ÌÚÑ¶ÔÆ×¨ÓÃÊÊÅäÆ÷ `TencentProvider`£¬Ö§³Ö Namespace Ç°×ºÂ·ÓÉ£º
+µ±Ç°¿Í»§¶ËÒÑÌá¹©ÌÚÑ¶ÔÆ×¨ÓÃÊÊÅäÆ÷ `TencentProvider`£¨`ICloudProvider` ÊµÏÖ£©£¬Ö§³Ö Namespace Ç°×ºÂ·ÓÉ£º
 
 **Ê¹ÓÃ·½Ê½**£º
 ```csharp
@@ -236,100 +230,111 @@ var producer = new Producer
 };
 ```
 
-**´ıÑéÖ¤ÊÂÏî**£º
-1. ÑéÖ¤ HMAC-SHA1 Ç©ÃûÊÇ·ñÓëÌÚÑ¶ÔÆ TDMQ ¼æÈİ
-2. È·ÈÏ Namespace Â·ÓÉ¹æÔòÊÇ·ñÓë `{Namespace}%{Topic}` Ò»ÖÂ
-3. ÌÚÑ¶ÔÆ TDMQ 5.x °æ±¾µÄ Remoting ¼æÈİĞÔ
-
 ---
 
-## Îå¡¢ÒÑÊµÏÖĞ­ÒéÏêÏ¸·ÖÎö
+## Áù¡¢ÒÑÊµÏÖĞ­ÒéÏêÏ¸·ÖÎö
 
-### 5.1 ÒÑÊµÏÖµÄ RequestCode£¨·şÎñ¶ËÇëÇóÂë£©
+### 6.1 ÒÑÊµÏÖµÄ RequestCode£¨·şÎñ¶ËÇëÇóÂë£©
 
 | RequestCode | Öµ | ÓÃÍ¾ | µ÷ÓÃÎ»ÖÃ |
 |-------------|:--:|------|---------|
 | `SEND_MESSAGE` | 10 | ·¢ÏûÏ¢£¨V1£¬ÒÑ²»Ê¹ÓÃ£© | ½ö¶¨Òå |
 | `PULL_MESSAGE` | 11 | À­È¡ÏûÏ¢ | `Consumer.Pull()` |
+| `QUERY_MESSAGE` | 12 | ²éÑ¯ÏûÏ¢ | `MqBase.QueryMessageByKey()` |
 | `QUERY_CONSUMER_OFFSET` | 14 | ²éÑ¯Ïû·ÑÆ«ÒÆ | `Consumer.QueryOffset()` |
 | `UPDATE_CONSUMER_OFFSET` | 15 | ¸üĞÂÏû·ÑÆ«ÒÆ | `Consumer.UpdateOffset()` |
 | `UPDATE_AND_CREATE_TOPIC` | 17 | ´´½¨/¸üĞÂTopic | `MqBase.CreateTopic()` |
 | `GET_BROKER_RUNTIME_INFO` | 28 | BrokerÔËĞĞĞÅÏ¢ | `BrokerClient.GetRuntimeInfo()` |
+| `SEARCH_OFFSET_BY_TIMESTAMP` | 29 | °´Ê±¼ä´ÁËÑË÷Æ«ÒÆ | `Consumer.SearchOffset()` |
 | `GET_MAX_OFFSET` | 30 | ×î´óÆ«ÒÆÁ¿ | `Consumer.QueryMaxOffset()` |
 | `GET_MIN_OFFSET` | 31 | ×îĞ¡Æ«ÒÆÁ¿ | `Consumer.QueryMinOffset()` |
+| `VIEW_MESSAGE_BY_ID` | 33 | °´ID²é¿´ÏûÏ¢ | `MqBase.ViewMessage()` |
 | `HEART_BEAT` | 34 | ĞÄÌø | `BrokerClient.Ping()` |
 | `UNREGISTER_CLIENT` | 35 | ×¢Ïú¿Í»§¶Ë | `BrokerClient.UnRegisterClient()` |
+| `CONSUMER_SEND_MSG_BACK` | 36 | Ïû·ÑÊ§°Ü»ØÍË | `Consumer.SendMessageBackAsync()` |
 | `END_TRANSACTION` | 37 | ½áÊøÊÂÎñ | `Producer.EndTransaction()` |
 | `GET_CONSUMER_LIST_BY_GROUP` | 38 | Ïû·ÑÕßÁĞ±í | `Consumer.GetConsumers()` |
+| `CHECK_TRANSACTION_STATE` | 39 | ÊÂÎñ»Ø²é | ±»¶¯´¦Àí£º`OnCheckTransaction` »Øµ÷ |
+| `NOTIFY_CONSUMER_IDS_CHANGED` | 40 | Ïû·ÑÕß±ä¸üÍ¨Öª | ´¥·¢ÖØÆ½ºâ |
+| `LOCK_BATCH_MQ` | 41 | Ëø¶¨¶ÓÁĞ£¨Ë³ĞòÏû·Ñ£© | `Consumer.LockBatchMQAsync()` |
+| `UNLOCK_BATCH_MQ` | 42 | ½âËø¶ÓÁĞ | `Consumer.UnlockBatchMQAsync()` |
 | `GET_ROUTEINTO_BY_TOPIC` | 105 | TopicÂ·ÓÉ | `NameClient.GetRouteInfo()` |
+| `GET_BROKER_CLUSTER_INFO` | 106 | ¼¯ÈºĞÅÏ¢ | `MqBase.GetClusterInfo()` |
+| `UPDATE_AND_CREATE_SUBSCRIPTIONGROUP` | 200 | ´´½¨/¸üĞÂÏû·Ñ×é | `MqBase.CreateSubscriptionGroup()` |
+| `GET_CONSUMER_CONNECTION_LIST` | 203 | Ïû·ÑÕßÁ¬½ÓÁĞ±í | `Consumer.GetConsumerConnectionList()` |
+| `DELETE_SUBSCRIPTIONGROUP` | 207 | É¾³ıÏû·Ñ×é | `MqBase.DeleteSubscriptionGroup()` |
 | `GET_CONSUME_STATS` | 208 | Ïû·Ñ×´Ì¬ | `Consumer.InitOffsetAsync()` |
+| `DELETE_TOPIC_IN_BROKER` | 215 | ÔÚBrokerÖĞÉ¾³ıTopic | `MqBase.DeleteTopic()` |
+| `DELETE_TOPIC_IN_NAMESRV` | 216 | ÔÚNameServerÖĞÉ¾³ıTopic | `MqBase.DeleteTopic()` |
+| `GET_CONSUMER_RUNNING_INFO` | 307 | Ïû·ÑÕßÔËĞĞĞÅÏ¢ | ±»¶¯´¦Àí |
+| `INVOKE_BROKER_TO_RESET_OFFSET` | 222 | ÖØÖÃÏû·ÑÆ«ÒÆ | `Consumer.ResetConsumerOffset()` |
 | `SEND_MESSAGE_V2` | 310 | ·¢ÏûÏ¢V2 | `Producer.Publish()` / `PublishAsync()` |
+| `SEND_BATCH_MESSAGE` | 320 | ÅúÁ¿·¢ËÍ | `Producer.PublishBatch()` |
+| `SEND_REPLY_MESSAGE_V2` | 325 | »Ø¸´ÏûÏ¢ | `Consumer.SendReplyAsync()` |
+| `POP_MESSAGE` | 200050 | PopÏû·Ñ | `Consumer.PopMessageAsync()` |
+| `ACK_MESSAGE` | 200051 | PopÏûÏ¢È·ÈÏ | `Consumer.AckMessageAsync()` |
+| `CHANGE_MESSAGE_INVISIBLETIME` | 200052 | ĞŞ¸Ä²»¿É¼ûÊ±¼ä | `Consumer.ChangeInvisibleTimeAsync()` |
+| `BATCH_ACK_MESSAGE` | 200151 | ÅúÁ¿PopÈ·ÈÏ | `Consumer.BatchAckMessageAsync()` |
 
-### 5.2 ÒÑ¶¨Òåµ«Î´ÊµÏÖ£¨µ÷ÓÃ£©µÄ RequestCode
-
-| RequestCode | Öµ | ÓÃÍ¾ | ÖØÒªĞÔ |
-|-------------|:--:|------|:------:|
-| `QUERY_MESSAGE` | 12 | ²éÑ¯ÏûÏ¢ | ?ÒÑÊµÏÖ `QueryMessageByKey()` |
-| `QUERY_BROKER_OFFSET` | 13 | ²éÑ¯BrokerÆ«ÒÆ | µÍ |
-| `GET_ALL_TOPIC_CONFIG` | 21 | ËùÓĞTopicÅäÖÃ | µÍ |
-| `SEARCH_OFFSET_BY_TIMESTAMP` | 29 | °´Ê±¼ä´ÁËÑË÷Æ«ÒÆ | ?ÒÑÊµÏÖ |
-| `GET_EARLIEST_MSG_STORETIME` | 32 | ×îÔçÏûÏ¢´æ´¢Ê±¼ä | ÖĞ |
-| `VIEW_MESSAGE_BY_ID` | 33 | °´ID²é¿´ÏûÏ¢ | ?ÒÑÊµÏÖ |
-| `CONSUMER_SEND_MSG_BACK` | 36 | Ïû·ÑÊ§°Ü»ØÍË | ?ÒÑÊµÏÖ |
-| `CHECK_TRANSACTION_STATE` | 39 | ÊÂÎñ»Ø²é | ?ÒÑÊµÏÖ |
-| `NOTIFY_CONSUMER_IDS_CHANGED` | 40 | Ïû·ÑÕß±ä¸üÍ¨Öª | ?ÒÑ´¦Àí |
-| `LOCK_BATCH_MQ` | 41 | Ëø¶¨¶ÓÁĞ£¨Ë³ĞòÏû·Ñ£© | ?ÒÑÊµÏÖ `LockBatchMQAsync()` |
-| `UNLOCK_BATCH_MQ` | 42 | ½âËø¶ÓÁĞ | ?ÒÑÊµÏÖ `UnlockBatchMQAsync()` |
-| `GET_BROKER_CLUSTER_INFO` | 106 | ¼¯ÈºĞÅÏ¢ | ?ÒÑÊµÏÖ `GetClusterInfo()` |
-| `GET_CONSUMER_RUNNING_INFO` | 307 | Ïû·ÑÕßÔËĞĞĞÅÏ¢ | ?ÒÑ´¦Àí |
-| `SEND_BATCH_MESSAGE` | 320 | ÅúÁ¿·¢ËÍ | ?ÒÑÊµÏÖ |
-| `REQUEST_MESSAGE` | 323 | Request-Reply | ÒÑÓÃÆäËû·½Ê½ÊµÏÖ |
-| `SEND_REPLY_MESSAGE_V2` | 325 | »Ø¸´ÏûÏ¢ | ÖĞ |
-| `POP_MESSAGE` | 200050 | PopÏû·Ñ | ?ÒÑÊµÏÖ `PopMessageAsync()` |
-| `ACK_MESSAGE` | 200051 | PopÏûÏ¢È·ÈÏ | ?ÒÑÊµÏÖ `AckMessageAsync()` |
-| `CHANGE_MESSAGE_INVISIBLETIME` | 200052 | ĞŞ¸Ä²»¿É¼ûÊ±¼ä | ?ÒÑÊµÏÖ `ChangeInvisibleTimeAsync()` |
-| `BATCH_ACK_MESSAGE` | 200151 | ÅúÁ¿PopÈ·ÈÏ | ?ÒÑ¶¨Òå |
-
-### 5.3 ÏûÏ¢±à½âÂë·ÖÎö
+### 6.2 ÏûÏ¢±à½âÂë·ÖÎö
 
 **ÏûÏ¢·¢ËÍ£¨MessageExt.Write£©**£º½ö·µ»Ø `true`£¬²»Êµ¼ÊĞ´Èë£¬ÒòÎª·¢ËÍ×ßµÄÊÇ `Command` ·â×°¡£
 
-**ÏûÏ¢½ÓÊÕ£¨MessageExt.Read£©**£º
+**ÏûÏ¢½ÓÊÕ£¨MessageExt.Read/ReadAll/DecodeBatch£©**£º
 - ? Ö§³Ö±ê×¼µÄ 4.x ÏûÏ¢¶ş½øÖÆ¸ñÊ½
 - ? Ö§³Ö ZLIB ½âÑ¹Ëõ£¨SysFlag µÚ0Î»£©
 - ? Ö§³Ö IPv4 µØÖ·½âÎö
 - ? Ö§³Ö IPv6 µØÖ·½âÎö£¨SysFlag µÚ2Î»±êÊ¶£¬×Ô¶¯ÊÊÅä4×Ö½Ú/16×Ö½ÚIP£©
-- ? **Ö§³ÖÅúÁ¿ÏûÏ¢½âÂë**£¨`ReadBatch()` ·½·¨½âÂë BatchMessage Body ÄÚÇ¶¶àÌõÏûÏ¢£©
+- ? Ö§³ÖÅúÁ¿ÏûÏ¢½âÂë£¨`DecodeBatch()` ·½·¨½âÂë SysFlag µÚ4Î»±êÊ¶µÄ BatchMessage Body£©
 
-### 5.4 ĞòÁĞ»¯¸ñÊ½
+### 6.3 ĞòÁĞ»¯¸ñÊ½
 
 | ¸ñÊ½ | Ö§³Ö | ËµÃ÷ |
 |------|:---:|------|
 | JSON | ? | Ä¬ÈÏ¸ñÊ½£¬Ê¹ÓÃ `NewLife.Serialization.JsonHelper` |
 | ROCKETMQ£¨¶ş½øÖÆ£© | ? | ÃüÁîÍ·²¿Ö§³Ö¶ş½øÖÆ½âÎö |
 
+### 6.4 gRPC ·şÎñ·½·¨£¨RocketMQ 5.x Proxy£©
+
+| ·şÎñ·½·¨ | ÊµÏÖÀà·½·¨ | ËµÃ÷ |
+|---------|----------|------|
+| `QueryRoute` | `GrpcMessagingService.QueryRouteAsync()` | ²éÑ¯Ö÷ÌâÂ·ÓÉĞÅÏ¢ |
+| `SendMessage` | `GrpcMessagingService.SendMessageAsync()` | ·¢ËÍÏûÏ¢£¨ÆÕÍ¨/ÑÓ³Ù/FIFO£© |
+| `SendMessage (Transaction)` | `GrpcMessagingService.SendTransactionMessageAsync()` | ·¢ËÍÊÂÎñÏûÏ¢£¨°ëÏûÏ¢£© |
+| `QueryAssignment` | `GrpcMessagingService.QueryAssignmentAsync()` | ²éÑ¯¶ÓÁĞ·ÖÅä |
+| `ReceiveMessage` | `GrpcMessagingService.ReceiveMessageAsync()` | ½ÓÊÕÏûÏ¢£¨Server Streaming£© |
+| `AckMessage` | `GrpcMessagingService.AckMessageAsync()` | È·ÈÏÏûÏ¢Ïû·Ñ |
+| `Heartbeat` | `GrpcMessagingService.HeartbeatAsync()` | ĞÄÌø |
+| `EndTransaction` | `GrpcMessagingService.EndTransactionAsync()` | ½áÊøÊÂÎñ£¨Ìá½»/»Ø¹ö£© |
+| `ForwardToDeadLetterQueue` | `GrpcMessagingService.ForwardToDeadLetterQueueAsync()` | ×ª·¢µ½ËÀĞÅ¶ÓÁĞ |
+| `ChangeInvisibleDuration` | `GrpcMessagingService.ChangeInvisibleDurationAsync()` | ĞŞ¸Ä²»¿É¼ûÊ±¼ä |
+| `NotifyClientTermination` | `GrpcMessagingService.NotifyClientTerminationAsync()` | Í¨Öª¿Í»§¶ËÖÕÖ¹ |
+| `Telemetry` | `GrpcMessagingService.TelemetryAsync()` | ¿Í»§¶Ë×ÊÔ´ÉÏ±¨£¨ÉèÖÃ/¶©ÔÄµÈ£© |
+
 ---
 
-## Áù¡¢¹¦ÄÜÍêÉÆ¶ÈÆÀ¹À
+## Æß¡¢¹¦ÄÜÍêÉÆ¶ÈÆÀ¹À
 
-### 6.1 Éú²úÕß¹¦ÄÜ£¨Producer£©
+### 7.1 Éú²úÕß¹¦ÄÜ£¨Producer£©
 
 | ¹¦ÄÜ | ×´Ì¬ | ÏêÏ¸ËµÃ÷ |
 |------|:----:|---------|
-| Í¬²½·¢ËÍ | ?ÍêÕû | Ö§³ÖÖØÊÔ¡¢³¬Ê±¡¢¸ºÔØ¾ùºâ |
-| Òì²½·¢ËÍ | ?ÍêÕû | Òì²½°æ±¾£¬Ö§³Ö CancellationToken |
+| Í¬²½·¢ËÍ | ?ÍêÕû | Ö§³ÖÖØÊÔ£¨`RetryTimesWhenSendFailed`£©¡¢³¬Ê±¡¢¸ºÔØ¾ùºâ£¨`ILoadBalance`£© |
+| Òì²½·¢ËÍ | ?ÍêÕû | Òì²½°æ±¾£¬Ö§³Ö CancellationToken¡£gRPC Ä£Ê½×Ô¶¯Â·ÓÉ |
 | µ¥Ïò·¢ËÍ | ?ÍêÕû | ²»µÈ´ı½á¹û |
 | ÑÓ³ÙÏûÏ¢ | ?ÍêÕû | 18¼¶¶¨Ê±ÏûÏ¢ |
-| ÊÂÎñÏûÏ¢ | ?ÍêÕû | Ö§³Ö·¢ËÍ°ëÏûÏ¢¡¢Ìá½»/»Ø¹ö£¬Ö§³Ö±»¶¯»Ø²é»Øµ÷ `OnCheckTransaction` |
+| ÈÎÒâÊ±¼äÑÓ³Ù | ?ÍêÕû | gRPC Ä£Ê½ÏÂ `PublishDelayViaGrpcAsync()` Ö§³ÖÈÎÒâÊ±¼ä´ÁÑÓ³Ù |
+| ÊÂÎñÏûÏ¢ | ?ÍêÕû | Ö§³Ö·¢ËÍ°ëÏûÏ¢¡¢Ìá½»/»Ø¹ö£¬Ö§³Ö±»¶¯»Ø²é»Øµ÷ `OnCheckTransaction`£¨Í¬²½/Òì²½Î¯ÍĞ£© |
 | Ë³ĞòÏûÏ¢ | ?ÍêÕû | Í¨¹ıÖ¸¶¨ `MessageQueue` ²ÎÊıÊµÏÖ |
-| Request-Reply | ?ÍêÕû | Í¬²½/Òì²½ÇëÇóÏìÓ¦Ä£Ê½ |
-| ÅúÁ¿·¢ËÍ | ?ÍêÕû | `PublishBatch()` Ö§³ÖÅúÁ¿ÏûÏ¢·¢ËÍ£¬`SEND_BATCH_MESSAGE` |
+| Request-Reply | ?ÍêÕû | Í¬²½ `Request()` / Òì²½ `RequestAsync()`£¬ÄÚÖÃ»Ø¸´Ïû·ÑÕß |
+| ÅúÁ¿·¢ËÍ | ?ÍêÕû | `PublishBatch()` Ö§³Ö `List<Message>` »ò `List<String>` ÅúÁ¿·¢ËÍ |
 | ÏûÏ¢Ñ¹Ëõ | ?ÍêÕû | ·¢ËÍ¶Ë³¬¹ı `CompressOverBytes` ãĞÖµ×Ô¶¯ZLIBÑ¹Ëõ |
 | ·¢ËÍ¶Ë¹³×Ó | ?ÍêÕû | `ISendMessageHook` Ç°ºóÀ¹½Ø |
-| ÏûÏ¢¹ì¼£ | ?ÍêÕû | Òì²½¹ì¼£·Ö·¢Æ÷ |
-| ÈÎÒâÊ±¼äÑÓ³Ù | ?ÍêÕû | gRPC Ä£Ê½ÏÂ `PublishDelayViaGrpcAsync()` Ö§³ÖÈÎÒâÊ±¼ä´ÁÑÓ³Ù |
+| ÏûÏ¢¹ì¼£ | ?ÍêÕû | `AsyncTraceDispatcher` Òì²½¹ì¼£·Ö·¢ |
+| gRPC ÊÂÎñ | ?ÍêÕû | `PublishTransactionViaGrpcAsync()` / `EndTransactionViaGrpcAsync()` |
+| gRPC Â·ÓÉ²éÑ¯ | ?ÍêÕû | `QueryRouteViaGrpcAsync()` |
 
-### 6.2 Ïû·ÑÕß¹¦ÄÜ£¨Consumer£©
+### 7.2 Ïû·ÑÕß¹¦ÄÜ£¨Consumer£©
 
 | ¹¦ÄÜ | ×´Ì¬ | ÏêÏ¸ËµÃ÷ |
 |------|:----:|---------|
@@ -338,30 +343,37 @@ var producer = new Producer
 | ¼¯ÈºÏû·Ñ | ?ÍêÕû | Æ½¾ù·ÖÅä Rebalance Ëã·¨ |
 | ¹ã²¥Ïû·Ñ | ?ÍêÕû | `OffsetStorePath` ±¾µØJSONÎÄ¼ş³Ö¾Ã»¯Æ«ÒÆ |
 | Tag ¹ıÂË | ?ÍêÕû | Ö§³Ö Tag ±í´ïÊ½ |
-| Æ«ÒÆ¹ÜÀí | ?ÍêÕû | ²éÑ¯/¸üĞÂ/³Ö¾Ã»¯ |
+| SQL92 ¹ıÂË | ?ÍêÕû | `ExpressionType="SQL92"` + SQL±í´ïÊ½ |
+| Æ«ÒÆ¹ÜÀí | ?ÍêÕû | `QueryOffset` / `UpdateOffset` / `QueryMaxOffset` / `QueryMinOffset` / `SearchOffset` |
 | Ïû·ÑÕßĞÅÏ¢ÉÏ±¨ | ?ÍêÕû | `GetConsumerRunningInfo` |
 | Ïû·ÑÕß±ä¸üÍ¨Öª | ?ÍêÕû | `NOTIFY_CONSUMER_IDS_CHANGED` ´¥·¢ÖØÆ½ºâ |
 | Ïû·ÑÖØÊÔ | ?ÍêÕû | `EnableRetry` + `MaxReconsumeTimes`£¬×Ô¶¯»ØÍËµ½RETRY Topic |
 | ËÀĞÅ¶ÓÁĞ | ?ÍêÕû | ³¬¹ı×î´óÖØÊÔ´ÎÊıºó×Ô¶¯½øÈë `%DLQ%` Topic |
-| Ïû·Ñ»ØÍË | ?ÍêÕû | `SendMessageBack()` / `CONSUMER_SEND_MSG_BACK` |
-| SQL92 ¹ıÂË | ?ÍêÕû | `ExpressionType="SQL92"` + SQL±í´ïÊ½ |
+| Ïû·Ñ»ØÍË | ?ÍêÕû | `SendMessageBackAsync()` / `CONSUMER_SEND_MSG_BACK` |
 | Ë³ĞòÏû·Ñ£¨Ëø¶¨£© | ?ÍêÕû | `LockBatchMQAsync()` / `UnlockBatchMQAsync()` / `OrderConsume` ÊôĞÔ |
 | ¶àTopic¶©ÔÄ | ?ÍêÕû | `Topics` ÊôĞÔÖ§³Ö¶àÖ÷Ìâ¶©ÔÄ£¬Rebalance °´ Topic ·Ö±ğ»ñÈ¡ Broker ¹¹½¨¶ÓÁĞ |
 | Pop Ïû·Ñ | ?ÍêÕû | `PopMessageAsync()` / `AckMessageAsync()` / `ChangeInvisibleTimeAsync()` |
 | °´Ê±¼ä´ÁÏû·Ñ | ?ÍêÕû | `SearchOffset()` / `SEARCH_OFFSET_BY_TIMESTAMP` |
 | Ïû·ÑÏŞÁ÷ | ?ÍêÕû | `MaxConcurrentConsume` ĞÅºÅÁ¿¿ØÖÆ×Ü²¢·¢ |
 | Ïû·Ñ¶Ë¹³×Ó | ?ÍêÕû | `IConsumeMessageHook` Ç°ºóÀ¹½Ø |
+| Request-Reply »Ø¸´ | ?ÍêÕû | `SendReply()` / `SendReplyAsync()` |
+| gRPC ½ÓÊÕÏûÏ¢ | ?ÍêÕû | `ReceiveMessageViaGrpcAsync()` Server Streaming |
+| gRPC È·ÈÏÏûÏ¢ | ?ÍêÕû | `AckMessageViaGrpcAsync()` |
+| gRPC ¶ÓÁĞ·ÖÅä | ?ÍêÕû | `QueryAssignmentViaGrpcAsync()` |
+| gRPC ²»¿É¼ûÊ±¼ä | ?ÍêÕû | `ChangeInvisibleDurationViaGrpcAsync()` |
+| gRPC ĞÄÌø | ?ÍêÕû | `HeartbeatViaGrpcAsync()` |
 
-### 6.3 ¹ÜÀí¹¦ÄÜ
+### 7.3 ¹ÜÀí¹¦ÄÜ
 
 | ¹¦ÄÜ | ×´Ì¬ | ÏêÏ¸ËµÃ÷ |
 |------|:----:|---------|
 | Topic ´´½¨/¸üĞÂ | ?ÍêÕû | ÔÚËùÓĞ Broker ÉÏ´´½¨ |
+| Topic É¾³ı | ?ÍêÕû | `DeleteTopic()` Í¬Ê±´Ó Broker ºÍ NameServer É¾³ı |
+| Ïû·Ñ×é´´½¨/¸üĞÂ | ?ÍêÕû | `CreateSubscriptionGroup()` |
+| Ïû·Ñ×éÉ¾³ı | ?ÍêÕû | `DeleteSubscriptionGroup()` |
 | Broker ÔËĞĞĞÅÏ¢ | ?ÍêÕû | `GetRuntimeInfo()` |
 | Ïû·Ñ×é²éÑ¯ | ?ÍêÕû | `GetConsumers()` |
-| Ïû·ÑÍ³¼Æ | ??²¿·Ö | `GET_CONSUME_STATS` ½öÓÃÓÚ³õÊ¼»¯Æ«ÒÆ |
-| Topic É¾³ı | ?ÍêÕû | `DeleteTopic()` / `DELETE_TOPIC_IN_BROKER` + `DELETE_TOPIC_IN_NAMESRV` |
-| Ïû·Ñ×é´´½¨/É¾³ı | ?ÍêÕû | `CreateSubscriptionGroup()` / `DeleteSubscriptionGroup()` |
+| Ïû·ÑÍ³¼Æ | ?ÍêÕû | `GetConsumeStats()` »ñÈ¡Ïû·Ñ×éÍêÕûÍ³¼ÆĞÅÏ¢ + `GetTopicStatsInfo()` »ñÈ¡Ö÷ÌâÍ³¼Æ |
 | ÏûÏ¢²éÑ¯£¨°´ID£© | ?ÍêÕû | `ViewMessage()` / `VIEW_MESSAGE_BY_ID` |
 | ÏûÏ¢²éÑ¯£¨°´Key£© | ?ÍêÕû | `QueryMessageByKey()` / `QUERY_MESSAGE` |
 | ¼¯ÈºĞÅÏ¢²éÑ¯ | ?ÍêÕû | `GetClusterInfo()` / `GET_BROKER_CLUSTER_INFO` |
@@ -370,96 +382,93 @@ var producer = new Producer
 
 ---
 
-## Æß¡¢¸÷¼Ò×¨ÓĞ°æ±¾¶Ô±È
+## °Ë¡¢¸÷¼Ò×¨ÓĞ°æ±¾¶Ô±È
 
-### 7.1 ¹¦ÄÜÖ§³Ö¶Ô±È±í
+### 8.1 ¹¦ÄÜÖ§³Ö¶Ô±È±í
 
 | ¹¦ÄÜ | Apache 4.x | Apache 5.x | °¢ÀïÔÆ 4.x | °¢ÀïÔÆ 5.x | »ªÎªÔÆ DMS | ÌÚÑ¶ÔÆ TDMQ |
 |------|:----------:|:----------:|:---------:|:---------:|:---------:|:---------:|
 | RemotingÁ¬½Ó | ? | ? | ? | ?? | ?? | ?? |
 | gRPCÁ¬½Ó | N/A | ? | N/A | ?? | ?? | ?? |
 | Ç©ÃûÈÏÖ¤ | ?ACL | ?ACL | ?°¢ÀïÇ©Ãû | ?? | ?»ªÎªÔÆÊÊÅä | ??´ıÑéÖ¤ |
-| ÊµÀıIDÂ·ÓÉ | N/A | N/A | ? | ? | ´ıÑéÖ¤ | ´ıÑéÖ¤ |
+| ÊµÀıIDÂ·ÓÉ | N/A | N/A | ? | ? | ´ıÑéÖ¤ | ?Namespace |
 | NameServer·¢ÏÖ | Ö±Á¬ | Ö±Á¬ | ?HTTP | ´ıÑéÖ¤ | ´ıÑéÖ¤ | VPCÖ±Á¬ |
 | SSL/TLS | ? | ? | ? | ? | ? | ? |
 
-### 7.2 ×¨ÓĞ°æ±¾ÊÊÅä´úÂëÇåµ¥
+### 8.2 ×¨ÓĞ°æ±¾ÊÊÅä´úÂëÇåµ¥
 
-**°¢ÀïÔÆÊÊÅä**£¨ÒÑÓĞ£©£º
-- `AliyunOptions.cs` ¡ª °¢ÀïÔÆÁ¬½Ó²ÎÊı
-- `MqBase.Start()` ¡ª ÊµÀıIDÇ°×ºÆ´½Ó
-- `MqBase.OnStart()` ¡ª HTTP»ñÈ¡NameServerµØÖ·
-- `ClusterClient.SetSignature()` ¡ª HMAC-SHA1Ç©Ãû
-- `Consumer.ConsumerStatesSpecialJsonHandler()` ¡ª ÌØÊâJSON½âÎö
+**ÔÆ³§ÉÌÊÊÅäÆ÷½Ó¿Ú**£º
+- `ICloudProvider.cs` ¡ª Í³Ò»ÔÆ³§ÉÌÊÊÅä½Ó¿Ú£¨`Name`/`AccessKey`/`SecretKey`/`OnsChannel`/`TransformTopic`/`TransformGroup`/`GetNameServerAddress`£©
 
-**Apache ACL ÊÊÅä**£¨ÒÑÓĞ£©£º
-- `AclOptions.cs` ¡ª ACL²ÎÊı
-- `ClusterClient.SetSignature()` ¡ª ¸´ÓÃÇ©ÃûÂß¼­
+**°¢ÀïÔÆÊÊÅä**£¨ÒÑÍê³É£©£º
+- `AliyunProvider.cs` ¡ª °¢ÀïÔÆÊÊÅäÆ÷£¨`ICloudProvider` ÊµÏÖ£¬ÊµÀıIDÇ°×ºÂ·ÓÉ + HTTP NameServer·¢ÏÖ£©
+- `AliyunOptions.cs` ¡ª ¾É°æ°¢ÀïÔÆ²ÎÊı£¨`[Obsolete]`£¬×Ô¶¯ÇÅ½Óµ½ `AliyunProvider`£©
+- `ClusterClient.SetSignature()` ¡ª HMAC-SHA1 Í³Ò»Ç©Ãû
+- `Consumer.ConsumerStatesSpecialJsonHandler()` ¡ª °¢ÀïÔÆÌØÊâJSON½âÎö
 
-**»ªÎªÔÆÊÊÅä**£¨ÒÑÓĞ£©£º
-- `HuaweiProvider.cs` ¡ª »ªÎªÔÆÊÊÅäÆ÷£¨`ICloudProvider` ÊµÏÖ£¬Ìæ´ú¾É°æ `HuaweiOptions`£©
-- `ClusterClient.SetSignature()` ¡ª »ªÎªÔÆÇ©Ãû£¨¸´ÓÃ ACL Ç©ÃûÂß¼­£©
+**Apache ACL ÊÊÅä**£¨ÒÑÍê³É£©£º
+- `AclProvider.cs` ¡ª Apache ACL ÊÊÅäÆ÷£¨`ICloudProvider` ÊµÏÖ£¬²»×ª»»Topic/Group£©
+- `AclOptions.cs` ¡ª ¾É°æACL²ÎÊı£¨`[Obsolete]`£¬×Ô¶¯ÇÅ½Óµ½ `AclProvider`£©
 
-**ÌÚÑ¶ÔÆÊÊÅä**£¨ÒÑÓĞ£©£º
-- `TencentProvider.cs` ¡ª ÌÚÑ¶ÔÆ TDMQ ÊÊÅäÆ÷£¨`ICloudProvider` ÊµÏÖ£©
-- Ö§³Ö Namespace Ç°×ºÂ·ÓÉ
-- `ClusterClient.SetSignature()` ¡ª ¸´ÓÃÇ©ÃûÂß¼­
+**»ªÎªÔÆÊÊÅä**£¨ÒÑÍê³É£©£º
+- `HuaweiProvider.cs` ¡ª »ªÎªÔÆÊÊÅäÆ÷£¨`ICloudProvider` ÊµÏÖ£¬Ö§³Ö `EnableSsl` ÊôĞÔ£©
 
-**ÔÆ³§ÉÌÊÊÅäÆ÷½Ó¿Ú**£¨ĞÂÔö£©£º
-- `ICloudProvider.cs` ¡ª Í³Ò»ÔÆ³§ÉÌÊÊÅä½Ó¿Ú
-- `AliyunProvider.cs` ¡ª °¢ÀïÔÆÊÊÅäÆ÷£¨Ìæ´ú¾É°æ `AliyunOptions`£©
-- `AclProvider.cs` ¡ª Apache ACL ÊÊÅäÆ÷£¨Ìæ´ú¾É°æ `AclOptions`£©
-- `HuaweiProvider.cs` ¡ª »ªÎªÔÆÊÊÅäÆ÷£¨Ìæ´ú¾É°æ `HuaweiOptions`£©
-- `TencentProvider.cs` ¡ª ÌÚÑ¶ÔÆÊÊÅäÆ÷£¨ĞÂÔö£©
+**ÌÚÑ¶ÔÆÊÊÅä**£¨ÒÑÍê³É£©£º
+- `TencentProvider.cs` ¡ª ÌÚÑ¶ÔÆ TDMQ ÊÊÅäÆ÷£¨`ICloudProvider` ÊµÏÖ£¬Namespace Ç°×ºÂ·ÓÉ£©
 
 ---
 
-## °Ë¡¢Óë¹Ù·½ Java ¿Í»§¶Ë¹¦ÄÜ²î¾à
+## ¾Å¡¢Óë¹Ù·½ Java ¿Í»§¶Ë¹¦ÄÜ²î¾à
 
 ÒÔÏÂÊÇÓë Apache RocketMQ ¹Ù·½ Java ¿Í»§¶Ë 4.9.x ¶Ô±ÈµÄÖ÷Òª²î¾à£º
 
-### 8.1 ¸ßÓÅÏÈ¼¶È±Ê§¹¦ÄÜ
+### 9.1 ÒÑÏû³ıµÄ¹¦ÄÜ²î¾à
 
-| ¹¦ÄÜ | ÖØÒªĞÔ | ÊµÏÖÄÑ¶È | ËµÃ÷ |
-|------|:------:|:------:|------|
-| **Ïû·ÑÖØÊÔ»úÖÆ** | ?ÒÑÊµÏÖ | ÖĞ | `EnableRetry` + `MaxReconsumeTimes`£¬Ïû·ÑÊ§°Üºó×Ô¶¯·¢ËÍµ½ `%RETRY%{ConsumerGroup}` Topic |
-| **ÊÂÎñ»Ø²é»Øµ÷** | ?ÒÑÊµÏÖ | ÖĞ | Broker Ö÷¶¯µ÷ÓÃ `CHECK_TRANSACTION_STATE`£¬¿Í»§¶ËÍ¨¹ı `OnCheckTransaction` »ØÓ¦ÊÂÎñ×´Ì¬ |
-| **ÅúÁ¿ÏûÏ¢·¢ËÍ** | ?ÒÑÊµÏÖ | µÍ | `PublishBatch()`£¬½«¶àÌõÏûÏ¢ºÏ²¢ÎªÒ»¸öÇëÇó·¢ËÍ |
-| **Ïû·Ñ»ØÍË£¨SendBack£©** | ?ÒÑÊµÏÖ | µÍ | `SendMessageBack()` Ïû·ÑÊ§°ÜÊ±½«ÏûÏ¢»ØÍË¸ø Broker µÄ RETRY Topic |
-| **Ë³ĞòÏû·ÑËø¶¨** | ?ÒÑÊµÏÖ | ÖĞ | `LockBatchMQAsync()` / `UnlockBatchMQAsync()` / `OrderConsume` ÊôĞÔ |
-| **°´Ê±¼ä´ÁËÑË÷Æ«ÒÆ** | ?ÒÑÊµÏÖ | µÍ | `SearchOffset()` / `SEARCH_OFFSET_BY_TIMESTAMP` |
-| **ÏûÏ¢²éÑ¯£¨°´ID£©** | ?ÒÑÊµÏÖ | µÍ | `ViewMessage()` / `VIEW_MESSAGE_BY_ID` |
-| **ÏûÏ¢²éÑ¯£¨°´Key£©** | ?ÒÑÊµÏÖ | µÍ | `QueryMessageByKey()` / `QUERY_MESSAGE` |
-| **IPv6 Ö§³Ö** | ?ÒÑÊµÏÖ | ÖĞ | SysFlag µÚ2Î»ÅĞ¶ÏIPv4/IPv6£¬×Ô¶¯ÊÊÅäµØÖ·³¤¶ÈºÍMsgId¸ñÊ½ |
+| ¹¦ÄÜ | ×´Ì¬ | ËµÃ÷ |
+|------|:----:|------|
+| **Ïû·ÑÖØÊÔ»úÖÆ** | ?ÒÑÊµÏÖ | `EnableRetry` + `MaxReconsumeTimes`£¬Ïû·ÑÊ§°Üºó×Ô¶¯·¢ËÍµ½ `%RETRY%{ConsumerGroup}` Topic |
+| **ÊÂÎñ»Ø²é»Øµ÷** | ?ÒÑÊµÏÖ | Broker Ö÷¶¯µ÷ÓÃ `CHECK_TRANSACTION_STATE`£¬¿Í»§¶ËÍ¨¹ı `OnCheckTransaction`£¨Í¬²½/Òì²½£©»ØÓ¦ |
+| **ÅúÁ¿ÏûÏ¢·¢ËÍ** | ?ÒÑÊµÏÖ | `PublishBatch()`£¬½«¶àÌõÏûÏ¢ºÏ²¢ÎªÒ»¸öÇëÇó·¢ËÍ |
+| **ÅúÁ¿ÏûÏ¢½âÂë** | ?ÒÑÊµÏÖ | `MessageExt.DecodeBatch()` ½âÂë SysFlag µÚ4Î»±êÊ¶µÄ BatchMessage Body |
+| **Ïû·Ñ»ØÍË£¨SendBack£©** | ?ÒÑÊµÏÖ | `SendMessageBackAsync()` Ïû·ÑÊ§°ÜÊ±½«ÏûÏ¢»ØÍË¸ø Broker µÄ RETRY Topic |
+| **Ë³ĞòÏû·ÑËø¶¨** | ?ÒÑÊµÏÖ | `LockBatchMQAsync()` / `UnlockBatchMQAsync()` / `OrderConsume` ÊôĞÔ |
+| **°´Ê±¼ä´ÁËÑË÷Æ«ÒÆ** | ?ÒÑÊµÏÖ | `SearchOffset()` / `SEARCH_OFFSET_BY_TIMESTAMP` |
+| **ÏûÏ¢²éÑ¯£¨°´ID£©** | ?ÒÑÊµÏÖ | `ViewMessage()` / `VIEW_MESSAGE_BY_ID` |
+| **ÏûÏ¢²éÑ¯£¨°´Key£©** | ?ÒÑÊµÏÖ | `QueryMessageByKey()` / `QUERY_MESSAGE` |
+| **IPv6 Ö§³Ö** | ?ÒÑÊµÏÖ | SysFlag µÚ2Î»ÅĞ¶ÏIPv4/IPv6£¬×Ô¶¯ÊÊÅäµØÖ·³¤¶ÈºÍMsgId¸ñÊ½ |
+| **SQL92 ¹ıÂË** | ?ÒÑÊµÏÖ | `ExpressionType="SQL92"` + SQL±í´ïÊ½ |
+| **·¢ËÍ¶ËÏûÏ¢Ñ¹Ëõ** | ?ÒÑÊµÏÖ | `CompressOverBytes` ³¬¹ıãĞÖµ×Ô¶¯ZLIBÑ¹Ëõ |
+| **¶àTopic¶©ÔÄ** | ?ÒÑÊµÏÖ | `Topics` ÊôĞÔÖ§³Ö¶àÖ÷Ìâ¶©ÔÄ£¬Rebalance °´ Topic ·Ö±ğ»ñÈ¡ Broker ¹¹½¨¶ÓÁĞ |
+| **¹ã²¥Ä£Ê½±¾µØÆ«ÒÆ** | ?ÒÑÊµÏÖ | `OffsetStorePath` ±¾µØJSONÎÄ¼ş³Ö¾Ã»¯ |
+| **ËÀĞÅ¶ÓÁĞ** | ?ÒÑÊµÏÖ | ³¬¹ıÖØÊÔ´ÎÊıºó×Ô¶¯½øÈë `%DLQ%` Topic |
+| **Ïû·ÑÏŞÁ÷** | ?ÒÑÊµÏÖ | `MaxConcurrentConsume` ĞÅºÅÁ¿¿ØÖÆËùÓĞ¶ÓÁĞ×Ü²¢·¢ |
+| **Pop Ïû·ÑÄ£Ê½** | ?ÒÑÊµÏÖ | `PopMessageAsync()` / `AckMessageAsync()` / `ChangeInvisibleTimeAsync()` |
+| **Ïû·Ñ×é¹ÜÀí** | ?ÒÑÊµÏÖ | `CreateSubscriptionGroup()` / `DeleteSubscriptionGroup()` |
+| **gRPC Ğ­ÒéÖ§³Ö** | ?ÒÑÊµÏÖ | ÄÚÖÃ Protobuf ±à½âÂë + HTTP/2 gRPC£¬Í¨¹ı `GrpcProxyAddress` ÊôĞÔÆôÓÃ |
 
-### 8.2 ÖĞÓÅÏÈ¼¶È±Ê§¹¦ÄÜ
-
-| ¹¦ÄÜ | ÖØÒªĞÔ | ÊµÏÖÄÑ¶È | ËµÃ÷ |
-|------|:------:|:------:|------|
-| SQL92 ¹ıÂË | ?ÒÑÊµÏÖ | µÍ | `ExpressionType="SQL92"` + SQL±í´ïÊ½ |
-| ·¢ËÍ¶ËÏûÏ¢Ñ¹Ëõ | ?ÒÑÊµÏÖ | µÍ | `CompressOverBytes` ³¬¹ıãĞÖµ×Ô¶¯ZLIBÑ¹Ëõ |
-| ¶àTopic¶©ÔÄ | ?ÒÑÊµÏÖ | µÍ | `Topics` ÊôĞÔÖ§³Ö¶àÖ÷Ìâ¶©ÔÄ£¬Rebalance °´ Topic ·Ö±ğ»ñÈ¡ Broker ¹¹½¨¶ÓÁĞ |
-| ¹ã²¥Ä£Ê½±¾µØÆ«ÒÆ | ?ÒÑÊµÏÖ | ÖĞ | `OffsetStorePath` ±¾µØJSONÎÄ¼ş³Ö¾Ã»¯ |
-| ËÀĞÅ¶ÓÁĞ | ?ÒÑÊµÏÖ | µÍ | ³¬¹ıÖØÊÔ´ÎÊıºó×Ô¶¯½øÈë `%DLQ%` Topic |
-| Ïû·ÑÏŞÁ÷ | ?ÒÑÊµÏÖ | ÖĞ | `MaxConcurrentConsume` ĞÅºÅÁ¿¿ØÖÆËùÓĞ¶ÓÁĞ×Ü²¢·¢ |
-| Pop Ïû·ÑÄ£Ê½ | ?ÒÑÊµÏÖ | ÖĞ | `PopMessageAsync()` / `AckMessageAsync()` / `ChangeInvisibleTimeAsync()` |
-| Ïû·Ñ×é¹ÜÀí | ?ÒÑÊµÏÖ | µÍ | `CreateSubscriptionGroup()` / `DeleteSubscriptionGroup()` |
-
-### 8.3 µÍÓÅÏÈ¼¶¹¦ÄÜ
+### 9.2 ÈÔÓĞ²î¾àµÄ¹¦ÄÜ
 
 | ¹¦ÄÜ | ÖØÒªĞÔ | ËµÃ÷ |
 |------|:------:|------|
-| VIP Í¨µÀ | ¡ï | Ê¹ÓÃ `BrokerPort - 2` µÄVIP¶Ë¿Ú |
-| ÏûÏ¢¹ıÂË·şÎñÆ÷ | ¡ï | `REGISTER_FILTER_SERVER` |
-| ¼¯ÈºĞÅÏ¢²éÑ¯ | ¡ï | ¹ÜÀí¹¦ÄÜ |
-| Compaction Topic | ¡ï | 5.x ĞÂÌØĞÔ |
-| gRPC Ğ­ÒéÖ§³Ö | ?ÒÑÊµÏÖ | ¡ª | ÄÚÖÃ Protobuf ±à½âÂë + HTTP/2 gRPC£¬Í¨¹ı `GrpcProxyAddress` ÊôĞÔÆôÓÃ |
+| Compaction Topic | ¡ï | 5.x ĞÂÌØĞÔ£¬KV ÓïÒå Topic |
+| ·şÎñ¶Ë Rebalance | ¡ï¡ï | 5.x + gRPC Ğ­ÒéÅäºÏ |
+
+### 9.3 ±¾´ÎĞÂÔöÏû³ıµÄ¹¦ÄÜ²î¾à
+
+| ¹¦ÄÜ | ×´Ì¬ | ËµÃ÷ |
+|------|:----:|------|
+| **VIP Í¨µÀ** | ?ÒÑÊµÏÖ | `VipChannelEnabled` ÊôĞÔ£¬ÆôÓÃºóÊ¹ÓÃ BrokerPort - 2 µÄVIP¶Ë¿Ú |
+| **ÅúÁ¿È·ÈÏPopÏûÏ¢** | ?ÒÑÊµÏÖ | `BatchAckMessageAsync()` / `BATCH_ACK_MESSAGE (200151)` |
+| **Ïû·ÑÍ³¼ÆÍêÕûAPI** | ?ÒÑÊµÏÖ | `GetConsumeStats()` ÍêÕûÏû·ÑÍ³¼Æ + `GetTopicStatsInfo()` Ö÷ÌâÍ³¼Æ |
+| **ÏûÏ¢¹ıÂË·şÎñÆ÷×¢²á** | ?ÒÑÊµÏÖ | `RegisterFilterServer()` / `REGISTER_FILTER_SERVER (301)` |
+| **5.x MessageId ĞÂ¸ñÊ½** | ?ÒÑÊµÏÖ | `CreateMessageId5x()` / `TryParseMessageId5x()` / `IsMessageId5x()` |
+| **¿Í»§¶Ë×ÊÔ´ÉÏ±¨** | ?ÒÑÊµÏÖ | `TelemetryViaGrpcAsync()` Í¨¹ı gRPC Telemetry ÉÏ±¨¿Í»§¶ËÉèÖÃ |
 
 ---
 
-## ¾Å¡¢Ğ­Òé²ã¼¼ÊõÏ¸½Ú·ÖÎö
+## Ê®¡¢Ğ­Òé²ã¼¼ÊõÏ¸½Ú·ÖÎö
 
-### 9.1 Ğ­ÒéÖ¡¸ñÊ½£¨ÒÑÕıÈ·ÊµÏÖ£©
+### 10.1 Ğ­ÒéÖ¡¸ñÊ½£¨Remoting£¬ÒÑÕıÈ·ÊµÏÖ£©
 
 ```
 +--------+----------------+--------+---------+
@@ -472,44 +481,67 @@ HeaderLength µÍ 24 Î»: Êµ¼Ê Header ³¤¶È
 Length = 4 + N + M
 ```
 
-### 9.2 ÒÑÖªĞ­Òé¼æÈİĞÔ·çÏÕ
+### 10.2 gRPC Ö¡¸ñÊ½£¨HTTP/2£¬ÒÑÕıÈ·ÊµÏÖ£©
 
-1. **°æ±¾ÉùÃ÷**£ºÄ¬ÈÏ `V4_9_7`£¬`MQVersion` Ã¶¾ÙÒÑÀ©Õ¹µ½ `V5_9_9` ºÍ `HIGHER_VERSION`¡£¿ÉÍ¨¹ı `Version` ÊôĞÔ×Ô¶¨Òå¡£
-2. **Language ±êÊ¶Îª CPP**£º`Header.Language` Ä¬ÈÏ `"CPP"`£¬ÔÚ `OnBuild` ÖĞ¸ÄÎª `"DOTNET"`¡£DOTNET ²»ÔÚ¹Ù·½ Java Ã¶¾ÙÖĞ£¬²¿·Ö Broker ¿ÉÄÜ²»Ê¶±ğ¡£
+```
++-----+--------+---------+
+| Comp| Length  | Body    |
+| 1B  | 4 bytes | N bytes |
++-----+--------+---------+
+
+Comp: 0=²»Ñ¹Ëõ, 1=gzip
+Length: ´ó¶ËĞò£¬Protobuf ÏûÏ¢Ìå³¤¶È
+Body: Protobuf ±àÂëµÄÏûÏ¢
+```
+
+### 10.3 ÒÑÖªĞ­Òé¼æÈİĞÔ·çÏÕ
+
+1. **°æ±¾ÉùÃ÷**£ºÄ¬ÈÏ `V4_9_7`£¬`MQVersion` Ã¶¾ÙÒÑÀ©Õ¹µ½ `V5_9_9` ºÍ `HIGHER_VERSION`£¨Ô¼450¸ö°æ±¾Öµ£©¡£¿ÉÍ¨¹ı `Version` ÊôĞÔ×Ô¶¨Òå¡£
+2. **Language ±êÊ¶Îª DOTNET**£º`Header.Language` ÔÚ `OnBuild` ÖĞÉèÖÃÎª `"DOTNET"`¡£DOTNET ²»ÔÚ¹Ù·½ Java Ã¶¾ÙÖĞ£¬²¿·Ö Broker ¿ÉÄÜ²»Ê¶±ğ¡£
 3. **ÏûÏ¢ÊôĞÔ·Ö¸ô·û**£ºÊ¹ÓÃ `\x01` ºÍ `\x02` ·Ö¸ô¼üÖµ¶Ô£¬Óë Java ¹Ù·½Ò»ÖÂ¡£
 4. **IPv6 ÏûÏ¢¸ñÊ½**£ºRocketMQ 4.5+ Ö§³Ö IPv6£¬ÏûÏ¢ÌåÖĞ IP ×Ö¶Î´Ó 4 ×Ö½ÚÀ©Õ¹µ½ 16 ×Ö½Ú£¨ÓÉ SysFlag µÚ2Î»±êÊ¶£©£¬ÒÑÖ§³Ö×Ô¶¯Ê¶±ğºÍ½âÎö¡£
+5. **gRPC Ğ­Òé°æ±¾**£º»ùÓÚ `apache.rocketmq.v2` ·şÎñ¶¨Òå£¬Â·¾¶¸ñÊ½ `/apache.rocketmq.v2.MessagingService/{Method}`¡£
 
 ---
 
-## Ê®¡¢×Ü½áÓë½¨Òé
+## Ê®Ò»¡¢×Ü½áÓë½¨Òé
 
-### 10.1 µ±Ç°×´Ì¬ÆÀ¹À
+### 11.1 µ±Ç°×´Ì¬ÆÀ¹À
 
-NewLife.RocketMQ ×÷Îª´¿ÍĞ¹Ü¿Í»§¶Ë£¬ÒÑÊµÏÖÁË RocketMQ 4.x µÄ**¾ø´ó²¿·ÖºËĞÄ¹¦ÄÜ**£¬ÄÜ¹»Âú×ãÉú²ú»·¾³µÄÏûÏ¢Éú²úºÍÏû·Ñ³¡¾°¡£ÔÚ°¢ÀïÔÆ 4.x ÊµÀıºÍ Apache RocketMQ 4.x/5.x£¨RemotingÄ£Ê½£©ÉÏÓĞÁ¼ºÃµÄÊÊÅä¡£
+NewLife.RocketMQ ×÷Îª´¿ÍĞ¹Ü¿Í»§¶Ë£¬ÒÑÊµÏÖÁË RocketMQ 4.x µÄ**È«²¿ºËĞÄ¹¦ÄÜ**ÒÔ¼° 5.x µÄ **gRPC Proxy Ğ­Òé**£¬ÄÜ¹»Âú×ãÉú²ú»·¾³µÄ¸÷ÀàÏûÏ¢³¡¾°¡£
 
 **ÓÅÊÆ**£º
-- ´¿ .NET ÊµÏÖ£¬ÎŞ Java/gRPC Íâ²¿ÒÀÀµ
+- ´¿ .NET ÊµÏÖ£¬ÎŞ Java/gRPC/Protobuf Íâ²¿ÒÀÀµ
 - Í¬Ê±Ö§³Ö Remoting Ğ­Òé£¨4.x£©ºÍ gRPC Proxy Ğ­Òé£¨5.x£©
 - Ö§³Ö¶àÄ¿±ê¿ò¼Ü£¨net45+£©£¬gRPC ¹¦ÄÜÔÚ netstandard2.1+ ¿ÉÓÃ
 - ´úÂë¼ò½à£¬ºËĞÄÂ·¾¶ÇåÎú
-- ÒÑÓĞ°¢ÀïÔÆ + Apache ACL + »ªÎªÔÆ + ÌÚÑ¶ÔÆËÄÖÖÈÏÖ¤·½Ê½
-- Ö§³Ö SSL/TLS
-- ÄÚÖÃÏûÏ¢¹ì¼£
-- ÄÚÖÃ Request-Reply Ä£Ê½
+- ÒÑÓĞ°¢ÀïÔÆ + Apache ACL + »ªÎªÔÆ + ÌÚÑ¶ÔÆËÄÖÖÈÏÖ¤ÊÊÅä
+- Í³Ò» `ICloudProvider` ÔÆ³§ÉÌÊÊÅäÆ÷½Ó¿Ú
+- Ö§³Ö SSL/TLS ¼ÓÃÜ´«Êä
+- ÄÚÖÃÏûÏ¢¹ì¼£ + Request-Reply Ä£Ê½
 - ĞÔÄÜ×·×Ù£¨Tracer£©¼¯³É
 - **Ïû·ÑÖØÊÔ + ËÀĞÅ¶ÓÁĞ**ÍêÕû»úÖÆ
-- **ÊÂÎñ»Ø²é»Øµ÷**Ö§³Ö
-- **ÅúÁ¿ÏûÏ¢·¢ËÍ**
-- **ÏûÏ¢Ñ¹Ëõ**£¨·¢ËÍ¶Ë£©
+- **ÊÂÎñ»Ø²é»Øµ÷**Ö§³Ö£¨Í¬²½ + Òì²½Á½ÖÖÎ¯ÍĞ£©
+- **ÅúÁ¿ÏûÏ¢·¢ËÍ + ½âÂë**
+- **ÏûÏ¢Ñ¹Ëõ**£¨·¢ËÍ¶ËZLIB£©
 - **SQL92 ¹ıÂË**
 - **¶à Topic ¶©ÔÄ**
-- **ÍêÕû¹ÜÀí¹¦ÄÜ**£¨Topic/Ïû·Ñ×é CRUD¡¢ÏûÏ¢²éÑ¯¡¢¼¯ÈºĞÅÏ¢£©
-- **gRPC Proxy Ğ­ÒéÖ§³Ö**£¨·¢ËÍ/½ÓÊÕ/È·ÈÏ/Â·ÓÉ/ĞÄÌø/ÊÂÎñ/ÈÎÒâÑÓ³Ù£©
+- **Ë³ĞòÏû·ÑËø¶¨**
+- **Ïû·ÑÏŞÁ÷£¨ĞÅºÅÁ¿²¢·¢¿ØÖÆ£©**
+- **ÍêÕû¹ÜÀí¹¦ÄÜ**£¨Topic/Ïû·Ñ×é CRUD¡¢ÏûÏ¢²éÑ¯¡¢¼¯ÈºĞÅÏ¢¡¢Æ«ÒÆÖØÖÃ¡¢Ïû·ÑÍ³¼Æ¡¢Ö÷ÌâÍ³¼Æ£©
+- **gRPC Proxy Ğ­ÒéÖ§³Ö**£¨Â·ÓÉ/·¢ËÍ/½ÓÊÕ/È·ÈÏ/ĞÄÌø/ÊÂÎñ/ÑÓ³Ù/ËÀĞÅ/²»¿É¼ûÊ±¼ä/ÖÕÖ¹Í¨Öª/Telemetry£©
+- **VIP Í¨µÀ**Ö§³Ö£¨BrokerPort - 2 ÓÅÏÈ¼¶Á¬½Ó£©
+- **ÅúÁ¿È·ÈÏPopÏûÏ¢**£¨BATCH_ACK_MESSAGE£©
+- **ÏûÏ¢¹ıÂË·şÎñÆ÷×¢²á**£¨REGISTER_FILTER_SERVER£©
+- **5.x MessageId ±à½âÂë**
+- **¿Í»§¶Ë×ÊÔ´ÉÏ±¨**£¨gRPC Telemetry£©
 
-**²»×ã**£º
-- ÅúÁ¿ÏûÏ¢½âÂë£¨BatchMessage Body ÄÚÇ¶¶àÌõÏûÏ¢£©½öÖ§³Ö»ù±¾³¡¾°
+**ÒÑÖªÏŞÖÆ**£º
+- ·şÎñ¶Ë Rebalance£¨5.x gRPC£©Î´ÊµÏÖ
+- Compaction Topic£¨5.x KV ÓïÒå£©Î´ÊµÏÖ
+- gRPC Ğ­ÒéĞèÒªÊµ¼Ê RocketMQ 5.x Proxy »·¾³×ö¼¯³É²âÊÔÑéÖ¤
 
-### 10.2 ½¨ÒéµÄ¹¦ÄÜÓÅÏÈ¼¶Â·ÏßÍ¼
+### 11.2 ¹¦ÄÜÂ·ÏßÍ¼
 
 **Phase 1 ¡ª Éú²ú¿É¿¿ĞÔÔöÇ¿**£¨? ÒÑÍê³É£©£º
 1. ? Ïû·ÑÖØÊÔ»úÖÆ£¨RETRY Topic + `CONSUMER_SEND_MSG_BACK`£©
@@ -521,12 +553,12 @@ NewLife.RocketMQ ×÷Îª´¿ÍĞ¹Ü¿Í»§¶Ë£¬ÒÑÊµÏÖÁË RocketMQ 4.x µÄ**¾ø´ó²¿·ÖºËĞÄ¹¦ÄÜ**£
 5. ? °´Ê±¼ä´ÁËÑË÷Æ«ÒÆ
 6. ? ÏûÏ¢²éÑ¯£¨°´ID / °´Key£©
 7. ? SQL92 ¹ıÂË
-8. ? IPv6 Ö§³Ö£¨SysFlagµÚ2Î»×Ô¶¯Ê¶±ğ£©
+8. ? IPv6 Ö§³Ö
 9. ? ·¢ËÍ¶ËÏûÏ¢Ñ¹Ëõ
-10. ? ¹ã²¥Ä£Ê½±¾µØÆ«ÒÆ³Ö¾Ã»¯£¨`OffsetStorePath`£©
-11. ? Ïû·ÑÏŞÁ÷£¨`MaxConcurrentConsume` ĞÅºÅÁ¿¿ØÖÆ£©
-12. ? Pop Ïû·ÑÄ£Ê½£¨`PopMessageAsync` / `AckMessageAsync` / `ChangeInvisibleTimeAsync`£©
-13. ? Broker Ö÷´ÓÇĞ»»£¨`BrokerInfo.MasterAddress` / `SlaveAddresses`£©
+10. ? ¹ã²¥Ä£Ê½±¾µØÆ«ÒÆ³Ö¾Ã»¯
+11. ? Ïû·ÑÏŞÁ÷£¨ĞÅºÅÁ¿¿ØÖÆ£©
+12. ? Pop Ïû·ÑÄ£Ê½
+13. ? Broker Ö÷´ÓÇĞ»»
 
 **Phase 3 ¡ª ×¨ÓĞ°æ±¾Ö§³Ö**£¨? ÒÑÍê³É£©£º
 14. ? ÔÆ³§ÉÌÊÊÅäÆ÷Í³Ò»½Ó¿Ú£¨`ICloudProvider`£©
@@ -534,14 +566,26 @@ NewLife.RocketMQ ×÷Îª´¿ÍĞ¹Ü¿Í»§¶Ë£¬ÒÑÊµÏÖÁË RocketMQ 4.x µÄ**¾ø´ó²¿·ÖºËĞÄ¹¦ÄÜ**£
 16. ? »ªÎªÔÆÊÊÅäÆ÷£¨`HuaweiProvider`£©
 17. ? ÌÚÑ¶ÔÆÊÊÅäÆ÷£¨`TencentProvider`£©
 18. ? Apache ACL ÊÊÅäÆ÷£¨`AclProvider`£©
-19. ?? °¢ÀïÔÆ 5.x ÊµÀı¼æÈİĞÔÑéÖ¤£¨´ı²âÊÔ£©
-20. ?? MQVersion ÒÑÀ©Õ¹µ½ V5_9_9£¬Óë 5.x Broker Í¨ĞÅ¼æÈİĞÔ´ıÑéÖ¤
 
 **Phase 4 ¡ª ĞÂ¼Ü¹¹Ö§³Ö**£¨? ÒÑÍê³É£©£º
-21. ? ÈÎÒâÊ±¼äÑÓ³ÙÏûÏ¢£¨gRPC `PublishDelayViaGrpcAsync()`£©
-22. ? gRPC Proxy Ğ­ÒéÖ§³Ö£¨ÄÚÖÃ Protobuf ±à½âÂë + HTTP/2 gRPC ¿Í»§¶Ë£¬netstandard2.1+£©
-23. ? ¶à Topic ¶©ÔÄ£¨`Topics` ÊôĞÔ + °´ Topic ·Ö±ğ Rebalance£©
-24. ? ÅúÁ¿ÏûÏ¢½âÂë£¨`MessageExt.ReadBatch()` ½âÂë BatchMessage Body£©
+19. ? ÈÎÒâÊ±¼äÑÓ³ÙÏûÏ¢£¨gRPC `PublishDelayViaGrpcAsync()`£©
+20. ? gRPC Proxy Ğ­ÒéÖ§³Ö£¨ÄÚÖÃ Protobuf ±à½âÂë + HTTP/2 gRPC ¿Í»§¶Ë£¬netstandard2.1+£©
+21. ? ¶à Topic ¶©ÔÄ£¨`Topics` ÊôĞÔ + °´ Topic ·Ö±ğ Rebalance£©
+22. ? ÅúÁ¿ÏûÏ¢½âÂë£¨`MessageExt.DecodeBatch()` ½âÂë BatchMessage Body£©
+
+**Phase 5 ¡ª ¹¦ÄÜÔöÇ¿**£¨? ÒÑÍê³É£©£º
+23. ? VIP Í¨µÀ£¨`VipChannelEnabled` ÊôĞÔ£¬BrokerPort - 2£©
+24. ? ÅúÁ¿È·ÈÏ Pop ÏûÏ¢£¨`BatchAckMessageAsync()` / `BATCH_ACK_MESSAGE`£©
+25. ? Ïû·ÑÍ³¼ÆÍêÕû API£¨`GetConsumeStats()` / `GetTopicStatsInfo()`£©
+26. ? ÏûÏ¢¹ıÂË·şÎñÆ÷×¢²á£¨`RegisterFilterServer()` / `REGISTER_FILTER_SERVER`£©
+27. ? 5.x MessageId ĞÂ¸ñÊ½£¨`CreateMessageId5x()` / `TryParseMessageId5x()` / `IsMessageId5x()`£©
+28. ? ¿Í»§¶Ë×ÊÔ´ÉÏ±¨£¨gRPC `TelemetryViaGrpcAsync()` / `TelemetryCommand`£©
+
+**Phase 6 ¡ª ³ÖĞøÓÅ»¯**£¨³¤ÆÚ£©£º
+29. ?? °¢ÀïÔÆ 5.x ÊµÀı gRPC ¼æÈİĞÔÑéÖ¤
+30. ?? ¸÷ÔÆ³§ÉÌ gRPC ½ÓÈëÑéÖ¤
+31. ? ·şÎñ¶Ë Rebalance£¨5.x gRPC£©
+32. ? Compaction Topic£¨5.x£©
 
 ---
 
@@ -549,46 +593,52 @@ NewLife.RocketMQ ×÷Îª´¿ÍĞ¹Ü¿Í»§¶Ë£¬ÒÑÊµÏÖÁË RocketMQ 4.x µÄ**¾ø´ó²¿·ÖºËĞÄ¹¦ÄÜ**£
 
 | ÎÄ¼ş | ËµÃ÷ |
 |------|------|
-| `MqBase.cs` | ÒµÎñ»ùÀà£¬NameServerÁ¬½Ó¡¢Broker¹ÜÀí¡¢ÅäÖÃ |
-| `Producer.cs` | Éú²úÕß£ºÆÕÍ¨/Òì²½/µ¥Ïò/ÑÓ³Ù/ÊÂÎñ/Request-Reply |
-| `Consumer.cs` | Ïû·ÑÕß£ºPull/µ÷¶È/Rebalance/Æ«ÒÆ¹ÜÀí |
-| `NameClient.cs` | NameServer¿Í»§¶Ë£ºÂ·ÓÉ·¢ÏÖ |
-| `BrokerClient.cs` | Broker¿Í»§¶Ë£ºĞÄÌø¡¢×¢Ïú |
-| `ClusterClient.cs` | ¼¯ÈºÍ¨ĞÅ£ºÁ¬½Ó¹ÜÀí¡¢Ç©Ãû¡¢ÃüÁîÊÕ·¢ |
-| `AliyunOptions.cs` | °¢ÀïÔÆ²ÎÊı |
-| `AclOptions.cs` | Apache ACL ²ÎÊı |
+| `MqBase.cs` | ÒµÎñ»ùÀà£¬NameServerÁ¬½Ó¡¢Broker¹ÜÀí¡¢Topic/Ïû·Ñ×éCRUD¡¢ÏûÏ¢²éÑ¯¡¢Ïû·ÑÍ³¼Æ¡¢¹ıÂË·şÎñÆ÷×¢²á¡¢gRPCÉúÃüÖÜÆÚ/Telemetry |
+| `Producer.cs` | Éú²úÕß£¬ÆÕÍ¨/Òì²½/µ¥Ïò/ÑÓ³Ù/ÊÂÎñ/ÅúÁ¿/Request-Reply/gRPCÀ©Õ¹ |
+| `Consumer.cs` | Ïû·ÑÕß£¬Pull/µ÷¶È/Rebalance/¶àTopic/Ë³Ğò/ÖØÊÔ/Pop/ÅúÁ¿È·ÈÏPop/gRPCÏû·Ñ |
+| `NameClient.cs` | NameServer¿Í»§¶Ë£¨243ĞĞ£©£¬Â·ÓÉ·¢ÏÖ/¶¨Ê±ÂÖÑ¯/¶àTopicÂ·ÓÉ/BrokerÖ÷´Ó½âÎö |
+| `BrokerClient.cs` | Broker¿Í»§¶Ë£¨142ĞĞ£©£¬ĞÄÌø/×¢Ïú/ÃüÁîÊÕ·¢ |
+| `ClusterClient.cs` | ¼¯ÈºÍ¨ĞÅ£¨423ĞĞ£©£¬TCPÁ¬½Ó¹ÜÀí/HMAC-SHA1Í³Ò»Ç©Ãû/Í¬²½Òì²½ÃüÁîÊÕ·¢ |
 | `ICloudProvider.cs` | ÔÆ³§ÉÌÊÊÅäÆ÷Í³Ò»½Ó¿Ú |
-| `AliyunProvider.cs` | °¢ÀïÔÆÊÊÅäÆ÷£¨`ICloudProvider` ÊµÏÖ£© |
-| `AclProvider.cs` | Apache ACL ÊÊÅäÆ÷£¨`ICloudProvider` ÊµÏÖ£© |
-| `HuaweiProvider.cs` | »ªÎªÔÆÊÊÅäÆ÷£¨`ICloudProvider` ÊµÏÖ£© |
-| `TencentProvider.cs` | ÌÚÑ¶ÔÆÊÊÅäÆ÷£¨`ICloudProvider` ÊµÏÖ£© |
+| `AliyunProvider.cs` | °¢ÀïÔÆÊÊÅäÆ÷£¨ÊµÀıIDÇ°×ºÂ·ÓÉ + HTTP NameServer·¢ÏÖ£© |
+| `AclProvider.cs` | Apache ACL ÊÊÅäÆ÷ |
+| `HuaweiProvider.cs` | »ªÎªÔÆÊÊÅäÆ÷£¨EnableSslÖ§³Ö£© |
+| `TencentProvider.cs` | ÌÚÑ¶ÔÆÊÊÅäÆ÷£¨NamespaceÇ°×ºÂ·ÓÉ£© |
+| `AliyunOptions.cs` | ¾É°æ°¢ÀïÔÆ²ÎÊı£¨`[Obsolete]`£© |
+| `AclOptions.cs` | ¾É°æACL²ÎÊı£¨`[Obsolete]`£© |
 | `Grpc/IProtoMessage.cs` | Protobuf ÏûÏ¢½Ó¿Ú |
-| `Grpc/ProtoWriter.cs` | ÇáÁ¿¼¶ Protobuf ¶ş½øÖÆ±àÂëÆ÷ |
-| `Grpc/ProtoReader.cs` | ÇáÁ¿¼¶ Protobuf ¶ş½øÖÆ½âÂëÆ÷ |
-| `Grpc/GrpcClient.cs` | gRPC ´«Êä²ã£¨HTTP/2 + Ö¡±àÂë£¬netstandard2.1+£© |
-| `Grpc/GrpcEnums.cs` | gRPC Ã¶¾Ù¶¨Òå£¨GrpcCode/GrpcMessageType µÈ£© |
-| `Grpc/GrpcModels.cs` | gRPC ÏûÏ¢Ä£ĞÍ£¨Resource/Endpoints/Message/SystemProperties µÈ£© |
-| `Grpc/GrpcServiceMessages.cs` | gRPC ·şÎñÇëÇó/ÏìÓ¦ÏûÏ¢ÀàĞÍ |
-| `Grpc/GrpcMessagingService.cs` | RocketMQ 5.x gRPC ÏûÏ¢·şÎñ¿Í»§¶Ë |
-| `Protocol/Command.cs` | Ğ­ÒéÖ¡±à½âÂë |
+| `Grpc/ProtoWriter.cs` | ÇáÁ¿¼¶ Protobuf ¶ş½øÖÆ±àÂëÆ÷£¨343ĞĞ£© |
+| `Grpc/ProtoReader.cs` | ÇáÁ¿¼¶ Protobuf ¶ş½øÖÆ½âÂëÆ÷£¨308ĞĞ£© |
+| `Grpc/GrpcClient.cs` | gRPC ´«Êä²ã£¨310ĞĞ£¬HTTP/2 Ö¡±àÂë + Unary/ServerStreaming£© |
+| `Grpc/GrpcEnums.cs` | gRPC Ã¶¾Ù¶¨Òå£¨213ĞĞ£¬GrpcCode/GrpcMessageType µÈ£© |
+| `Grpc/GrpcModels.cs` | gRPC ÏûÏ¢Ä£ĞÍ£¨520ĞĞ£¬Resource/Endpoints/Message/SystemProperties µÈ£© |
+| `Grpc/GrpcServiceMessages.cs` | gRPC ·şÎñÏûÏ¢ÀàĞÍ£¨883ĞĞ£¬Ô¼20¸öRequest/Response£© |
+| `Grpc/GrpcMessagingService.cs` | RocketMQ 5.x gRPC ÏûÏ¢·şÎñ¿Í»§¶Ë£¨417ĞĞ£¬11¸öRPC·½·¨£© |
+| `Protocol/Command.cs` | Ğ­ÒéÖ¡±à½âÂë£¨333ĞĞ£© |
 | `Protocol/MqCodec.cs` | ÍøÂç²ã±à½âÂëÆ÷ |
 | `Protocol/Header.cs` | Í¨ĞÅÍ· |
-| `Protocol/Message.cs` | ÏûÏ¢Ä£ĞÍ |
-| `Protocol/MessageExt.cs` | ÏûÏ¢À©Õ¹£¨º¬¶ş½øÖÆ½âÂë£© |
-| `Protocol/RequestCode.cs` | ÇëÇóÂëÃ¶¾Ù£¨Ô¼60¸ö£© |
-| `Protocol/ResponseCode.cs` | ÏìÓ¦ÂëÃ¶¾Ù |
-| `Protocol/SendMessageRequestHeader.cs` | ·¢ËÍÏûÏ¢ÇëÇóÍ· |
-| `Protocol/PullMessageRequestHeader.cs` | À­È¡ÏûÏ¢ÇëÇóÍ· |
-| `Protocol/EndTransactionRequestHeader.cs` | ½áÊøÊÂÎñÇëÇóÍ· |
+| `Protocol/Message.cs` | ÏûÏ¢Ä£ĞÍ£¨227ĞĞ£© |
+| `Protocol/MessageExt.cs` | ÏûÏ¢À©Õ¹£¨244ĞĞ£¬Read/ReadAll/DecodeBatch/ZLIB/IPv4+IPv6£© |
+| `Protocol/RequestCode.cs` | ÇëÇóÂëÃ¶¾Ù£¨277ĞĞ£¬Ô¼60¸öÖ¸Áî£© |
+| `Protocol/ResponseCode.cs` | ÏìÓ¦ÂëÃ¶¾Ù£¨104ĞĞ£© |
+| `Protocol/SendMessageRequestHeader.cs` | ·¢ËÍÏûÏ¢ÇëÇóÍ·£¨90ĞĞ£© |
+| `Protocol/PullMessageRequestHeader.cs` | À­È¡ÏûÏ¢ÇëÇóÍ·£¨70ĞĞ£© |
+| `Protocol/EndTransactionRequestHeader.cs` | ½áÊøÊÂÎñÇëÇóÍ·£¨50ĞĞ£© |
 | `Protocol/TransactionState.cs` | ÊÂÎñ×´Ì¬Ã¶¾Ù |
-| `Protocol/MQVersion.cs` | Ğ­Òé°æ±¾Ã¶¾Ù£¨3.0 ~ 5.9£¬º¬ HIGHER_VERSION£© |
+| `Protocol/MQVersion.cs` | Ğ­Òé°æ±¾Ã¶¾Ù£¨909ĞĞ£¬V3.0 ~ V5.9.9 + HIGHER_VERSION£© |
+| `Protocol/SendResult.cs` | ·¢ËÍ½á¹û |
+| `Protocol/PullResult.cs` | À­È¡½á¹û |
 | `MessageTrace/AsyncTraceDispatcher.cs` | ÏûÏ¢¹ì¼£·Ö·¢Æ÷ |
 | `MessageTrace/MessageTraceHook.cs` | ÏûÏ¢¹ì¼£¹³×Ó |
 | `Common/ILoadBalance.cs` | ¸ºÔØ¾ùºâ½Ó¿Ú |
 | `Common/WeightRoundRobin.cs` | ¼ÓÈ¨ÂÖÑ¯ |
+| `Common/BrokerInfo.cs` | BrokerĞÅÏ¢£¨º¬Master/SlaveµØÖ··ÖÀë£© |
 | `Models/DelayTimeLevels.cs` | ÑÓ³ÙµÈ¼¶Ã¶¾Ù |
 | `Models/MessageModels.cs` | ÏûÏ¢Ä£ĞÍÃ¶¾Ù |
 | `Models/ConsumeTypes.cs` | Ïû·ÑÀàĞÍÃ¶¾Ù |
+| `Models/ConsumeEventArgs.cs` | Ïû·ÑÊÂ¼ş²ÎÊı |
+| `Helper.cs` | ¸¨Öú¹¤¾ß |
+| `MqSetting.cs` | MQÅäÖÃ |
 
 ## ¸½Â¼ B£º¸÷³§ÉÌ RocketMQ ²úÆ·¶Ô±È
 
@@ -600,3 +650,35 @@ NewLife.RocketMQ ×÷Îª´¿ÍĞ¹Ü¿Í»§¶Ë£¬ÒÑÊµÏÖÁË RocketMQ 4.x µÄ**¾ø´ó²¿·ÖºËĞÄ¹¦ÄÜ**£
 | °¢ÀïÔÆ | ÏûÏ¢¶ÓÁĞ RocketMQ 5.x | gRPC ÎªÖ÷ | °¢ÀïÔÆ AK/SK | SDK/HTTP |
 | »ªÎªÔÆ | DMS for RocketMQ | Remoting (4.x¼æÈİ) | SASL / AK/SK | ÊµÀıÄÚÍø/¹«Íø |
 | ÌÚÑ¶ÔÆ | TDMQ RocketMQ | Remoting (4.x¼æÈİ) | HMAC-SHA1 | VPCÄÚÍøµØÖ· |
+
+## ¸½Â¼ C£º²âÊÔ¸²¸ÇÇé¿ö
+
+²âÊÔ¿ò¼Ü£ºxUnit£¬Ä¿±ê¿ò¼Ü net10.0£¬¹² 30 ¸ö²âÊÔÎÄ¼ş¡£
+
+| ²âÊÔÎÄ¼ş | ¸²¸Ç¹¦ÄÜ |
+|---------|---------|
+| `ProtoTests.cs` | Protobuf ±à½âÂë£¨varint/fixed/string/bytes/map/timestamp/duration/Ç¶Ì×ÏûÏ¢/gRPCÖ¡/·şÎñÏûÏ¢£© |
+| `CloudProviderTests.cs` | ÔÆ³§ÉÌÊÊÅäÆ÷£¨AliyunProvider/AclProvider/HuaweiProvider/TencentProvider µÄ Topic/Group ×ª»»£© |
+| `MultiTopicTests.cs` | ¶à Topic ¶©ÔÄ£¨TopicsÊôĞÔÉèÖÃ/RebalanceĞĞÎª£© |
+| `BatchMessageTests.cs` | ÅúÁ¿ÏûÏ¢·¢ËÍºÍ½âÂë£¨DecodeBatch£© |
+| `BrokerFailoverTests.cs` | Broker Ö÷´ÓÇĞ»» |
+| `CompressionTests.cs` | ÏûÏ¢Ñ¹Ëõ£¨ZLIB£© |
+| `RetryTests.cs` | Ïû·ÑÖØÊÔ»úÖÆ |
+| `OrderConsumeTests.cs` | Ë³ĞòÏû·ÑËø¶¨ |
+| `PopConsumeTests.cs` | Pop Ïû·ÑÄ£Ê½ |
+| `QueryMessageTests.cs` | ÏûÏ¢²éÑ¯£¨°´Key£© |
+| `IPv6Tests.cs` | IPv6 µØÖ·½âÎö |
+| `MQVersionUpdateTests.cs` | MQVersion À©Õ¹ÑéÖ¤ |
+| `ManagementTests.cs` | ¹ÜÀí¹¦ÄÜ£¨Topic/Ïû·Ñ×é CRUD¡¢¼¯ÈºĞÅÏ¢¡¢Æ«ÒÆÖØÖÃ£© |
+| `SQL92FilterTests.cs` | SQL92 ¹ıÂË |
+| `TransactionCheckTests.cs` | ÊÂÎñ»Ø²é»Øµ÷ |
+| `ConcurrentConsumeTests.cs` | Ïû·Ñ²¢·¢¿ØÖÆ |
+| `BroadcastOffsetTests.cs` | ¹ã²¥Ä£Ê½±¾µØÆ«ÒÆ³Ö¾Ã»¯ |
+| `CommandTests.cs` | Ğ­ÒéÃüÁî±à½âÂë |
+| `MessageTests.cs` | ÏûÏ¢Ä£ĞÍ |
+| `MessageTraceTests.cs` | ÏûÏ¢¹ì¼£ |
+| `RequestReplyTests.cs` | Request-Reply Ä£Ê½ |
+| `BasicTest.cs` / `ProducerTests.cs` / `ConsumerTests.cs` | »ù´¡¹¦ÄÜ¼¯³É²âÊÔ |
+| `AliyunTests.cs` / `AliyunIssuesTests.cs` | °¢ÀïÔÆÊÊÅä²âÊÔ |
+| `NameClientTests.cs` | NameServer ¿Í»§¶Ë²âÊÔ |
+| `SupportApacheAclTest.cs` | Apache ACL ²âÊÔ |

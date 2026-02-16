@@ -1586,6 +1586,43 @@ public class Consumer : MqBase
             return false;
         }
     }
+
+    /// <summary>批量确认Pop消息消费完成</summary>
+    /// <param name="brokerName">Broker名称</param>
+    /// <param name="ackEntries">批量确认条目列表，每个条目包含extraInfo和offset</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>成功确认的数量</returns>
+    public async Task<Int32> BatchAckMessageAsync(String brokerName, IList<(String extraInfo, Int64 offset)> ackEntries, CancellationToken cancellationToken = default)
+    {
+        if (String.IsNullOrEmpty(brokerName)) throw new ArgumentNullException(nameof(brokerName));
+        if (ackEntries == null || ackEntries.Count == 0) return 0;
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:BatchAckMessage", ackEntries.Count);
+        try
+        {
+            var bk = GetBroker(brokerName);
+            if (bk == null) return 0;
+
+            // 构造批量确认请求体：JSON数组格式
+            var entries = ackEntries.Select(e => new { extraInfo = e.extraInfo, offset = e.offset }).ToArray();
+            var body = JsonHost.Write(entries, false, false, false).GetBytes();
+
+            var header = new
+            {
+                consumerGroup = Group,
+                topic = Topic,
+            };
+
+            await bk.InvokeAsync(RequestCode.BATCH_ACK_MESSAGE, body, header, true, cancellationToken).ConfigureAwait(false);
+            return ackEntries.Count;
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            WriteLog("批量确认Pop消息失败：{0}", ex.Message);
+            return 0;
+        }
+    }
     #endregion
 
 #if NETSTANDARD2_1_OR_GREATER

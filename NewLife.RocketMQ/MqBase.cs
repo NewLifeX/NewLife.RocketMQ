@@ -81,7 +81,12 @@ public abstract class MqBase : DisposeBase
     /// <summary>是否使用外部代理。有些RocketMQ的Broker部署在网关外部，需要使用映射地址，默认false</summary>
     public Boolean ExternalBroker { get; set; }
 
-    //public Boolean VipChannelEnabled { get; set; } = true;
+    /// <summary>是否启用VIP通道。启用后使用Broker端口-2作为VIP通道连接，获得更高优先级，默认false</summary>
+    /// <remarks>
+    /// RocketMQ的VIP通道使用Broker监听端口减2的端口，例如Broker端口为10911时VIP端口为10909。
+    /// VIP通道在高负载场景下可获得更高的处理优先级。
+    /// </remarks>
+    public Boolean VipChannelEnabled { get; set; }
 
     /// <summary>是否可用</summary>
     public Boolean Active { get; private set; }
@@ -711,6 +716,72 @@ public abstract class MqBase : DisposeBase
         return null;
     }
 
+    /// <summary>获取消费统计信息</summary>
+    /// <param name="group">消费组名</param>
+    /// <param name="topic">主题。默认使用当前Topic</param>
+    /// <returns>消费统计数据的JSON字典</returns>
+    public virtual IDictionary<String, Object> GetConsumeStats(String group, String topic = null)
+    {
+        if (String.IsNullOrEmpty(group)) group = Group;
+        if (String.IsNullOrEmpty(topic)) topic = Topic;
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:GetConsumeStats", group);
+        try
+        {
+            foreach (var item in Brokers)
+            {
+                try
+                {
+                    var bk = GetBroker(item.Name);
+                    var rs = bk.Invoke(RequestCode.GET_CONSUME_STATS, null, new
+                    {
+                        consumerGroup = group,
+                        topic,
+                    }, true);
+                    if (rs?.Payload != null) return rs.ReadBodyAsJson();
+                }
+                catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+
+        return null;
+    }
+
+    /// <summary>获取Topic统计信息</summary>
+    /// <param name="topic">主题。默认使用当前Topic</param>
+    /// <returns>主题统计数据的JSON字典</returns>
+    public virtual IDictionary<String, Object> GetTopicStatsInfo(String topic = null)
+    {
+        if (String.IsNullOrEmpty(topic)) topic = Topic;
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:GetTopicStatsInfo", topic);
+        try
+        {
+            foreach (var item in Brokers)
+            {
+                try
+                {
+                    var bk = GetBroker(item.Name);
+                    var rs = bk.Invoke(RequestCode.GET_TOPIC_STATS_INFO, null, new { topic }, true);
+                    if (rs?.Payload != null) return rs.ReadBodyAsJson();
+                }
+                catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+
+        return null;
+    }
+
     /// <summary>按Key查询消息</summary>
     /// <param name="topic">主题</param>
     /// <param name="key">消息Key</param>
@@ -756,7 +827,97 @@ public abstract class MqBase : DisposeBase
 
         return [];
     }
+
+    /// <summary>注册消息过滤服务器。将一个外部过滤服务器注册到Broker上，用于服务端消息过滤</summary>
+    /// <param name="filterServerAddr">过滤服务器地址，格式如 ip:port</param>
+    /// <returns>注册成功的Broker数量</returns>
+    public virtual Int32 RegisterFilterServer(String filterServerAddr)
+    {
+        if (String.IsNullOrEmpty(filterServerAddr)) throw new ArgumentNullException(nameof(filterServerAddr));
+
+        var count = 0;
+        using var span = Tracer?.NewSpan($"mq:{Name}:RegisterFilterServer", filterServerAddr);
+        try
+        {
+            foreach (var item in Brokers)
+            {
+                WriteLog("在Broker[{0}]上注册过滤服务器：{1}", item.Name, filterServerAddr);
+                try
+                {
+                    var bk = GetBroker(item.Name);
+                    var rs = bk.Invoke(RequestCode.REGISTER_FILTER_SERVER, null, new { filterServerAddr }, true);
+                    if (rs != null) count++;
+                }
+                catch (Exception ex)
+                {
+                    WriteLog("注册过滤服务器失败[{0}]：{1}", item.Name, ex.Message);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+
+        return count;
+    }
     #endregion
+
+#if NETSTANDARD2_1_OR_GREATER
+    #region gRPC公共方法
+    /// <summary>通过gRPC协议查询主题路由</summary>
+    /// <param name="topic">主题。默认使用当前Topic</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>路由查询结果</returns>
+    public async Task<Grpc.QueryRouteResponse> QueryRouteViaGrpcAsync(String topic = null, CancellationToken cancellationToken = default)
+    {
+        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        return await _GrpcService.QueryRouteAsync(topic ?? Topic, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>通过gRPC协议上报客户端资源信息（Telemetry）</summary>
+    /// <param name="settings">客户端设置</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>服务端返回的Telemetry命令</returns>
+    public async Task<Grpc.TelemetryCommand> TelemetryViaGrpcAsync(Grpc.GrpcSettings settings, CancellationToken cancellationToken = default)
+    {
+        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:Telemetry:grpc");
+        try
+        {
+            return await _GrpcService.TelemetryAsync(settings, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+    }
+
+    /// <summary>通过gRPC协议通知客户端终止</summary>
+    /// <param name="group">消费组</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns></returns>
+    public async Task<Grpc.NotifyClientTerminationResponse> NotifyClientTerminationViaGrpcAsync(String group = null, CancellationToken cancellationToken = default)
+    {
+        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:NotifyTermination:grpc");
+        try
+        {
+            return await _GrpcService.NotifyClientTerminationAsync(group ?? Group, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
+    }
+    #endregion
+#endif
 
     #region 日志
     /// <summary>日志</summary>

@@ -29,6 +29,11 @@ public class BrokerClient : ClusterClient
         {
             var uri = new NetUri(item);
             if (uri.Type == NetType.Unknown) uri.Type = NetType.Tcp;
+
+            // VIP通道使用端口-2
+            if (Config != null && Config.VipChannelEnabled && uri.Port > 2)
+                uri.Port -= 2;
+
             list.Add(uri);
         }
         Servers = list.ToArray();

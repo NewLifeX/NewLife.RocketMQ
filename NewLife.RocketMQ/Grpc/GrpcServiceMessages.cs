@@ -881,3 +881,187 @@ public class NotifyClientTerminationResponse : IProtoMessage
     }
 }
 #endregion
+
+#region 客户端资源上报（Telemetry）
+/// <summary>Telemetry命令。客户端向Proxy上报资源信息（设置、主题订阅等）</summary>
+public class TelemetryCommand : IProtoMessage
+{
+    /// <summary>状态</summary>
+    public GrpcStatus Status { get; set; }
+
+    /// <summary>客户端设置</summary>
+    public GrpcSettings Settings { get; set; }
+
+    /// <summary>写入</summary>
+    /// <param name="writer">编码器</param>
+    public void WriteTo(ProtoWriter writer)
+    {
+        writer.WriteMessage(1, Status);
+        writer.WriteMessage(2, Settings);
+    }
+
+    /// <summary>读取</summary>
+    /// <param name="reader">解码器</param>
+    public void ReadFrom(ProtoReader reader)
+    {
+        while (!reader.IsEnd)
+        {
+            var (fn, wt) = reader.ReadTag();
+            if (fn == 0) break;
+            switch (fn)
+            {
+                case 1: Status = reader.ReadMessage<GrpcStatus>(); break;
+                case 2: Settings = reader.ReadMessage<GrpcSettings>(); break;
+                default: reader.SkipField(wt); break;
+            }
+        }
+    }
+}
+
+/// <summary>gRPC客户端设置。用于Telemetry上报客户端配置信息</summary>
+public class GrpcSettings : IProtoMessage
+{
+    /// <summary>客户端类型</summary>
+    public GrpcClientType ClientType { get; set; }
+
+    /// <summary>访问点</summary>
+    public GrpcEndpoints AccessPoint { get; set; }
+
+    /// <summary>请求超时（Duration，秒）</summary>
+    public TimeSpan? RequestTimeout { get; set; }
+
+    /// <summary>发布设置（生产者）</summary>
+    public GrpcPublishingSettings Publishing { get; set; }
+
+    /// <summary>订阅设置（消费者）</summary>
+    public GrpcSubscriptionSettings Subscription { get; set; }
+
+    /// <summary>写入</summary>
+    /// <param name="writer">编码器</param>
+    public void WriteTo(ProtoWriter writer)
+    {
+        writer.WriteEnum(1, (Int32)ClientType);
+        writer.WriteMessage(2, AccessPoint);
+        if (RequestTimeout != null) writer.WriteDuration(3, RequestTimeout.Value);
+        writer.WriteMessage(4, Publishing);
+        writer.WriteMessage(5, Subscription);
+    }
+
+    /// <summary>读取</summary>
+    /// <param name="reader">解码器</param>
+    public void ReadFrom(ProtoReader reader)
+    {
+        while (!reader.IsEnd)
+        {
+            var (fn, wt) = reader.ReadTag();
+            if (fn == 0) break;
+            switch (fn)
+            {
+                case 1: ClientType = (GrpcClientType)reader.ReadEnum(); break;
+                case 2: AccessPoint = reader.ReadMessage<GrpcEndpoints>(); break;
+                case 3: RequestTimeout = reader.ReadDuration(); break;
+                case 4: Publishing = reader.ReadMessage<GrpcPublishingSettings>(); break;
+                case 5: Subscription = reader.ReadMessage<GrpcSubscriptionSettings>(); break;
+                default: reader.SkipField(wt); break;
+            }
+        }
+    }
+}
+
+/// <summary>发布设置</summary>
+public class GrpcPublishingSettings : IProtoMessage
+{
+    /// <summary>发布主题列表</summary>
+    public List<GrpcResource> Topics { get; set; } = [];
+
+    /// <summary>写入</summary>
+    /// <param name="writer">编码器</param>
+    public void WriteTo(ProtoWriter writer) => writer.WriteRepeatedMessage(1, Topics);
+
+    /// <summary>读取</summary>
+    /// <param name="reader">解码器</param>
+    public void ReadFrom(ProtoReader reader)
+    {
+        while (!reader.IsEnd)
+        {
+            var (fn, wt) = reader.ReadTag();
+            if (fn == 0) break;
+            switch (fn)
+            {
+                case 1: Topics.Add(reader.ReadMessage<GrpcResource>()); break;
+                default: reader.SkipField(wt); break;
+            }
+        }
+    }
+}
+
+/// <summary>订阅设置</summary>
+public class GrpcSubscriptionSettings : IProtoMessage
+{
+    /// <summary>消费组</summary>
+    public GrpcResource Group { get; set; }
+
+    /// <summary>订阅列表</summary>
+    public List<GrpcSubscriptionEntry> Subscriptions { get; set; } = [];
+
+    /// <summary>写入</summary>
+    /// <param name="writer">编码器</param>
+    public void WriteTo(ProtoWriter writer)
+    {
+        writer.WriteMessage(1, Group);
+        writer.WriteRepeatedMessage(2, Subscriptions);
+    }
+
+    /// <summary>读取</summary>
+    /// <param name="reader">解码器</param>
+    public void ReadFrom(ProtoReader reader)
+    {
+        while (!reader.IsEnd)
+        {
+            var (fn, wt) = reader.ReadTag();
+            if (fn == 0) break;
+            switch (fn)
+            {
+                case 1: Group = reader.ReadMessage<GrpcResource>(); break;
+                case 2: Subscriptions.Add(reader.ReadMessage<GrpcSubscriptionEntry>()); break;
+                default: reader.SkipField(wt); break;
+            }
+        }
+    }
+}
+
+/// <summary>订阅条目</summary>
+public class GrpcSubscriptionEntry : IProtoMessage
+{
+    /// <summary>主题</summary>
+    public GrpcResource Topic { get; set; }
+
+    /// <summary>过滤表达式</summary>
+    public GrpcFilterExpression Expression { get; set; }
+
+    /// <summary>写入</summary>
+    /// <param name="writer">编码器</param>
+    public void WriteTo(ProtoWriter writer)
+    {
+        writer.WriteMessage(1, Topic);
+        writer.WriteMessage(2, Expression);
+    }
+
+    /// <summary>读取</summary>
+    /// <param name="reader">解码器</param>
+    public void ReadFrom(ProtoReader reader)
+    {
+        while (!reader.IsEnd)
+        {
+            var (fn, wt) = reader.ReadTag();
+            if (fn == 0) break;
+            switch (fn)
+            {
+                case 1: Topic = reader.ReadMessage<GrpcResource>(); break;
+                case 2: Expression = reader.ReadMessage<GrpcFilterExpression>(); break;
+                default: reader.SkipField(wt); break;
+            }
+        }
+    }
+}
+#endregion
