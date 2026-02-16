@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net45;net461;netstandard2.0;netstandard2.1</TargetFrameworks>
-    <AssemblyTitle>RocketMQ客户端</AssemblyTitle>
-    <Description>纯托管轻量级RocketMQ客户端，支持发布消息、消费消息、负载均衡等核心功能！</Description>
+    <AssemblyTitle>企业级纯托管 RocketMQ 客户端</AssemblyTitle>
+    <Description>纯托管企业级 RocketMQ 客户端，支持 Remoting 协议（4.x）和 gRPC 协议（5.x），零外部依赖（无需 Java、gRPC、Protobuf 第三方库），完整的企业级特性（消费重试、死信队列、事务回查、顺序消费），统一云厂商适配（阿里云、华为云、腾讯云、Apache ACL），十亿级项目验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2026 新生命开发团队</Copyright>
     <VersionPrefix>3.0</VersionPrefix>
@@ -28,8 +28,8 @@
     <PackageIcon>leaf.png</PackageIcon>
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.RocketMQ</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>升级 NewLife.Core 依赖到最新版本</PackageReleaseNotes>
+    <PackageTags>新生命团队;X组件;NewLife;RocketMQ;纯托管;零依赖;Remoting;gRPC;阿里云;华为云;腾讯云;消息队列;MQ;分布式;事务消息;延迟消息;顺序消息;死信队列;$(AssemblyName)</PackageTags>
+    <PackageReleaseNotes>完善架构设计文档和使用说明，新增 Remoting 和 gRPC 双协议架构详解</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
