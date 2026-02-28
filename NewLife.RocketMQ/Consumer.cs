@@ -35,6 +35,9 @@ public class Consumer : MqBase
     /// <summary>消费挂起超时。每次拉取消息，服务端如果没有消息时的挂起时间，默认15_000ms</summary>
     public Int32 SuspendTimeout { get; set; } = 15_000;
 
+    /// <summary>客户端拉取消息超时。默认0表示自动使用SuspendTimeout加10_000ms，防止服务端超时后无响应导致消费线程永久阻塞</summary>
+    public Int32 PullTimeout { get; set; } = 0;
+
     /// <summary>拉取的批大小。默认32</summary>
     public Int32 BatchSize { get; set; } = 32;
 
@@ -702,7 +705,11 @@ public class Consumer : MqBase
             try
             {
                 var offset = st.Offset;
-                var pr = await Pull(mq, offset, BatchSize, SuspendTimeout, cancellationToken).ConfigureAwait(false);
+                // 客户端超时保护：防止服务端在SuspendTimeout后无响应导致消费线程永久阻塞
+                var pullTimeout = PullTimeout > 0 ? PullTimeout : SuspendTimeout + 10_000;
+                using var pullCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                pullCts.CancelAfter(pullTimeout);
+                var pr = await Pull(mq, offset, BatchSize, SuspendTimeout, pullCts.Token).ConfigureAwait(false);
                 if (pr != null)
                 {
                     switch (pr.Status)
