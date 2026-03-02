@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using NewLife.Buffers;
 using NewLife.RocketMQ.Grpc;
 using Xunit;
 
@@ -9,12 +10,13 @@ namespace XUnitTestRocketMQ;
 /// <summary>Protobuf编解码器测试</summary>
 public class ProtoTests
 {
-    #region ProtoWriter/ProtoReader 基础编解码
+    #region SpanWriter/SpanReader 基础编解码
     [Fact]
     [DisplayName("Varint_编码解码正确")]
     public void Varint_RoundTrip()
     {
-        var writer = new ProtoWriter();
+        var buf = new Byte[128];
+        var writer = new SpanWriter(buf);
         writer.WriteRawVarint(0);
         writer.WriteRawVarint(1);
         writer.WriteRawVarint(127);
@@ -22,111 +24,116 @@ public class ProtoTests
         writer.WriteRawVarint(300);
         writer.WriteRawVarint(UInt64.MaxValue);
 
-        var reader = new ProtoReader(writer.ToArray());
+        var reader = new SpanReader(writer.WrittenSpan.ToArray());
         Assert.Equal(0UL, reader.ReadRawVarint());
         Assert.Equal(1UL, reader.ReadRawVarint());
         Assert.Equal(127UL, reader.ReadRawVarint());
         Assert.Equal(128UL, reader.ReadRawVarint());
         Assert.Equal(300UL, reader.ReadRawVarint());
         Assert.Equal(UInt64.MaxValue, reader.ReadRawVarint());
-        Assert.True(reader.IsEnd);
+        Assert.True(reader.Available <= 0);
     }
 
     [Fact]
     [DisplayName("Fixed32_编码解码正确")]
     public void Fixed32_RoundTrip()
     {
-        var writer = new ProtoWriter();
+        var buf = new Byte[64];
+        var writer = new SpanWriter(buf);
         writer.WriteRawFixed32(0);
         writer.WriteRawFixed32(12345);
         writer.WriteRawFixed32(UInt32.MaxValue);
 
-        var reader = new ProtoReader(writer.ToArray());
-        Assert.Equal(0U, reader.ReadRawFixed32());
-        Assert.Equal(12345U, reader.ReadRawFixed32());
-        Assert.Equal(UInt32.MaxValue, reader.ReadRawFixed32());
+        var reader = new SpanReader(writer.WrittenSpan.ToArray());
+        Assert.Equal(0U, reader.ReadFixed32());
+        Assert.Equal(12345U, reader.ReadFixed32());
+        Assert.Equal(UInt32.MaxValue, reader.ReadFixed32());
     }
 
     [Fact]
     [DisplayName("Fixed64_编码解码正确")]
     public void Fixed64_RoundTrip()
     {
-        var writer = new ProtoWriter();
+        var buf = new Byte[64];
+        var writer = new SpanWriter(buf);
         writer.WriteRawFixed64(0);
         writer.WriteRawFixed64(1234567890123456789);
         writer.WriteRawFixed64(UInt64.MaxValue);
 
-        var reader = new ProtoReader(writer.ToArray());
-        Assert.Equal(0UL, reader.ReadRawFixed64());
-        Assert.Equal(1234567890123456789UL, reader.ReadRawFixed64());
-        Assert.Equal(UInt64.MaxValue, reader.ReadRawFixed64());
+        var reader = new SpanReader(writer.WrittenSpan.ToArray());
+        Assert.Equal(0UL, reader.ReadFixed64());
+        Assert.Equal(1234567890123456789UL, reader.ReadFixed64());
+        Assert.Equal(UInt64.MaxValue, reader.ReadFixed64());
     }
 
     [Fact]
     [DisplayName("String字段_编码解码正确")]
     public void StringField_RoundTrip()
     {
-        var writer = new ProtoWriter();
+        var buf = new Byte[256];
+        var writer = new SpanWriter(buf);
         writer.WriteString(1, "hello");
         writer.WriteString(2, "世界");
         writer.WriteString(3, "");  // 空字符串不写入
 
-        var data = writer.ToArray();
-        var reader = new ProtoReader(data);
+        var data = writer.WrittenSpan.ToArray();
+        var reader = new SpanReader(data);
 
         // field 1: string "hello"
         var (fn1, wt1) = reader.ReadTag();
         Assert.Equal(1, fn1);
         Assert.Equal(2, wt1); // length-delimited
-        Assert.Equal("hello", reader.ReadString());
+        Assert.Equal("hello", reader.ReadProtoString());
 
         // field 2: string "世界"
         var (fn2, wt2) = reader.ReadTag();
         Assert.Equal(2, fn2);
         Assert.Equal(2, wt2);
-        Assert.Equal("世界", reader.ReadString());
+        Assert.Equal("世界", reader.ReadProtoString());
 
         // 没有 field 3（空字符串跳过）
-        Assert.True(reader.IsEnd);
+        Assert.True(reader.Available <= 0);
     }
 
     [Fact]
     [DisplayName("Int32字段_编码解码正确")]
     public void Int32Field_RoundTrip()
     {
-        var writer = new ProtoWriter();
+        var buf = new Byte[128];
+        var writer = new SpanWriter(buf);
         writer.WriteInt32(1, 42);
         writer.WriteInt32(2, -1); // 负数编码为10字节varint
         writer.WriteInt32(3, 0);  // 0不写入
 
-        var data = writer.ToArray();
-        var reader = new ProtoReader(data);
+        var data = writer.WrittenSpan.ToArray();
+        var reader = new SpanReader(data);
 
         var (fn1, wt1) = reader.ReadTag();
         Assert.Equal(1, fn1);
         Assert.Equal(0, wt1); // varint
-        Assert.Equal(42, reader.ReadInt32());
+        Assert.Equal(42, reader.ReadProtoInt32());
 
         var (fn2, wt2) = reader.ReadTag();
         Assert.Equal(2, fn2);
-        Assert.Equal(-1, reader.ReadInt32());
+        Assert.Equal(-1, reader.ReadProtoInt32());
 
-        Assert.True(reader.IsEnd);
+        Assert.True(reader.Available <= 0);
     }
 
     [Fact]
     [DisplayName("SInt32_ZigZag编码解码正确")]
     public void SInt32_ZigZag_RoundTrip()
     {
-        var writer = new ProtoWriter();
+        var buf = new Byte[128];
+        var writer = new SpanWriter(buf);
         writer.WriteSInt32(1, 0);   // 不写入
         writer.WriteSInt32(2, 1);
         writer.WriteSInt32(3, -1);
         writer.WriteSInt32(4, Int32.MinValue);
         writer.WriteSInt32(5, Int32.MaxValue);
 
-        var data = writer.ToArray();
-        var reader = new ProtoReader(data);
+        var data = writer.WrittenSpan.ToArray();
+        var reader = new SpanReader(data);
 
         // field 2: sint32 = 1
         var (fn2, _) = reader.ReadTag();
@@ -148,25 +155,26 @@ public class ProtoTests
         Assert.Equal(5, fn5);
         Assert.Equal(Int32.MaxValue, reader.ReadSInt32());
 
-        Assert.True(reader.IsEnd);
+        Assert.True(reader.Available <= 0);
     }
 
     [Fact]
     [DisplayName("Bool字段_编码解码正确")]
     public void BoolField_RoundTrip()
     {
-        var writer = new ProtoWriter();
+        var buf = new Byte[64];
+        var writer = new SpanWriter(buf);
         writer.WriteBool(1, true);
         writer.WriteBool(2, false); // false不写入
 
-        var data = writer.ToArray();
-        var reader = new ProtoReader(data);
+        var data = writer.WrittenSpan.ToArray();
+        var reader = new SpanReader(data);
 
         var (fn1, _) = reader.ReadTag();
         Assert.Equal(1, fn1);
         Assert.True(reader.ReadBool());
 
-        Assert.True(reader.IsEnd);
+        Assert.True(reader.Available <= 0);
     }
 
     [Fact]
@@ -174,20 +182,21 @@ public class ProtoTests
     public void BytesField_RoundTrip()
     {
         var testData = new Byte[] { 0x01, 0x02, 0x03, 0xFF };
-        var writer = new ProtoWriter();
+        var buf = new Byte[64];
+        var writer = new SpanWriter(buf);
         writer.WriteBytes(1, testData);
         writer.WriteBytes(2, null);    // null不写入
         writer.WriteBytes(3, []);      // 空不写入
 
-        var data = writer.ToArray();
-        var reader = new ProtoReader(data);
+        var data = writer.WrittenSpan.ToArray();
+        var reader = new SpanReader(data);
 
         var (fn1, wt1) = reader.ReadTag();
         Assert.Equal(1, fn1);
         Assert.Equal(2, wt1);
-        Assert.Equal(testData, reader.ReadBytes());
+        Assert.Equal(testData, reader.ReadProtoBytes());
 
-        Assert.True(reader.IsEnd);
+        Assert.True(reader.Available <= 0);
     }
 
     [Fact]
@@ -200,14 +209,15 @@ public class ProtoTests
             ["key2"] = "value2",
         };
 
-        var writer = new ProtoWriter();
+        var buf = new Byte[256];
+        var writer = new SpanWriter(buf);
         writer.WriteMap(1, map);
 
-        var data = writer.ToArray();
-        var reader = new ProtoReader(data);
+        var data = writer.WrittenSpan.ToArray();
+        var reader = new SpanReader(data);
 
         var result = new Dictionary<String, String>();
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             Assert.Equal(1, fn);
@@ -225,18 +235,19 @@ public class ProtoTests
     [DisplayName("SkipField_正确跳过未知字段")]
     public void SkipField_Works()
     {
-        var writer = new ProtoWriter();
+        var buf = new Byte[256];
+        var writer = new SpanWriter(buf);
         writer.WriteInt32(1, 42);       // varint
         writer.WriteString(2, "skip");  // length-delimited
         writer.WriteInt32(3, 99);       // varint
 
-        var data = writer.ToArray();
-        var reader = new ProtoReader(data);
+        var data = writer.WrittenSpan.ToArray();
+        var reader = new SpanReader(data);
 
         // 读field 1
         var (fn1, wt1) = reader.ReadTag();
         Assert.Equal(1, fn1);
-        Assert.Equal(42, reader.ReadInt32());
+        Assert.Equal(42, reader.ReadProtoInt32());
 
         // 跳过field 2
         var (fn2, wt2) = reader.ReadTag();
@@ -246,9 +257,9 @@ public class ProtoTests
         // 读field 3
         var (fn3, wt3) = reader.ReadTag();
         Assert.Equal(3, fn3);
-        Assert.Equal(99, reader.ReadInt32());
+        Assert.Equal(99, reader.ReadProtoInt32());
 
-        Assert.True(reader.IsEnd);
+        Assert.True(reader.Available <= 0);
     }
     #endregion
 
@@ -259,11 +270,12 @@ public class ProtoTests
     {
         var time = new DateTime(2024, 6, 15, 12, 30, 45, DateTimeKind.Utc);
 
-        var writer = new ProtoWriter();
+        var buf = new Byte[128];
+        var writer = new SpanWriter(buf);
         writer.WriteTimestamp(1, time);
 
-        var data = writer.ToArray();
-        var reader = new ProtoReader(data);
+        var data = writer.WrittenSpan.ToArray();
+        var reader = new SpanReader(data);
 
         var (fn, wt) = reader.ReadTag();
         Assert.Equal(1, fn);
@@ -285,11 +297,12 @@ public class ProtoTests
     {
         var duration = TimeSpan.FromSeconds(90);
 
-        var writer = new ProtoWriter();
+        var buf = new Byte[128];
+        var writer = new SpanWriter(buf);
         writer.WriteDuration(1, duration);
 
-        var data = writer.ToArray();
-        var reader = new ProtoReader(data);
+        var data = writer.WrittenSpan.ToArray();
+        var reader = new SpanReader(data);
 
         var (fn, _) = reader.ReadTag();
         Assert.Equal(1, fn);
@@ -310,17 +323,40 @@ public class ProtoTests
             Name = "test-topic",
         };
 
-        var writer = new ProtoWriter();
+        var data = ProtoExtensions.Serialize(resource);
+        var reader = new SpanReader(data);
+
+        // 手工读取外层结构
+        var (fn1, _) = reader.ReadTag();
+        Assert.Equal(1, fn1);
+        Assert.Equal("test-ns", reader.ReadProtoString());
+        var (fn2, _) = reader.ReadTag();
+        Assert.Equal(2, fn2);
+        Assert.Equal("test-topic", reader.ReadProtoString());
+    }
+
+    [Fact]
+    [DisplayName("嵌套消息_WriteMessage编码解码正确")]
+    public void NestedMessage_WriteMessage_RoundTrip()
+    {
+        var resource = new GrpcResource
+        {
+            ResourceNamespace = "test-ns",
+            Name = "test-topic",
+        };
+
+        var buf = new Byte[256];
+        var writer = new SpanWriter(buf);
         writer.WriteMessage(1, resource);
 
-        var data = writer.ToArray();
-        var reader = new ProtoReader(data);
+        var data = writer.WrittenSpan.ToArray();
+        var reader = new SpanReader(data);
 
         var (fn, wt) = reader.ReadTag();
         Assert.Equal(1, fn);
         Assert.Equal(2, wt);
 
-        var result = reader.ReadMessage<GrpcResource>();
+        var result = reader.ReadProtoMessage<GrpcResource>();
         Assert.Equal("test-ns", result.ResourceNamespace);
         Assert.Equal("test-topic", result.Name);
     }
@@ -346,13 +382,11 @@ public class ProtoTests
         };
         msg.UserProperties["user_key"] = "user_value";
 
-        var writer = new ProtoWriter();
-        msg.WriteTo(writer);
-        var data = writer.ToArray();
+        var data = ProtoExtensions.Serialize(msg);
 
-        var reader = new ProtoReader(data);
+        var reader = new SpanReader(data);
         var result = new GrpcMessage();
-        result.ReadFrom(reader);
+        result.Read(ref reader);
 
         Assert.Equal("ns", result.Topic.ResourceNamespace);
         Assert.Equal("topic1", result.Topic.Name);
@@ -433,13 +467,11 @@ public class ProtoTests
             },
         };
 
-        var writer = new ProtoWriter();
-        request.WriteTo(writer);
-        var data = writer.ToArray();
+        var data = ProtoExtensions.Serialize(request);
 
-        var reader = new ProtoReader(data);
+        var reader = new SpanReader(data);
         var result = new QueryRouteRequest();
-        result.ReadFrom(reader);
+        result.Read(ref reader);
 
         Assert.Equal("ns", result.Topic.ResourceNamespace);
         Assert.Equal("test", result.Topic.Name);
@@ -465,13 +497,11 @@ public class ProtoTests
             },
         });
 
-        var writer = new ProtoWriter();
-        request.WriteTo(writer);
-        var data = writer.ToArray();
+        var data = ProtoExtensions.Serialize(request);
 
-        var reader = new ProtoReader(data);
+        var reader = new SpanReader(data);
         var result = new SendMessageRequest();
-        result.ReadFrom(reader);
+        result.Read(ref reader);
 
         Assert.Single(result.Messages);
         Assert.Equal("topic1", result.Messages[0].Topic.Name);
@@ -489,13 +519,11 @@ public class ProtoTests
             Message = "Success",
         };
 
-        var writer = new ProtoWriter();
-        status.WriteTo(writer);
-        var data = writer.ToArray();
+        var data = ProtoExtensions.Serialize(status);
 
-        var reader = new ProtoReader(data);
+        var reader = new SpanReader(data);
         var result = new GrpcStatus();
-        result.ReadFrom(reader);
+        result.Read(ref reader);
 
         Assert.Equal(GrpcCode.OK, result.Code);
         Assert.Equal("Success", result.Message);
@@ -523,13 +551,11 @@ public class ProtoTests
             AcceptMessageTypes = [GrpcMessageType.NORMAL, GrpcMessageType.DELAY],
         };
 
-        var writer = new ProtoWriter();
-        mq.WriteTo(writer);
-        var data = writer.ToArray();
+        var data = ProtoExtensions.Serialize(mq);
 
-        var reader = new ProtoReader(data);
+        var reader = new SpanReader(data);
         var result = new GrpcMessageQueue();
-        result.ReadFrom(reader);
+        result.Read(ref reader);
 
         Assert.Equal("topic1", result.Topic.Name);
         Assert.Equal(2, result.Id);

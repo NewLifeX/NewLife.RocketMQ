@@ -1,5 +1,7 @@
 ﻿#if NETSTANDARD2_1_OR_GREATER
+using NewLife.Buffers;
 using NewLife.Log;
+using NewLife.Serialization;
 
 namespace NewLife.RocketMQ.Grpc;
 
@@ -210,16 +212,15 @@ public class GrpcMessagingService : IDisposable
             LongPollingTimeout = longPollingTimeout ?? TimeSpan.FromSeconds(20),
         };
 
-        var writer = new ProtoWriter();
-        request.WriteTo(writer);
-        var requestData = writer.ToArray();
+        var requestData = ProtoExtensions.Serialize(request);
 
         var messages = new List<GrpcMessage>();
 
         await foreach (var data in Client.ServerStreamingCallAsync(ServiceName, "ReceiveMessage", requestData, cancellationToken).ConfigureAwait(false))
         {
             var response = new ReceiveMessageResponse();
-            response.ReadFrom(new ProtoReader(data));
+            var reader = new SpanReader(data);
+            response.Read(ref reader);
 
             // 检查状态
             if (response.Status != null && response.Status.Code != GrpcCode.OK)
@@ -410,18 +411,19 @@ public class GrpcMessagingService : IDisposable
     /// <param name="cancellationToken">取消通知</param>
     /// <returns>响应消息</returns>
     private async Task<TResponse> InvokeAsync<TRequest, TResponse>(String method, TRequest request, CancellationToken cancellationToken)
-        where TRequest : IProtoMessage
-        where TResponse : IProtoMessage, new()
+        where TRequest : ISpanSerializable
+        where TResponse : ISpanSerializable, new()
     {
-        var writer = new ProtoWriter();
-        request.WriteTo(writer);
-        var requestData = writer.ToArray();
+        var requestData = ProtoExtensions.Serialize(request);
 
         var responseData = await Client.UnaryCallAsync(ServiceName, method, requestData, cancellationToken).ConfigureAwait(false);
 
         var response = new TResponse();
         if (responseData != null && responseData.Length > 0)
-            response.ReadFrom(new ProtoReader(responseData));
+        {
+            var reader = new SpanReader(responseData);
+            response.Read(ref reader);
+        }
 
         return response;
     }

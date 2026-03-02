@@ -1,5 +1,6 @@
 ﻿using System.Runtime.Serialization;
 using System.Xml.Serialization;
+using NewLife.Buffers;
 using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Log;
@@ -9,6 +10,12 @@ using NewLife.Serialization;
 namespace NewLife.RocketMQ.Protocol;
 
 /// <summary>命令</summary>
+/// <remarks>
+/// Remoting 协议帧格式（大端序）：
+/// [4字节 TotalLength] [4字节 OriHeaderLength] [HeaderData] [BodyData]
+/// 其中 OriHeaderLength 高8位为序列化类型，低24位为头部数据长度。
+/// 使用 SpanReader/SpanWriter 进行高性能零拷贝编解码。
+/// </remarks>
 public class Command : IAccessor, IMessage
 {
     #region 属性
@@ -44,32 +51,35 @@ public class Command : IAccessor, IMessage
 
     #region 读写
     /// <summary>从数据流中读取</summary>
-    /// <param name="stream"></param>
-    /// <param name="context"></param>
+    /// <param name="stream">数据流</param>
+    /// <param name="context">上下文</param>
     /// <returns></returns>
     public Boolean Read(Stream stream, Object context = null)
     {
-        var bn = new Binary
-        {
-            Stream = stream,
-            IsLittleEndian = false,
-        };
-
         try
         {
-            var len = bn.Read<Int32>();
+            // 先读取8字节帧头（TotalLength + OriHeaderLength）
+            var headBuf = new Byte[8];
+            if (stream.Read(headBuf, 0, 8) < 8) return false;
+
+            var reader = new SpanReader(headBuf) { IsLittleEndian = false };
+            var len = reader.ReadInt32();
             if (len < 4 || len > 4 * 1024 * 1024) return false;
 
-            // 读取头部
-            var oriHeaderLen = bn.Read<Int32>();
+            var oriHeaderLen = reader.ReadInt32();
             var headerLen = oriHeaderLen & 0xFFFFFF;
             if (headerLen <= 0 || headerLen > 8 * 1024) return false;
+
+            // 读取剩余数据（头部 + 主体）
+            var bodyLen = len - 4 - headerLen;
+            var dataBuf = new Byte[headerLen + (bodyLen > 0 ? bodyLen : 0)];
+            if (stream.Read(dataBuf, 0, dataBuf.Length) < dataBuf.Length) return false;
 
             // 读取序列化类型
             var type = (SerializeType)((oriHeaderLen >> 24) & 0xFF);
             if (type == SerializeType.JSON)
             {
-                var json = bn.ReadBytes(headerLen).ToStr();
+                var json = dataBuf.ToStr(null, 0, headerLen);
                 RawJson = json;
 
                 var header = json.ToJsonEntity<Header>();
@@ -79,45 +89,49 @@ public class Command : IAccessor, IMessage
                 Reply = (header.Flag & 0b01) == 0b01;
                 OneWay = (header.Flag & 0b10) == 0b10;
 
-                //  读取主体
-                if (len > 4 + headerLen)
-                {
-                    Payload = (ArrayPacket)bn.ReadBytes(len - 4 - headerLen);
-                }
+                // 读取主体
+                if (bodyLen > 0)
+                    Payload = new ArrayPacket(dataBuf, headerLen, bodyLen);
             }
             else if (type == SerializeType.ROCKETMQ)
             {
+                var rd = new SpanReader(dataBuf, 0, headerLen) { IsLittleEndian = false };
+
                 var header = new Header
                 {
                     SerializeTypeCurrentRPC = type + "",
-                    Code = bn.ReadUInt16(),
-                    Language = ((LanguageCode)bn.ReadByte()) + "",
-                    Version = (MQVersion)bn.ReadUInt16(),
-                    Opaque = bn.ReadInt32(),
-                    Flag = bn.ReadInt32(),
-                    Remark = ReadStr(bn, false, headerLen),
+                    Code = rd.ReadUInt16(),
+                    Language = ((LanguageCode)rd.ReadByte()) + "",
+                    Version = (MQVersion)rd.ReadUInt16(),
+                    Opaque = rd.ReadInt32(),
+                    Flag = rd.ReadInt32(),
+                    Remark = ReadStr(ref rd, false, headerLen),
                 };
 
                 Reply = (header.Flag & 0b01) == 0b01;
                 OneWay = (header.Flag & 0b10) == 0b10;
 
                 // 读取扩展字段
-                var extFieldsLength = bn.ReadInt32();
+                var extFieldsLength = rd.ReadInt32();
                 if (extFieldsLength > 0)
                 {
                     if (extFieldsLength > headerLen) throw new Exception($"扩展字段长度[{extFieldsLength}]超过头部长度[{headerLen}]");
 
                     var extFields = header.GetExtFields();
-                    var endIndex = stream.Position + extFieldsLength;
-                    while (stream.Position < endIndex)
+                    var endPos = rd.Position + extFieldsLength;
+                    while (rd.Position < endPos)
                     {
-                        var k = ReadStr(bn, true, extFieldsLength);
-                        var v = ReadStr(bn, false, extFieldsLength);
+                        var k = ReadStr(ref rd, true, extFieldsLength);
+                        var v = ReadStr(ref rd, false, extFieldsLength);
                         extFields[k + ""] = v;
                     }
                 }
 
                 Header = header;
+
+                // 读取主体
+                if (bodyLen > 0)
+                    Payload = new ArrayPacket(dataBuf, headerLen, bodyLen);
             }
             else
                 throw new NotSupportedException($"不支持[{type}]序列化");
@@ -131,26 +145,35 @@ public class Command : IAccessor, IMessage
         return true;
     }
 
-    private String ReadStr(Binary bn, Boolean useShortLength, Int32 limit)
+    /// <summary>从SpanReader中读取字符串</summary>
+    /// <param name="reader">读取器</param>
+    /// <param name="useShortLength">是否使用2字节长度前缀</param>
+    /// <param name="limit">长度上限</param>
+    /// <returns></returns>
+    private static String ReadStr(ref SpanReader reader, Boolean useShortLength, Int32 limit)
     {
-        var len = useShortLength ? bn.ReadInt16() : bn.ReadInt32();
+        var len = useShortLength ? reader.ReadInt16() : reader.ReadInt32();
         if (len == 0) return null;
         if (len > limit) throw new Exception($"字符串长度[{len}]超过限制[{limit}]");
 
-        return bn.ReadBytes(len).ToStr();
+        return reader.ReadBytes(len).ToArray().ToStr();
     }
 
-    private void WriteStr(Binary bn, Boolean useShortLength, String value)
+    /// <summary>向SpanWriter写入字符串</summary>
+    /// <param name="writer">写入器</param>
+    /// <param name="useShortLength">是否使用2字节长度前缀</param>
+    /// <param name="value">字符串值</param>
+    private static void WriteStr(ref SpanWriter writer, Boolean useShortLength, String value)
     {
         var buf = value?.GetBytes();
         var len = buf?.Length ?? 0;
 
         if (useShortLength)
-            bn.Write((Int16)len);
+            writer.Write((Int16)len);
         else
-            bn.Write(len);
+            writer.Write(len);
 
-        if (len > 0) bn.Write(buf, 0, buf.Length);
+        if (len > 0) writer.Write(buf);
     }
 
     /// <summary>读取Body作为Json返回</summary>
@@ -164,8 +187,8 @@ public class Command : IAccessor, IMessage
     }
 
     /// <summary>写入命令到数据流</summary>
-    /// <param name="stream"></param>
-    /// <param name="context"></param>
+    /// <param name="stream">数据流</param>
+    /// <param name="context">上下文</param>
     /// <returns></returns>
     public Boolean Write(Stream stream, Object context = null)
     {
@@ -188,67 +211,66 @@ public class Command : IAccessor, IMessage
             var len = 4 + hs.Length;
             if (pk != null) len += pk.Total;
 
-            // 写入总长度
-            var bn = new Binary
-            {
-                Stream = stream,
-                IsLittleEndian = false,
-            };
-            bn.Write(len);
+            // 使用SpanWriter写入8字节帧头（TotalLength + HeaderLength）
+            var prefix = new Byte[8];
+            var writer = new SpanWriter(prefix) { IsLittleEndian = false };
+            writer.Write(len);
+            writer.Write(hs.Length);
+            stream.Write(prefix, 0, 8);
 
-            // 写入头部
-            bn.Write(hs.Length);
-            stream.Write(hs);
+            // 写入头部JSON
+            stream.Write(hs, 0, hs.Length);
         }
         else if (type == SerializeType.ROCKETMQ)
         {
-            var bn = new Binary
+            // 使用SpanWriter编码ROCKETMQ二进制头部
+            var hsBuf = new Byte[8 * 1024];
+            var writer = new SpanWriter(hsBuf) { IsLittleEndian = false };
+
+            writer.Write((UInt16)header.Code);
+            writer.Write((Byte)header.Language.ToEnum(LanguageCode.JAVA));
+            writer.Write((UInt16)header.Version);
+            writer.Write(header.Opaque);
+            writer.Write(header.Flag);
+
+            WriteStr(ref writer, false, header.Remark);
+
+            if (header.ExtFields != null && header.ExtFields.Count > 0)
             {
-                //Stream = stream,
-                IsLittleEndian = false,
-            };
-
-            bn.WriteUInt16((UInt16)header.Code);
-            bn.WriteByte((Byte)header.Language.ToEnum(LanguageCode.JAVA));
-            bn.WriteUInt16((UInt16)header.Version);
-            bn.WriteInt32(header.Opaque);
-            bn.WriteInt32(header.Flag);
-
-            WriteStr(bn, false, header.Remark);
-
-            if (header.ExtFields != null)
-            {
-                var ext = new Binary { IsLittleEndian = false };
+                // 先编码扩展字段到临时缓冲区
+                var extBuf = new Byte[4 * 1024];
+                var extWriter = new SpanWriter(extBuf) { IsLittleEndian = false };
                 foreach (var item in header.ExtFields)
                 {
-                    WriteStr(ext, true, item.Key);
-                    WriteStr(ext, false, item.Value);
+                    WriteStr(ref extWriter, true, item.Key);
+                    WriteStr(ref extWriter, false, item.Value);
                 }
 
-                var buf = ext.GetBytes();
-                bn.WriteInt32(buf.Length);
-                if (buf.Length > 0) bn.Write(buf, 0, buf.Length);
+                var extLen = extWriter.Position;
+                writer.Write(extLen);
+                if (extLen > 0) writer.Write(new ReadOnlySpan<Byte>(extBuf, 0, extLen));
             }
             else
             {
-                bn.WriteInt32(0);
+                writer.Write(0);
             }
 
             // 计算长度
-            var hs = bn.GetBytes();
-            var oriHeaderLen = (hs.Length & 0xFFFFFF) | ((Byte)type << 24);
+            var hsLen = writer.Position;
+            var oriHeaderLen = (hsLen & 0xFFFFFF) | ((Byte)type << 24);
 
-            var len = 4 + hs.Length;
+            var len = 4 + hsLen;
             if (pk != null) len += pk.Total;
 
-            // 写入长度
+            // 使用SpanWriter写入帧头
             var prefix = new Byte[8];
-            prefix.Write((UInt32)len, 0, false);
-            prefix.Write((UInt32)oriHeaderLen, 4, false);
-            stream.Write(prefix);
+            var prefixWriter = new SpanWriter(prefix) { IsLittleEndian = false };
+            prefixWriter.Write(len);
+            prefixWriter.Write(oriHeaderLen);
+            stream.Write(prefix, 0, 8);
 
             // 写入头部
-            stream.Write(hs);
+            stream.Write(hsBuf, 0, hsLen);
         }
         else
             throw new NotSupportedException($"不支持[{type}]序列化");

@@ -1,8 +1,11 @@
-﻿namespace NewLife.RocketMQ.Grpc;
+﻿using NewLife.Buffers;
+using NewLife.Serialization;
+
+namespace NewLife.RocketMQ.Grpc;
 
 #region 路由查询
 /// <summary>查询路由请求</summary>
-public class QueryRouteRequest : IProtoMessage
+public class QueryRouteRequest : ISpanSerializable
 {
     /// <summary>主题</summary>
     public GrpcResource Topic { get; set; }
@@ -12,7 +15,7 @@ public class QueryRouteRequest : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Topic);
         writer.WriteMessage(2, Endpoints);
@@ -20,16 +23,16 @@ public class QueryRouteRequest : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Topic = reader.ReadMessage<GrpcResource>(); break;
-                case 2: Endpoints = reader.ReadMessage<GrpcEndpoints>(); break;
+                case 1: Topic = reader.ReadProtoMessage<GrpcResource>(); break;
+                case 2: Endpoints = reader.ReadProtoMessage<GrpcEndpoints>(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -37,7 +40,7 @@ public class QueryRouteRequest : IProtoMessage
 }
 
 /// <summary>查询路由响应</summary>
-public class QueryRouteResponse : IProtoMessage
+public class QueryRouteResponse : ISpanSerializable
 {
     /// <summary>状态</summary>
     public GrpcStatus Status { get; set; }
@@ -47,7 +50,7 @@ public class QueryRouteResponse : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Status);
         writer.WriteRepeatedMessage(2, MessageQueues);
@@ -55,16 +58,16 @@ public class QueryRouteResponse : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Status = reader.ReadMessage<GrpcStatus>(); break;
-                case 2: MessageQueues.Add(reader.ReadMessage<GrpcMessageQueue>()); break;
+                case 1: Status = reader.ReadProtoMessage<GrpcStatus>(); break;
+                case 2: MessageQueues.Add(reader.ReadProtoMessage<GrpcMessageQueue>()); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -74,26 +77,26 @@ public class QueryRouteResponse : IProtoMessage
 
 #region 发送消息
 /// <summary>发送消息请求</summary>
-public class SendMessageRequest : IProtoMessage
+public class SendMessageRequest : ISpanSerializable
 {
     /// <summary>消息列表</summary>
     public List<GrpcMessage> Messages { get; set; } = [];
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer) => writer.WriteRepeatedMessage(1, Messages);
+    public void Write(ref SpanWriter writer) => writer.WriteRepeatedMessage(1, Messages);
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Messages.Add(reader.ReadMessage<GrpcMessage>()); break;
+                case 1: Messages.Add(reader.ReadProtoMessage<GrpcMessage>()); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -101,7 +104,7 @@ public class SendMessageRequest : IProtoMessage
 }
 
 /// <summary>发送结果条目</summary>
-public class SendResultEntry : IProtoMessage
+public class SendResultEntry : ISpanSerializable
 {
     /// <summary>状态</summary>
     public GrpcStatus Status { get; set; }
@@ -117,7 +120,7 @@ public class SendResultEntry : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Status);
         writer.WriteString(2, MessageId);
@@ -127,18 +130,18 @@ public class SendResultEntry : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Status = reader.ReadMessage<GrpcStatus>(); break;
-                case 2: MessageId = reader.ReadString(); break;
-                case 3: TransactionId = reader.ReadString(); break;
-                case 4: Offset = reader.ReadInt64(); break;
+                case 1: Status = reader.ReadProtoMessage<GrpcStatus>(); break;
+                case 2: MessageId = reader.ReadProtoString(); break;
+                case 3: TransactionId = reader.ReadProtoString(); break;
+                case 4: Offset = reader.ReadProtoInt64(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -146,7 +149,7 @@ public class SendResultEntry : IProtoMessage
 }
 
 /// <summary>发送消息响应</summary>
-public class SendMessageResponse : IProtoMessage
+public class SendMessageResponse : ISpanSerializable
 {
     /// <summary>状态</summary>
     public GrpcStatus Status { get; set; }
@@ -156,7 +159,7 @@ public class SendMessageResponse : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Status);
         writer.WriteRepeatedMessage(2, Entries);
@@ -164,16 +167,16 @@ public class SendMessageResponse : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Status = reader.ReadMessage<GrpcStatus>(); break;
-                case 2: Entries.Add(reader.ReadMessage<SendResultEntry>()); break;
+                case 1: Status = reader.ReadProtoMessage<GrpcStatus>(); break;
+                case 2: Entries.Add(reader.ReadProtoMessage<SendResultEntry>()); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -183,7 +186,7 @@ public class SendMessageResponse : IProtoMessage
 
 #region 队列分配
 /// <summary>查询队列分配请求</summary>
-public class QueryAssignmentRequest : IProtoMessage
+public class QueryAssignmentRequest : ISpanSerializable
 {
     /// <summary>主题</summary>
     public GrpcResource Topic { get; set; }
@@ -196,7 +199,7 @@ public class QueryAssignmentRequest : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Topic);
         writer.WriteMessage(2, Group);
@@ -205,17 +208,17 @@ public class QueryAssignmentRequest : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Topic = reader.ReadMessage<GrpcResource>(); break;
-                case 2: Group = reader.ReadMessage<GrpcResource>(); break;
-                case 3: Endpoints = reader.ReadMessage<GrpcEndpoints>(); break;
+                case 1: Topic = reader.ReadProtoMessage<GrpcResource>(); break;
+                case 2: Group = reader.ReadProtoMessage<GrpcResource>(); break;
+                case 3: Endpoints = reader.ReadProtoMessage<GrpcEndpoints>(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -223,7 +226,7 @@ public class QueryAssignmentRequest : IProtoMessage
 }
 
 /// <summary>查询队列分配响应</summary>
-public class QueryAssignmentResponse : IProtoMessage
+public class QueryAssignmentResponse : ISpanSerializable
 {
     /// <summary>状态</summary>
     public GrpcStatus Status { get; set; }
@@ -233,7 +236,7 @@ public class QueryAssignmentResponse : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Status);
         writer.WriteRepeatedMessage(2, Assignments);
@@ -241,16 +244,16 @@ public class QueryAssignmentResponse : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Status = reader.ReadMessage<GrpcStatus>(); break;
-                case 2: Assignments.Add(reader.ReadMessage<GrpcAssignment>()); break;
+                case 1: Status = reader.ReadProtoMessage<GrpcStatus>(); break;
+                case 2: Assignments.Add(reader.ReadProtoMessage<GrpcAssignment>()); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -260,7 +263,7 @@ public class QueryAssignmentResponse : IProtoMessage
 
 #region 接收消息
 /// <summary>接收消息请求（Server Streaming）</summary>
-public class ReceiveMessageRequest : IProtoMessage
+public class ReceiveMessageRequest : ISpanSerializable
 {
     /// <summary>消费组</summary>
     public GrpcResource Group { get; set; }
@@ -285,7 +288,7 @@ public class ReceiveMessageRequest : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Group);
         writer.WriteMessage(2, MessageQueue);
@@ -298,18 +301,18 @@ public class ReceiveMessageRequest : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Group = reader.ReadMessage<GrpcResource>(); break;
-                case 2: MessageQueue = reader.ReadMessage<GrpcMessageQueue>(); break;
-                case 3: FilterExpression = reader.ReadMessage<GrpcFilterExpression>(); break;
-                case 4: BatchSize = reader.ReadInt32(); break;
+                case 1: Group = reader.ReadProtoMessage<GrpcResource>(); break;
+                case 2: MessageQueue = reader.ReadProtoMessage<GrpcMessageQueue>(); break;
+                case 3: FilterExpression = reader.ReadProtoMessage<GrpcFilterExpression>(); break;
+                case 4: BatchSize = reader.ReadProtoInt32(); break;
                 case 5: InvisibleDuration = reader.ReadDuration(); break;
                 case 6: AutoRenew = reader.ReadBool(); break;
                 case 7: LongPollingTimeout = reader.ReadDuration(); break;
@@ -320,7 +323,7 @@ public class ReceiveMessageRequest : IProtoMessage
 }
 
 /// <summary>接收消息响应（oneof: status/message/delivery_timestamp）</summary>
-public class ReceiveMessageResponse : IProtoMessage
+public class ReceiveMessageResponse : ISpanSerializable
 {
     /// <summary>状态（oneof content = 1）</summary>
     public GrpcStatus Status { get; set; }
@@ -333,7 +336,7 @@ public class ReceiveMessageResponse : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Status);
         writer.WriteMessage(2, Message);
@@ -342,16 +345,16 @@ public class ReceiveMessageResponse : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Status = reader.ReadMessage<GrpcStatus>(); break;
-                case 2: Message = reader.ReadMessage<GrpcMessage>(); break;
+                case 1: Status = reader.ReadProtoMessage<GrpcStatus>(); break;
+                case 2: Message = reader.ReadProtoMessage<GrpcMessage>(); break;
                 case 3: DeliveryTimestamp = reader.ReadTimestamp(); break;
                 default: reader.SkipField(wt); break;
             }
@@ -362,7 +365,7 @@ public class ReceiveMessageResponse : IProtoMessage
 
 #region 确认消息
 /// <summary>确认消息条目</summary>
-public class AckMessageEntry : IProtoMessage
+public class AckMessageEntry : ISpanSerializable
 {
     /// <summary>消息ID</summary>
     public String MessageId { get; set; }
@@ -372,7 +375,7 @@ public class AckMessageEntry : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteString(1, MessageId);
         writer.WriteString(2, ReceiptHandle);
@@ -380,16 +383,16 @@ public class AckMessageEntry : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: MessageId = reader.ReadString(); break;
-                case 2: ReceiptHandle = reader.ReadString(); break;
+                case 1: MessageId = reader.ReadProtoString(); break;
+                case 2: ReceiptHandle = reader.ReadProtoString(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -397,7 +400,7 @@ public class AckMessageEntry : IProtoMessage
 }
 
 /// <summary>确认消息请求</summary>
-public class AckMessageRequest : IProtoMessage
+public class AckMessageRequest : ISpanSerializable
 {
     /// <summary>消费组</summary>
     public GrpcResource Group { get; set; }
@@ -410,7 +413,7 @@ public class AckMessageRequest : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Group);
         writer.WriteMessage(2, Topic);
@@ -419,17 +422,17 @@ public class AckMessageRequest : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Group = reader.ReadMessage<GrpcResource>(); break;
-                case 2: Topic = reader.ReadMessage<GrpcResource>(); break;
-                case 3: Entries.Add(reader.ReadMessage<AckMessageEntry>()); break;
+                case 1: Group = reader.ReadProtoMessage<GrpcResource>(); break;
+                case 2: Topic = reader.ReadProtoMessage<GrpcResource>(); break;
+                case 3: Entries.Add(reader.ReadProtoMessage<AckMessageEntry>()); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -437,7 +440,7 @@ public class AckMessageRequest : IProtoMessage
 }
 
 /// <summary>确认消息结果条目</summary>
-public class AckMessageResultEntry : IProtoMessage
+public class AckMessageResultEntry : ISpanSerializable
 {
     /// <summary>消息ID</summary>
     public String MessageId { get; set; }
@@ -450,7 +453,7 @@ public class AckMessageResultEntry : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteString(1, MessageId);
         writer.WriteString(2, ReceiptHandle);
@@ -459,17 +462,17 @@ public class AckMessageResultEntry : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: MessageId = reader.ReadString(); break;
-                case 2: ReceiptHandle = reader.ReadString(); break;
-                case 3: Status = reader.ReadMessage<GrpcStatus>(); break;
+                case 1: MessageId = reader.ReadProtoString(); break;
+                case 2: ReceiptHandle = reader.ReadProtoString(); break;
+                case 3: Status = reader.ReadProtoMessage<GrpcStatus>(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -477,7 +480,7 @@ public class AckMessageResultEntry : IProtoMessage
 }
 
 /// <summary>确认消息响应</summary>
-public class AckMessageResponse : IProtoMessage
+public class AckMessageResponse : ISpanSerializable
 {
     /// <summary>状态</summary>
     public GrpcStatus Status { get; set; }
@@ -487,7 +490,7 @@ public class AckMessageResponse : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Status);
         writer.WriteRepeatedMessage(2, Entries);
@@ -495,16 +498,16 @@ public class AckMessageResponse : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Status = reader.ReadMessage<GrpcStatus>(); break;
-                case 2: Entries.Add(reader.ReadMessage<AckMessageResultEntry>()); break;
+                case 1: Status = reader.ReadProtoMessage<GrpcStatus>(); break;
+                case 2: Entries.Add(reader.ReadProtoMessage<AckMessageResultEntry>()); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -514,7 +517,7 @@ public class AckMessageResponse : IProtoMessage
 
 #region 心跳
 /// <summary>心跳请求</summary>
-public class HeartbeatRequest : IProtoMessage
+public class HeartbeatRequest : ISpanSerializable
 {
     /// <summary>消费组</summary>
     public GrpcResource Group { get; set; }
@@ -524,7 +527,7 @@ public class HeartbeatRequest : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Group);
         writer.WriteEnum(2, (Int32)ClientType);
@@ -532,15 +535,15 @@ public class HeartbeatRequest : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Group = reader.ReadMessage<GrpcResource>(); break;
+                case 1: Group = reader.ReadProtoMessage<GrpcResource>(); break;
                 case 2: ClientType = (GrpcClientType)reader.ReadEnum(); break;
                 default: reader.SkipField(wt); break;
             }
@@ -549,26 +552,26 @@ public class HeartbeatRequest : IProtoMessage
 }
 
 /// <summary>心跳响应</summary>
-public class HeartbeatResponse : IProtoMessage
+public class HeartbeatResponse : ISpanSerializable
 {
     /// <summary>状态</summary>
     public GrpcStatus Status { get; set; }
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer) => writer.WriteMessage(1, Status);
+    public void Write(ref SpanWriter writer) => writer.WriteMessage(1, Status);
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Status = reader.ReadMessage<GrpcStatus>(); break;
+                case 1: Status = reader.ReadProtoMessage<GrpcStatus>(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -578,7 +581,7 @@ public class HeartbeatResponse : IProtoMessage
 
 #region 结束事务
 /// <summary>结束事务请求</summary>
-public class GrpcEndTransactionRequest : IProtoMessage
+public class GrpcEndTransactionRequest : ISpanSerializable
 {
     /// <summary>主题</summary>
     public GrpcResource Topic { get; set; }
@@ -597,7 +600,7 @@ public class GrpcEndTransactionRequest : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Topic);
         writer.WriteString(2, MessageId);
@@ -608,17 +611,17 @@ public class GrpcEndTransactionRequest : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Topic = reader.ReadMessage<GrpcResource>(); break;
-                case 2: MessageId = reader.ReadString(); break;
-                case 3: TransactionId = reader.ReadString(); break;
+                case 1: Topic = reader.ReadProtoMessage<GrpcResource>(); break;
+                case 2: MessageId = reader.ReadProtoString(); break;
+                case 3: TransactionId = reader.ReadProtoString(); break;
                 case 4: Source = (GrpcTransactionSource)reader.ReadEnum(); break;
                 case 5: Resolution = (GrpcTransactionResolution)reader.ReadEnum(); break;
                 default: reader.SkipField(wt); break;
@@ -628,26 +631,26 @@ public class GrpcEndTransactionRequest : IProtoMessage
 }
 
 /// <summary>结束事务响应</summary>
-public class GrpcEndTransactionResponse : IProtoMessage
+public class GrpcEndTransactionResponse : ISpanSerializable
 {
     /// <summary>状态</summary>
     public GrpcStatus Status { get; set; }
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer) => writer.WriteMessage(1, Status);
+    public void Write(ref SpanWriter writer) => writer.WriteMessage(1, Status);
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Status = reader.ReadMessage<GrpcStatus>(); break;
+                case 1: Status = reader.ReadProtoMessage<GrpcStatus>(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -657,7 +660,7 @@ public class GrpcEndTransactionResponse : IProtoMessage
 
 #region 死信队列
 /// <summary>转发消息到死信队列请求</summary>
-public class ForwardMessageToDeadLetterQueueRequest : IProtoMessage
+public class ForwardMessageToDeadLetterQueueRequest : ISpanSerializable
 {
     /// <summary>消费组</summary>
     public GrpcResource Group { get; set; }
@@ -679,7 +682,7 @@ public class ForwardMessageToDeadLetterQueueRequest : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Group);
         writer.WriteMessage(2, Topic);
@@ -691,20 +694,20 @@ public class ForwardMessageToDeadLetterQueueRequest : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Group = reader.ReadMessage<GrpcResource>(); break;
-                case 2: Topic = reader.ReadMessage<GrpcResource>(); break;
-                case 3: ReceiptHandle = reader.ReadString(); break;
-                case 4: MessageId = reader.ReadString(); break;
-                case 5: DeliveryAttempt = reader.ReadInt32(); break;
-                case 6: MaxDeliveryAttempts = reader.ReadInt32(); break;
+                case 1: Group = reader.ReadProtoMessage<GrpcResource>(); break;
+                case 2: Topic = reader.ReadProtoMessage<GrpcResource>(); break;
+                case 3: ReceiptHandle = reader.ReadProtoString(); break;
+                case 4: MessageId = reader.ReadProtoString(); break;
+                case 5: DeliveryAttempt = reader.ReadProtoInt32(); break;
+                case 6: MaxDeliveryAttempts = reader.ReadProtoInt32(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -712,26 +715,26 @@ public class ForwardMessageToDeadLetterQueueRequest : IProtoMessage
 }
 
 /// <summary>转发消息到死信队列响应</summary>
-public class ForwardMessageToDeadLetterQueueResponse : IProtoMessage
+public class ForwardMessageToDeadLetterQueueResponse : ISpanSerializable
 {
     /// <summary>状态</summary>
     public GrpcStatus Status { get; set; }
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer) => writer.WriteMessage(1, Status);
+    public void Write(ref SpanWriter writer) => writer.WriteMessage(1, Status);
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Status = reader.ReadMessage<GrpcStatus>(); break;
+                case 1: Status = reader.ReadProtoMessage<GrpcStatus>(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -741,7 +744,7 @@ public class ForwardMessageToDeadLetterQueueResponse : IProtoMessage
 
 #region 修改不可见时间
 /// <summary>修改不可见时间请求</summary>
-public class ChangeInvisibleDurationRequest : IProtoMessage
+public class ChangeInvisibleDurationRequest : ISpanSerializable
 {
     /// <summary>消费组</summary>
     public GrpcResource Group { get; set; }
@@ -760,7 +763,7 @@ public class ChangeInvisibleDurationRequest : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Group);
         writer.WriteMessage(2, Topic);
@@ -771,19 +774,19 @@ public class ChangeInvisibleDurationRequest : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Group = reader.ReadMessage<GrpcResource>(); break;
-                case 2: Topic = reader.ReadMessage<GrpcResource>(); break;
-                case 3: ReceiptHandle = reader.ReadString(); break;
+                case 1: Group = reader.ReadProtoMessage<GrpcResource>(); break;
+                case 2: Topic = reader.ReadProtoMessage<GrpcResource>(); break;
+                case 3: ReceiptHandle = reader.ReadProtoString(); break;
                 case 4: InvisibleDuration = reader.ReadDuration(); break;
-                case 5: MessageId = reader.ReadString(); break;
+                case 5: MessageId = reader.ReadProtoString(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -791,7 +794,7 @@ public class ChangeInvisibleDurationRequest : IProtoMessage
 }
 
 /// <summary>修改不可见时间响应</summary>
-public class ChangeInvisibleDurationResponse : IProtoMessage
+public class ChangeInvisibleDurationResponse : ISpanSerializable
 {
     /// <summary>状态</summary>
     public GrpcStatus Status { get; set; }
@@ -801,7 +804,7 @@ public class ChangeInvisibleDurationResponse : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Status);
         writer.WriteString(2, ReceiptHandle);
@@ -809,16 +812,16 @@ public class ChangeInvisibleDurationResponse : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Status = reader.ReadMessage<GrpcStatus>(); break;
-                case 2: ReceiptHandle = reader.ReadString(); break;
+                case 1: Status = reader.ReadProtoMessage<GrpcStatus>(); break;
+                case 2: ReceiptHandle = reader.ReadProtoString(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -828,26 +831,26 @@ public class ChangeInvisibleDurationResponse : IProtoMessage
 
 #region 通知终止
 /// <summary>通知客户端终止请求</summary>
-public class NotifyClientTerminationRequest : IProtoMessage
+public class NotifyClientTerminationRequest : ISpanSerializable
 {
     /// <summary>消费组</summary>
     public GrpcResource Group { get; set; }
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer) => writer.WriteMessage(1, Group);
+    public void Write(ref SpanWriter writer) => writer.WriteMessage(1, Group);
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Group = reader.ReadMessage<GrpcResource>(); break;
+                case 1: Group = reader.ReadProtoMessage<GrpcResource>(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -855,26 +858,26 @@ public class NotifyClientTerminationRequest : IProtoMessage
 }
 
 /// <summary>通知客户端终止响应</summary>
-public class NotifyClientTerminationResponse : IProtoMessage
+public class NotifyClientTerminationResponse : ISpanSerializable
 {
     /// <summary>状态</summary>
     public GrpcStatus Status { get; set; }
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer) => writer.WriteMessage(1, Status);
+    public void Write(ref SpanWriter writer) => writer.WriteMessage(1, Status);
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Status = reader.ReadMessage<GrpcStatus>(); break;
+                case 1: Status = reader.ReadProtoMessage<GrpcStatus>(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -884,7 +887,7 @@ public class NotifyClientTerminationResponse : IProtoMessage
 
 #region 客户端资源上报（Telemetry）
 /// <summary>Telemetry命令。客户端向Proxy上报资源信息（设置、主题订阅等）</summary>
-public class TelemetryCommand : IProtoMessage
+public class TelemetryCommand : ISpanSerializable
 {
     /// <summary>状态</summary>
     public GrpcStatus Status { get; set; }
@@ -894,7 +897,7 @@ public class TelemetryCommand : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Status);
         writer.WriteMessage(2, Settings);
@@ -902,16 +905,16 @@ public class TelemetryCommand : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Status = reader.ReadMessage<GrpcStatus>(); break;
-                case 2: Settings = reader.ReadMessage<GrpcSettings>(); break;
+                case 1: Status = reader.ReadProtoMessage<GrpcStatus>(); break;
+                case 2: Settings = reader.ReadProtoMessage<GrpcSettings>(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -919,7 +922,7 @@ public class TelemetryCommand : IProtoMessage
 }
 
 /// <summary>gRPC客户端设置。用于Telemetry上报客户端配置信息</summary>
-public class GrpcSettings : IProtoMessage
+public class GrpcSettings : ISpanSerializable
 {
     /// <summary>客户端类型</summary>
     public GrpcClientType ClientType { get; set; }
@@ -938,7 +941,7 @@ public class GrpcSettings : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteEnum(1, (Int32)ClientType);
         writer.WriteMessage(2, AccessPoint);
@@ -949,19 +952,19 @@ public class GrpcSettings : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
                 case 1: ClientType = (GrpcClientType)reader.ReadEnum(); break;
-                case 2: AccessPoint = reader.ReadMessage<GrpcEndpoints>(); break;
+                case 2: AccessPoint = reader.ReadProtoMessage<GrpcEndpoints>(); break;
                 case 3: RequestTimeout = reader.ReadDuration(); break;
-                case 4: Publishing = reader.ReadMessage<GrpcPublishingSettings>(); break;
-                case 5: Subscription = reader.ReadMessage<GrpcSubscriptionSettings>(); break;
+                case 4: Publishing = reader.ReadProtoMessage<GrpcPublishingSettings>(); break;
+                case 5: Subscription = reader.ReadProtoMessage<GrpcSubscriptionSettings>(); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -969,26 +972,26 @@ public class GrpcSettings : IProtoMessage
 }
 
 /// <summary>发布设置</summary>
-public class GrpcPublishingSettings : IProtoMessage
+public class GrpcPublishingSettings : ISpanSerializable
 {
     /// <summary>发布主题列表</summary>
     public List<GrpcResource> Topics { get; set; } = [];
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer) => writer.WriteRepeatedMessage(1, Topics);
+    public void Write(ref SpanWriter writer) => writer.WriteRepeatedMessage(1, Topics);
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Topics.Add(reader.ReadMessage<GrpcResource>()); break;
+                case 1: Topics.Add(reader.ReadProtoMessage<GrpcResource>()); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -996,7 +999,7 @@ public class GrpcPublishingSettings : IProtoMessage
 }
 
 /// <summary>订阅设置</summary>
-public class GrpcSubscriptionSettings : IProtoMessage
+public class GrpcSubscriptionSettings : ISpanSerializable
 {
     /// <summary>消费组</summary>
     public GrpcResource Group { get; set; }
@@ -1006,7 +1009,7 @@ public class GrpcSubscriptionSettings : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Group);
         writer.WriteRepeatedMessage(2, Subscriptions);
@@ -1014,16 +1017,16 @@ public class GrpcSubscriptionSettings : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Group = reader.ReadMessage<GrpcResource>(); break;
-                case 2: Subscriptions.Add(reader.ReadMessage<GrpcSubscriptionEntry>()); break;
+                case 1: Group = reader.ReadProtoMessage<GrpcResource>(); break;
+                case 2: Subscriptions.Add(reader.ReadProtoMessage<GrpcSubscriptionEntry>()); break;
                 default: reader.SkipField(wt); break;
             }
         }
@@ -1031,7 +1034,7 @@ public class GrpcSubscriptionSettings : IProtoMessage
 }
 
 /// <summary>订阅条目</summary>
-public class GrpcSubscriptionEntry : IProtoMessage
+public class GrpcSubscriptionEntry : ISpanSerializable
 {
     /// <summary>主题</summary>
     public GrpcResource Topic { get; set; }
@@ -1041,7 +1044,7 @@ public class GrpcSubscriptionEntry : IProtoMessage
 
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
-    public void WriteTo(ProtoWriter writer)
+    public void Write(ref SpanWriter writer)
     {
         writer.WriteMessage(1, Topic);
         writer.WriteMessage(2, Expression);
@@ -1049,16 +1052,16 @@ public class GrpcSubscriptionEntry : IProtoMessage
 
     /// <summary>读取</summary>
     /// <param name="reader">解码器</param>
-    public void ReadFrom(ProtoReader reader)
+    public void Read(ref SpanReader reader)
     {
-        while (!reader.IsEnd)
+        while (reader.Available > 0)
         {
             var (fn, wt) = reader.ReadTag();
             if (fn == 0) break;
             switch (fn)
             {
-                case 1: Topic = reader.ReadMessage<GrpcResource>(); break;
-                case 2: Expression = reader.ReadMessage<GrpcFilterExpression>(); break;
+                case 1: Topic = reader.ReadProtoMessage<GrpcResource>(); break;
+                case 2: Expression = reader.ReadProtoMessage<GrpcFilterExpression>(); break;
                 default: reader.SkipField(wt); break;
             }
         }

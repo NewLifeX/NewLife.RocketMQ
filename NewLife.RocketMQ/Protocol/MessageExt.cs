@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using NewLife.Buffers;
 using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Serialization;
@@ -6,6 +7,16 @@ using NewLife.Serialization;
 namespace NewLife.RocketMQ.Protocol;
 
 /// <summary>消息扩展</summary>
+/// <remarks>
+/// RocketMQ 消息二进制格式（大端序）：
+/// StoreSize(4) + MagicCode(4) + BodyCRC(4) + QueueId(4) + Flag(4) +
+/// QueueOffset(8) + CommitLogOffset(8) + SysFlag(4) + BornTimestamp(8) +
+/// BornHost(4/16+4) + StoreTimestamp(8) + StoreHost(4/16+4) +
+/// ReconsumeTimes(4) + PreparedTransactionOffset(8) +
+/// BodyLength(4) + Body + TopicLength(1) + Topic +
+/// PropertiesLength(2) + Properties
+/// 使用 SpanReader 进行高性能解码。
+/// </remarks>
 public class MessageExt : Message, IAccessor
 {
     #region 属性
@@ -56,48 +67,45 @@ public class MessageExt : Message, IAccessor
     #endregion
 
     #region 读写
-    /// <summary>从数据流中读取</summary>
-    /// <param name="stream"></param>
-    /// <param name="context"></param>
+    /// <summary>从SpanReader中读取消息</summary>
+    /// <param name="reader">SpanReader引用</param>
     /// <returns></returns>
-    public Boolean Read(Stream stream, Object context = null)
+    public Boolean Read(ref SpanReader reader)
     {
-        var bn = context as Binary;
-
         // 读取
-        StoreSize = bn.Read<Int32>();
+        StoreSize = reader.ReadInt32();
         if (StoreSize <= 0) return false;
 
-        var n = bn.Read<Int32>();
-        BodyCRC = bn.Read<Int32>();
-        QueueId = bn.Read<Int32>();
-        Flag = bn.Read<Int32>();
-        QueueOffset = bn.Read<Int64>();
-        CommitLogOffset = bn.Read<Int64>();
-        SysFlag = bn.Read<Int32>();
+        var n = reader.ReadInt32(); // MagicCode
+        BodyCRC = reader.ReadInt32();
+        QueueId = reader.ReadInt32();
+        Flag = reader.ReadInt32();
+        QueueOffset = reader.ReadInt64();
+        CommitLogOffset = reader.ReadInt64();
+        SysFlag = reader.ReadInt32();
 
         // SysFlag第2位(0x04)标识IPv6地址。IPv4=4字节，IPv6=16字节
         var isIPv6 = (SysFlag & 4) != 0;
         var ipLen = isIPv6 ? 16 : 4;
 
-        BornTimestamp = bn.Read<Int64>();
-        var buf = bn.ReadBytes(ipLen);
+        BornTimestamp = reader.ReadInt64();
+        var buf = reader.ReadBytes(ipLen).ToArray();
         var ip = new IPAddress(buf);
-        var port = bn.Read<Int32>();
+        var port = reader.ReadInt32();
         BornHost = $"{ip}:{port}";
 
-        StoreTimestamp = bn.Read<Int64>();
-        var buf2 = bn.ReadBytes(ipLen);
+        StoreTimestamp = reader.ReadInt64();
+        var buf2 = reader.ReadBytes(ipLen).ToArray();
         var ip2 = new IPAddress(buf2);
-        var port2 = bn.Read<Int32>();
+        var port2 = reader.ReadInt32();
         StoreHost = $"{ip2}:{port2}";
 
-        ReconsumeTimes = bn.Read<Int32>();
-        PreparedTransactionOffset = bn.Read<Int64>();
+        ReconsumeTimes = reader.ReadInt32();
+        PreparedTransactionOffset = reader.ReadInt64();
 
         // 主体
-        var len = bn.Read<Int32>();
-        Body = bn.ReadBytes(len);
+        var len = reader.ReadInt32();
+        Body = reader.ReadBytes(len).ToArray();
         if ((SysFlag & 1) == 1)
         {
             /*uncompress*/
@@ -108,43 +116,60 @@ public class MessageExt : Message, IAccessor
         }
 
         // 主题
-        len = bn.Read<Byte>();
-        Topic = bn.ReadBytes(len).ToStr();
+        len = reader.ReadByte();
+        Topic = reader.ReadBytes(len).ToArray().ToStr();
 
-        var len2 = bn.Read<Int16>();
-        var str = bn.ReadBytes(len2).ToStr();
+        var len2 = reader.ReadInt16();
+        var str = reader.ReadBytes(len2).ToArray().ToStr();
         ParseProperties(str);
 
         // MsgId：IPv4为16字节(4+4+8)，IPv6为28字节(16+4+8)
-        var ms = Pool.MemoryStream.Get();
-        ms.Write(buf);
-        ms.Write(port.GetBytes(false));
-        ms.Write(CommitLogOffset.GetBytes(false));
-
         var idLen = isIPv6 ? 28 : 16;
-        MsgId = ms.Return(true).ToHex(0, idLen);
+        var idBuf = new Byte[idLen];
+        var idWriter = new SpanWriter(idBuf) { IsLittleEndian = false };
+        idWriter.Write(buf);
+        idWriter.Write(port);
+        idWriter.Write(CommitLogOffset);
+        MsgId = idBuf.ToHex(0, idLen);
 
         return true;
     }
 
+    /// <summary>从数据流中读取（向后兼容）</summary>
+    /// <param name="stream">数据流</param>
+    /// <param name="context">上下文</param>
+    /// <returns></returns>
+    public Boolean Read(Stream stream, Object context = null)
+    {
+        // 读取剩余数据到缓冲区
+        var remaining = (Int32)(stream.Length - stream.Position);
+        if (remaining <= 0) return false;
+
+        var buf = new Byte[remaining];
+        var n = stream.Read(buf, 0, remaining);
+
+        var reader = new SpanReader(buf, 0, n) { IsLittleEndian = false };
+        var rs = Read(ref reader);
+
+        // 将流位置设置到实际读取位置
+        stream.Position = stream.Length - remaining + reader.Position;
+
+        return rs;
+    }
+
     /// <summary>读取所有消息</summary>
-    /// <param name="body"></param>
+    /// <param name="body">消息数据包</param>
     /// <returns></returns>
     public static IList<MessageExt> ReadAll(IPacket body)
     {
-        //var ms = new MemoryStream(body);
-        var ms = body.GetStream();
-        var bn = new Binary
-        {
-            Stream = ms,
-            IsLittleEndian = false,
-        };
+        var buf = body.ReadBytes();
+        var reader = new SpanReader(buf) { IsLittleEndian = false };
 
         var list = new List<MessageExt>();
-        while (ms.Position < ms.Length)
+        while (reader.FreeCapacity > 0)
         {
             var msg = new MessageExt();
-            if (!msg.Read(ms, bn)) break;
+            if (!msg.Read(ref reader)) break;
 
             // SysFlag第4位(0x10)标识批量消息，Body内嵌多条子消息
             if ((msg.SysFlag & 0x10) != 0 && msg.Body != null && msg.Body.Length > 0)
@@ -170,10 +195,9 @@ public class MessageExt : Message, IAccessor
         if (parent.Body == null || parent.Body.Length == 0) return [];
 
         var list = new List<MessageExt>();
-        var ms = new MemoryStream(parent.Body);
-        var bn = new Binary { Stream = ms, IsLittleEndian = false };
+        var reader = new SpanReader(parent.Body) { IsLittleEndian = false };
 
-        while (ms.Position < ms.Length)
+        while (reader.FreeCapacity > 0)
         {
             try
             {
@@ -185,21 +209,21 @@ public class MessageExt : Message, IAccessor
                 // 4字节 Body长度 + Body
                 // 1字节 Topic长度 + Topic
                 // 2字节 Properties长度 + Properties
-                var totalSize = bn.Read<Int32>();
+                var totalSize = reader.ReadInt32();
                 if (totalSize <= 0) break;
 
-                var magicCode = bn.Read<Int32>();
-                var bodyCrc = bn.Read<Int32>();
-                var flag = bn.Read<Int32>();
+                var magicCode = reader.ReadInt32();
+                var bodyCrc = reader.ReadInt32();
+                var flag = reader.ReadInt32();
 
-                var bodyLen = bn.Read<Int32>();
-                var body = bn.ReadBytes(bodyLen);
+                var bodyLen = reader.ReadInt32();
+                var body = reader.ReadBytes(bodyLen).ToArray();
 
-                var topicLen = bn.Read<Byte>();
-                var topic = bn.ReadBytes(topicLen).ToStr();
+                var topicLen = reader.ReadByte();
+                var topic = reader.ReadBytes(topicLen).ToArray().ToStr();
 
-                var propsLen = bn.Read<Int16>();
-                var propsStr = propsLen > 0 ? bn.ReadBytes(propsLen).ToStr() : "";
+                var propsLen = reader.ReadInt16();
+                var propsStr = propsLen > 0 ? reader.ReadBytes(propsLen).ToArray().ToStr() : "";
 
                 var sub = new MessageExt
                 {
@@ -236,8 +260,8 @@ public class MessageExt : Message, IAccessor
     }
 
     /// <summary>写入命令到数据流</summary>
-    /// <param name="stream"></param>
-    /// <param name="context"></param>
+    /// <param name="stream">数据流</param>
+    /// <param name="context">上下文</param>
     /// <returns></returns>
     public Boolean Write(Stream stream, Object context = null) => true;
     #endregion
@@ -252,33 +276,34 @@ public class MessageExt : Message, IAccessor
     public static String CreateMessageId5x(Byte version, Byte[] macBytes, Int32 processId, Int32 counter)
     {
         // 格式：01 + 1字节Version + 6字节MAC + 4字节PID + 4字节Counter = 16字节 = 32 hex + 前缀"01" = 34 hex
-        var ms = Pool.MemoryStream.Get();
+        var buf = new Byte[16];
+        var writer = new SpanWriter(buf) { IsLittleEndian = false };
 
         // 固定前缀 01
-        ms.WriteByte(0x01);
+        writer.Write((Byte)0x01);
 
         // 版本
-        ms.WriteByte(version);
+        writer.Write(version);
 
         // MAC地址（6字节）
         if (macBytes == null || macBytes.Length < 6)
         {
             var rand = new Byte[6];
             new Random().NextBytes(rand);
-            ms.Write(rand, 0, 6);
+            writer.Write(rand);
         }
         else
         {
-            ms.Write(macBytes, 0, 6);
+            writer.Write(new ReadOnlySpan<Byte>(macBytes, 0, 6));
         }
 
         // 进程ID（4字节，大端序）
-        ms.Write(processId.GetBytes(false), 0, 4);
+        writer.Write(processId);
 
         // 计数器（4字节，大端序）
-        ms.Write(counter.GetBytes(false), 0, 4);
+        writer.Write(counter);
 
-        return ms.Return(true).ToHex(0, 16);
+        return buf.ToHex(0, 16);
     }
 
     /// <summary>尝试解析5.x格式的MessageId</summary>
@@ -305,14 +330,16 @@ public class MessageExt : Message, IAccessor
             var bytes = messageId.ToHex();
             if (bytes == null || bytes.Length != 16) return false;
 
-            // bytes[0] = 0x01（前缀）
-            version = bytes[1];
-            macBytes = new Byte[6];
-            Array.Copy(bytes, 2, macBytes, 0, 6);
+            var reader = new SpanReader(bytes) { IsLittleEndian = false };
+
+            // bytes[0] = 0x01（前缀），跳过
+            reader.ReadByte();
+            version = reader.ReadByte();
+            macBytes = reader.ReadBytes(6).ToArray();
 
             // 大端序
-            processId = (bytes[8] << 24) | (bytes[9] << 16) | (bytes[10] << 8) | bytes[11];
-            counter = (bytes[12] << 24) | (bytes[13] << 16) | (bytes[14] << 8) | bytes[15];
+            processId = reader.ReadInt32();
+            counter = reader.ReadInt32();
 
             return true;
         }
