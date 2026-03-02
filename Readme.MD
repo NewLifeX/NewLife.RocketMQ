@@ -6,92 +6,48 @@
 ![Nuget](https://img.shields.io/nuget/v/newlife.rocketmq?logo=nuget)
 ![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/newlife.rocketmq?label=dev%20nuget&logo=nuget)
 
-**纯托管企业级 RocketMQ 客户端**，支持 `.NET Framework 4.5+` / `.NET Standard 2.0+` / `.NET Core` / `.NET 5+`。
-
-**完全使用 C# 实现，零外部依赖（无需 Java、gRPC、Protobuf 第三方库）**
-
----
-
-## 🎯 产品定位
-
-NewLife.RocketMQ 是新生命团队开发的**企业级纯托管 RocketMQ 客户端**，专为 .NET 生态设计：
-
-- ✅ **双协议支持**：同时支持 RocketMQ Remoting 协议（4.x）和 gRPC Proxy 协议（5.x）
-- ✅ **零外部依赖**：纯 C# 实现，无需 Java 或 gRPC 运行时，内置轻量级 Protobuf 编解码器
-- ✅ **多云适配**：统一接口适配阿里云、华为云、腾讯云及 Apache ACL 认证体系
-- ✅ **生产就绪**：完整的消费重试、死信队列、事务回查、顺序消费等企业级特性
-- ✅ **高性能**：VIP 通道、连接池、消息压缩、并发控制等性能优化手段
-
-**支持 Apache RocketMQ 4.0+ 和 5.x 版本**
+**纯托管企业级 RocketMQ 客户端**，支持 `.NET Framework 4.5+` / `.NET Standard 2.0+` / `.NET Core` / `.NET 5+`。  
+**完全使用 C# 实现，零外部依赖（无需 Java、gRPC、Protobuf 第三方库）。**
 
 ---
 
-## 🚀 核心特性
+## 产品简介
 
-### 生产者（Producer）
-- ✅ 同步/异步/单向发送
-- ✅ 批量消息发送
-- ✅ 延迟消息（18级定时 + 任意时间延迟）
-- ✅ 事务消息（半消息 + 事务回查）
-- ✅ 顺序消息
-- ✅ Request-Reply 模式
-- ✅ 消息压缩（ZLIB）
-- ✅ 消息轨迹追踪
+NewLife.RocketMQ 是新生命团队开发的**企业级纯托管 RocketMQ 客户端**，专为 .NET 生态设计。它同时支持 RocketMQ **Remoting 协议（4.x/5.x Broker）** 和 **gRPC Proxy 协议（5.x Proxy）**，覆盖生产者、消费者全部核心功能及企业级特性，统一适配阿里云、华为云、腾讯云及 Apache ACL 认证体系。
 
-### 消费者（Consumer）
-- ✅ Pull 模式消费
-- ✅ 集群消费 / 广播消费
-- ✅ 消费者负载均衡（Rebalance）
-- ✅ Tag 过滤 / SQL92 表达式过滤
-- ✅ 多 Topic 订阅
-- ✅ 消费重试 + 死信队列（DLQ）
-- ✅ 顺序消费（队列锁定）
-- ✅ Pop 消费模式
-- ✅ 消费限流（并发控制）
-- ✅ 按时间戳消费
+**核心优势**：
 
-### 管理功能
-- ✅ Topic 创建/更新/删除
-- ✅ 消费组创建/更新/删除
-- ✅ 消息查询（按 ID / 按 Key）
-- ✅ 消费统计查询
-- ✅ 集群信息查询
-- ✅ 偏移量管理与重置
-
-### 云厂商适配
-- ✅ 阿里云消息队列 RocketMQ（实例 ID 路由 + HTTP NameServer 发现）
-- ✅ 华为云 DMS for RocketMQ（SSL/TLS + 实例 ID 路由）
-- ✅ 腾讯云 TDMQ RocketMQ（Namespace 前缀路由）
-- ✅ Apache RocketMQ ACL 认证（HMAC-SHA1 签名）
-
-### 协议支持
-- ✅ **Remoting 协议**（RocketMQ 4.x/5.x Broker）：成熟稳定，功能完整
-- ✅ **gRPC Proxy 协议**（RocketMQ 5.x Proxy）：内置 Protobuf 编解码器，支持任意时间延迟消息
+| 特性 | 说明 |
+|------|------|
+| **双协议支持** | Remoting（4.x 成熟稳定）+ gRPC（5.x 面向未来），自动路由 |
+| **零外部依赖** | 内置 Protobuf 编解码器（ProtoWriter/ProtoReader），无需 Java 或 gRPC 运行时 |
+| **多云适配** | 统一 `ICloudProvider` 接口，已内置阿里云/华为云/腾讯云/Apache ACL 四家适配器 |
+| **生产就绪** | 消费重试、死信队列、事务回查、顺序消费、Pop 消费等企业级特性完整支持 |
+| **最广框架覆盖** | .NET Framework 4.5+ 到 .NET 10，gRPC 功能在 .NET Standard 2.1+ 可用 |
+| **高性能** | 基于 NewLife.Net 高性能网络层，连接复用、VIP 通道、消息压缩、并发控制 |
 
 ---
 
-## 📦 安装
+## 安装
 
-### NuGet 包管理器
 ```powershell
+# NuGet 包管理器
 Install-Package NewLife.RocketMQ
-```
 
-### .NET CLI
-```bash
+# .NET CLI
 dotnet add package NewLife.RocketMQ
 ```
 
-### PackageReference
 ```xml
+<!-- PackageReference -->
 <PackageReference Include="NewLife.RocketMQ" Version="3.0.*" />
 ```
 
 ---
 
-## 🔧 快速开始
+## 快速入门
 
-### 1. 生产者发送消息
+### 发送消息
 
 ```csharp
 using NewLife.RocketMQ;
@@ -102,7 +58,6 @@ var producer = new Producer
     NameServerAddress = "127.0.0.1:9876",
     Group = "producer_group"
 };
-
 producer.Start();
 
 // 同步发送
@@ -116,11 +71,9 @@ await producer.PublishAsync("异步消息");
 await producer.PublishBatch(new[] { "消息1", "消息2", "消息3" });
 ```
 
-### 2. 消费者接收消息
+### 消费消息
 
 ```csharp
-using NewLife.RocketMQ;
-
 var consumer = new Consumer
 {
     Topic = "test_topic",
@@ -138,22 +91,20 @@ consumer.OnConsume = (q, messages) =>
 };
 
 consumer.Start();
-Console.WriteLine("按任意键退出...");
-Console.ReadKey();
 ```
 
-### 3. 延迟消息
+### 延迟消息
 
 ```csharp
-// 使用预设延迟等级（18级）
+// 18 级预设延迟
 producer.PublishDelay("延迟消息", DelayTimeLevels.s30);
 
-// gRPC 模式支持任意时间延迟
+// gRPC 模式支持任意时间延迟（需 netstandard2.1+）
 producer.GrpcProxyAddress = "http://127.0.0.1:8081";
 await producer.PublishDelayViaGrpcAsync("任意延迟", DateTime.Now.AddMinutes(30));
 ```
 
-### 4. 事务消息
+### 事务消息
 
 ```csharp
 var producer = new Producer
@@ -163,106 +114,137 @@ var producer = new Producer
     NameServerAddress = "127.0.0.1:9876"
 };
 
-// 设置事务回查回调
+// 事务回查回调
 producer.OnCheckTransaction = (msg, transactionId) =>
 {
-    // 根据 transactionId 查询本地事务状态
     var success = CheckLocalTransaction(transactionId);
     return success ? TransactionState.Commit : TransactionState.Rollback;
 };
-
 producer.Start();
 
-// 发送半消息
+// 发送半消息 → 执行本地事务 → 提交/回滚
 var sendResult = producer.PublishTransaction("订单创建");
-
 try
 {
-    // 执行本地事务
     ExecuteLocalTransaction(sendResult.TransactionId);
-    
-    // 提交事务
     producer.EndTransaction(sendResult, TransactionState.Commit);
 }
 catch
 {
-    // 回滚事务
     producer.EndTransaction(sendResult, TransactionState.Rollback);
 }
 ```
 
-### 5. Request-Reply 模式
+### 顺序消息
 
-**生产者端：**
 ```csharp
-var producer = new Producer
-{
-    Topic = "request_topic",
-    NameServerAddress = "127.0.0.1:9876"
-};
-producer.Start();
+// 相同 key 的消息进入同一队列
+var queue = producer.SelectQueue("order_123");
+producer.Publish("顺序消息1", queue);
+producer.Publish("顺序消息2", queue);
 
-// 同步请求（等待响应）
-var response = producer.Request("请求消息", timeout: 5000);
-Console.WriteLine($"收到响应: {response.BodyString}");
-
-// 异步请求
-var reply = await producer.RequestAsync("异步请求", timeout: 5000);
+// 消费端启用顺序消费
+consumer.OrderConsume = true;
 ```
 
-**消费者端：**
+### Request-Reply 模式
+
+```csharp
+// 生产者发送请求（同步/异步）
+var response = producer.Request("请求消息", timeout: 5000);
+var reply = await producer.RequestAsync("异步请求", timeout: 5000);
+
+// 消费者回复
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        if (!String.IsNullOrEmpty(msg.CorrelationId))
+            consumer.SendReply(msg, "处理结果");
+    }
+    return true;
+};
+```
+
+---
+
+## 消费者高级特性
+
+### 消费重试与死信队列
+
 ```csharp
 var consumer = new Consumer
 {
-    Topic = "request_topic",
-    Group = "request_group",
-    NameServerAddress = "127.0.0.1:9876"
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    EnableRetry = true,           // 启用消费重试
+    MaxReconsumeTimes = 3         // 最大重试次数，超过进入 %DLQ% 死信队列
 };
 
 consumer.OnConsume = (q, messages) =>
 {
     foreach (var msg in messages)
     {
-        if (!String.IsNullOrEmpty(msg.CorrelationId))
-        {
-            // 处理请求并发送响应
-            var result = ProcessRequest(msg.BodyString);
-            consumer.SendReply(msg, result);
-        }
+        try { ProcessMessage(msg); }
+        catch { return false; } // 返回 false 触发重试
     }
     return true;
 };
-
-consumer.Start();
 ```
 
-### 6. 顺序消息
+### Tag / SQL92 过滤
 
 ```csharp
-// 发送顺序消息（相同 key 的消息进入同一队列）
-var queue = producer.SelectQueue("order_123");
-producer.Publish("顺序消息1", queue);
-producer.Publish("顺序消息2", queue);
+// Tag 过滤
+consumer.Tags = "TagA || TagB";
 
-// 消费端启用顺序消费
-var consumer = new Consumer
+// SQL92 表达式过滤
+consumer.ExpressionType = "SQL92";
+consumer.Subscription = "age > 18 AND city = 'Shanghai'";
+```
+
+### 多 Topic 订阅
+
+```csharp
+consumer.Topics = "topic1;topic2;topic3";
+```
+
+### Pop 消费模式
+
+```csharp
+// Pop 消费（手动确认）
+var messages = await consumer.PopMessageAsync(timeout: 10000);
+foreach (var msg in messages)
 {
-    Topic = "test_topic",
-    Group = "consumer_group",
-    NameServerAddress = "127.0.0.1:9876",
-    OrderConsume = true  // 启用顺序消费
-};
+    try
+    {
+        ProcessMessage(msg);
+        await consumer.AckMessageAsync(msg);
+    }
+    catch
+    {
+        await consumer.ChangeInvisibleTimeAsync(msg, 30000); // 延长处理时间
+    }
+}
+```
+
+### 消费限流 / VIP 通道 / 消息压缩
+
+```csharp
+consumer.MaxConcurrentConsume = 10; // 最多同时处理 10 条消息
+
+producer.VipChannelEnabled = true;  // 启用 VIP 通道（BrokerPort - 2）
+producer.CompressOverBytes = 4096;  // 消息体超过 4KB 自动 ZLIB 压缩
 ```
 
 ---
 
-## 🌩️ 云厂商接入
+## 云厂商接入
 
 ### 阿里云消息队列 RocketMQ
 
 ```csharp
-using NewLife.RocketMQ;
-
 var producer = new Producer
 {
     Topic = "test_topic",
@@ -274,7 +256,6 @@ var producer = new Producer
         InstanceId = "MQ_INST_xxx"  // 可选，自动从地址解析
     }
 };
-producer.Start();
 ```
 
 ### 华为云 DMS for RocketMQ
@@ -289,10 +270,9 @@ var producer = new Producer
         AccessKey = "你的AK",
         SecretKey = "你的SK",
         InstanceId = "实例ID",
-        EnableSsl = true  // 启用SSL加密
+        EnableSsl = true
     }
 };
-producer.Start();
 ```
 
 ### 腾讯云 TDMQ RocketMQ
@@ -309,7 +289,6 @@ var producer = new Producer
         Namespace = "命名空间"
     }
 };
-producer.Start();
 ```
 
 ### Apache RocketMQ ACL 认证
@@ -325,182 +304,11 @@ var producer = new Producer
         SecretKey = "RocketMQ SecretKey"
     }
 };
-producer.Start();
 ```
 
 ---
 
-## 🎓 进阶使用
-
-### 消费重试与死信队列
-
-```csharp
-var consumer = new Consumer
-{
-    Topic = "test_topic",
-    Group = "consumer_group",
-    NameServerAddress = "127.0.0.1:9876",
-    EnableRetry = true,           // 启用消费重试
-    MaxReconsumeTimes = 3         // 最大重试次数
-};
-
-consumer.OnConsume = (q, messages) =>
-{
-    foreach (var msg in messages)
-    {
-        try
-        {
-            ProcessMessage(msg);
-        }
-        catch
-        {
-            // 返回 false 触发重试
-            return false;
-        }
-    }
-    return true;
-};
-
-// 超过最大重试次数后，消息自动进入死信队列：%DLQ%{ConsumerGroup}
-```
-
-### Tag 过滤
-
-```csharp
-// 生产者发送带 Tag 的消息
-producer.Publish("消息内容", tag: "TagA");
-
-// 消费者订阅指定 Tag
-var consumer = new Consumer
-{
-    Topic = "test_topic",
-    Group = "consumer_group",
-    Tags = "TagA || TagB",  // 订阅 TagA 或 TagB
-    NameServerAddress = "127.0.0.1:9876"
-};
-```
-
-### SQL92 表达式过滤
-
-```csharp
-// 生产者发送带自定义属性的消息
-var msg = new Message
-{
-    BodyString = "消息内容",
-    ["age"] = "25",
-    ["city"] = "Shanghai"
-};
-producer.Publish(msg);
-
-// 消费者使用 SQL92 表达式过滤
-var consumer = new Consumer
-{
-    Topic = "test_topic",
-    Group = "consumer_group",
-    ExpressionType = "SQL92",
-    Subscription = "age > 18 AND city = 'Shanghai'",
-    NameServerAddress = "127.0.0.1:9876"
-};
-```
-
-### 多 Topic 订阅
-
-```csharp
-var consumer = new Consumer
-{
-    Topics = "topic1;topic2;topic3",  // 订阅多个 Topic
-    Group = "consumer_group",
-    NameServerAddress = "127.0.0.1:9876"
-};
-
-consumer.OnConsume = (q, messages) =>
-{
-    foreach (var msg in messages)
-    {
-        Console.WriteLine($"Topic: {msg.Topic}, 消息: {msg.BodyString}");
-    }
-    return true;
-};
-```
-
-### Pop 消费模式
-
-```csharp
-var consumer = new Consumer
-{
-    Topic = "test_topic",
-    Group = "consumer_group",
-    NameServerAddress = "127.0.0.1:9876"
-};
-
-consumer.Start();
-
-// Pop 消费（不自动提交偏移）
-var messages = await consumer.PopMessageAsync(timeout: 10000);
-foreach (var msg in messages)
-{
-    try
-    {
-        ProcessMessage(msg);
-        // 手动确认
-        await consumer.AckMessageAsync(msg);
-    }
-    catch
-    {
-        // 修改不可见时间（延长处理时间）
-        await consumer.ChangeInvisibleTimeAsync(msg, 30000);
-    }
-}
-```
-
-### VIP 通道
-
-```csharp
-var producer = new Producer
-{
-    Topic = "test_topic",
-    NameServerAddress = "127.0.0.1:9876",
-    VipChannelEnabled = true  // 启用 VIP 通道（使用 BrokerPort - 2）
-};
-```
-
-### 消息压缩
-
-```csharp
-var producer = new Producer
-{
-    Topic = "test_topic",
-    NameServerAddress = "127.0.0.1:9876",
-    CompressOverBytes = 4096  // 消息体超过 4KB 自动 ZLIB 压缩
-};
-```
-
-### 消费限流
-
-```csharp
-var consumer = new Consumer
-{
-    Topic = "test_topic",
-    Group = "consumer_group",
-    NameServerAddress = "127.0.0.1:9876",
-    MaxConcurrentConsume = 10  // 最多同时处理 10 条消息
-};
-```
-
----
-
-## 📚 文档
-
-- [架构设计文档](Doc/架构设计.md)
-- [功能分析与兼容性报告](Doc/NewLife.RocketMQ功能分析与兼容性报告.md)
-- [Request-Reply 使用指南](Doc/RequestReply_Guide.md)
-- [在线教程](https://newlifex.com/core/rocketmq)
-
----
-
-## 🏗️ 架构特点
-
-### 双协议架构
+## 架构总览
 
 ```
 MqBase (业务基类)
@@ -509,53 +317,98 @@ MqBase (业务基类)
 
 通信层
 ├── Remoting 协议（4.x/5.x Broker）
-│   ├── ClusterClient (TCP 长连接)
-│   ├── NameClient (路由发现)
+│   ├── ClusterClient (TCP 长连接，Opaque 复用)
+│   ├── NameClient (路由发现，30s 轮询)
 │   └── BrokerClient (心跳/注销)
 │
 └── gRPC 协议（5.x Proxy，netstandard2.1+）
-    ├── GrpcClient (HTTP/2 客户端)
+    ├── GrpcClient (HTTP/2，Unary + Server Streaming)
     ├── GrpcMessagingService (11 个 RPC 方法)
-    └── ProtoWriter/ProtoReader (自研 Protobuf 编解码器)
+    └── ProtoWriter/ProtoReader (自研 Protobuf 编解码)
+
+云厂商适配层
+├── AliyunProvider  (阿里云：实例ID路由 + HTTP NameServer)
+├── HuaweiProvider  (华为云：SSL/TLS + 实例ID路由)
+├── TencentProvider (腾讯云：Namespace 前缀路由)
+└── AclProvider     (Apache ACL：HMAC-SHA1 签名)
 ```
 
-### 云厂商适配层
-
-```
-ICloudProvider (统一云厂商接口)
-├── AliyunProvider (阿里云)
-├── HuaweiProvider (华为云)
-├── TencentProvider (腾讯云)
-└── AclProvider (Apache ACL)
-```
+详见 [架构设计文档](Doc/NewLife.RocketMQ架构.md)、[需求文档](Doc/NewLife.RocketMQ需求.md)。
 
 ---
 
-## 🔬 测试覆盖
+## 功能特性一览
 
-30+ 测试类覆盖核心功能：
+### 生产者
 
-- ✅ **核心功能**：ProducerTests、ConsumerTests、CommandTests、MessageTests
-- ✅ **高级特性**：TransactionCheckTests、BatchMessageTests、RetryTests、OrderConsumeTests
-- ✅ **协议兼容**：IPv6Tests、MessageId5xTests、MQVersionTests、ProtoTests
-- ✅ **云厂商**：AliyunTests、CloudProviderTests
-- ✅ **性能优化**：CompressionTests、ConcurrentConsumeTests、VipChannelTests
+| 功能 | 状态 | 说明 |
+|------|:----:|------|
+| 同步/异步/单向发送 | ✅ | Publish / PublishAsync / PublishOneway |
+| 批量消息发送 | ✅ | PublishBatch，合并多条消息为一个请求 |
+| 延迟消息 | ✅ | 18 级预设 + gRPC 任意时间延迟 |
+| 事务消息 | ✅ | 半消息 + 提交/回滚 + 回查回调 |
+| 顺序消息 | ✅ | 指定 MessageQueue 发送 |
+| Request-Reply | ✅ | 同步/异步请求回复 |
+| 消息压缩 | ✅ | CompressOverBytes 阈值自动 ZLIB |
+| 消息轨迹 | ✅ | AsyncTraceDispatcher + MessageTraceHook |
+
+### 消费者
+
+| 功能 | 状态 | 说明 |
+|------|:----:|------|
+| Pull 消费 / 消费调度 | ✅ | 长轮询拉取，自动分配队列 |
+| 集群消费 / 广播消费 | ✅ | Rebalance 平均分配 / 本地偏移持久化 |
+| Tag / SQL92 过滤 | ✅ | 表达式过滤 |
+| 多 Topic 订阅 | ✅ | Topics 属性，按 Topic 分别 Rebalance |
+| 消费重试 + 死信队列 | ✅ | EnableRetry + MaxReconsumeTimes |
+| 顺序消费 | ✅ | 队列锁定（OrderConsume） |
+| Pop 消费 | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
+| 消费限流 | ✅ | MaxConcurrentConsume 信号量控制 |
+
+### 管理与运维
+
+| 功能 | 状态 | 说明 |
+|------|:----:|------|
+| Topic/消费组 CRUD | ✅ | 创建/更新/删除 |
+| 消息查询 | ✅ | 按 ID / 按 Key |
+| 消费统计 / 集群信息 | ✅ | GetConsumeStats / GetClusterInfo |
+| 偏移量管理与重置 | ✅ | 查询/更新/重置 |
+
+### 协议与兼容性
+
+| 服务端版本 | Remoting | gRPC | 说明 |
+|-----------|:--------:|:----:|------|
+| RocketMQ 4.0 ~ 4.9 | ✅ | — | 完全兼容 |
+| RocketMQ 5.x（Broker） | ✅ | — | Remoting 向后兼容 |
+| RocketMQ 5.x（Proxy） | — | ✅ | 通过 GrpcProxyAddress 启用 |
+| 阿里云 4.x | ✅ | — | AliyunProvider 适配 |
+| 华为云 DMS | ✅ | — | HuaweiProvider 适配 |
+| 腾讯云 TDMQ | ✅ | — | TencentProvider 适配 |
 
 ---
 
-## 📊 性能优势
+## 与竞品对比
 
-| 特性 | NewLife.RocketMQ | 官方 Java 客户端 |
-|------|:----------------:|:---------------:|
-| 部署复杂度 | ✅ 单一 DLL，零依赖 | ⚠️ 需要 JRE 环境 |
-| 跨平台 | ✅ .NET Framework 4.5+ ~ .NET 10 | ✅ 需要对应平台 JRE |
-| 功能完整度 | ✅ 4.x 核心功能 100%，5.x 90% | ✅ 100% |
-| 性能 | ✅ 高性能（.NET 原生优化） | ✅ 高性能 |
-| gRPC 支持 | ✅ 自研编解码器，零依赖 | ⚠️ 依赖 gRPC 库 |
+| 维度 | NewLife.RocketMQ | Apache rocketmq-client-csharp | 官方 Java 客户端 |
+|------|:----------------:|:---------------------------:|:----------------:|
+| 协议支持 | Remoting + gRPC | 仅 gRPC | Remoting + gRPC |
+| 4.x 兼容 | ✅ | ❌ | ✅ |
+| 外部依赖 | **零依赖** | Google.Protobuf / Grpc.Net 等 | 多个依赖 |
+| .NET Framework | ✅ 4.5+ | ❌ | N/A（Java） |
+| 多云适配 | ✅ 内置四家 | ❌ | ❌ |
+| 事务/重试/死信 | ✅ 完整 | ✅ | ✅ |
+| 管理 API | ✅ 完整 | ❌ | ✅ |
+| 维护活跃度 | ✅ 持续维护 | ⚠️ 更新较慢 | ✅ 官方维护 |
 
 ---
 
-## 🤝 参与贡献
+## 测试覆盖
+
+30+ 测试类（xUnit），覆盖核心功能、高级特性、协议兼容、云厂商适配、性能优化等场景。
+
+---
+
+## 参与贡献
 
 欢迎提交 Issue 和 Pull Request！
 
@@ -567,7 +420,7 @@ ICloudProvider (统一云厂商接口)
 
 ---
 
-## 📄 许可协议
+## 许可协议
 
 本项目采用 [MIT License](LICENSE) 开源协议。
 
