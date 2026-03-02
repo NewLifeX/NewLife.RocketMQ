@@ -35,22 +35,18 @@ class MqCodec : MessageCodec<Command>
     /// <param name="context"></param>
     /// <param name="pk"></param>
     /// <returns></returns>
-    protected override IList<Command> Decode(IHandlerContext context, IPacket pk)
+    protected override IEnumerable<Command> Decode(IHandlerContext context, IPacket pk)
     {
         var ss = context.Owner as IExtend;
         if (ss["Codec"] is not PacketCodec pc)
             ss["Codec"] = pc = new PacketCodec { GetLength = p => GetLength(p, 0, -4) };
 
         var pks = pc.Parse(pk);
-        var list = pks.Select(e =>
+        foreach (var e in pks)
         {
             var msg = new Command();
-            if (!msg.Read(e.GetStream())) return null;
-
-            return msg;
-        }).ToList();
-
-        return list;
+            if (msg.Read(e.GetStream())) yield return msg;
+        }
     }
 
     /// <summary>连接关闭时，清空粘包编码器</summary>
