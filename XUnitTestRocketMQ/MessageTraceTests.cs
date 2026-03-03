@@ -14,7 +14,7 @@ namespace XUnitTestRocketMQ
         private const String Group = "TraceTestGroup";
         private const String NameServerAddress = "127.0.0.1:9876";
 
-        [Fact]
+        [Fact(Skip = "需要RocketMQ服务器支持")]
         public void Producer_And_Consumer_With_Trace_Enabled_Should_Work()
         {
             // 使用 ManualResetEvent 来同步测试的完成

@@ -21,7 +21,7 @@ public class AliyunTests
         mq.Log = XTrace.Log;
     }
 
-    [Fact]
+    [Fact(Skip = "需要阿里云RocketMQ服务器支持")]
     public void CreateTopic()
     {
         var mq = new Producer
@@ -38,7 +38,7 @@ public class AliyunTests
         mq.CreateTopic("nx_test", 2);
     }
 
-    [Fact]
+    [Fact(Skip = "需要阿里云RocketMQ服务器支持")]
     static void ProduceTest()
     {
         using var mq = new Producer
@@ -58,7 +58,7 @@ public class AliyunTests
         }
     }
 
-    [Fact]
+    [Fact(Skip = "需要阿里云RocketMQ服务器支持")]
     static async Task ProduceAsyncTest()
     {
         using var mq = new Producer
@@ -79,7 +79,7 @@ public class AliyunTests
     }
 
     private static Consumer _consumer;
-    [Fact]
+    [Fact(Skip = "需要阿里云RocketMQ服务器支持")]
     static void ConsumeTest()
     {
         var consumer = new Consumer

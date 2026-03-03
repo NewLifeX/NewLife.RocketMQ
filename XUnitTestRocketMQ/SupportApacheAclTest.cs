@@ -21,7 +21,7 @@ namespace XUnitTestRocketMQ
 
         private readonly AclOptions _aclOptions = new AclOptions() {AccessKey = "rocketmq2AcKey", SecretKey = "rocketmq2SeKey", OnsChannel = "LOCAL"};
         
-        [Fact]
+        [Fact(Skip = "需要配置ACL的RocketMQ服务器支持")]
         public void CreateTopicTest()
         {
             using var producer = CreateProducerInstance(DefaultSysTopic);
@@ -30,7 +30,7 @@ namespace XUnitTestRocketMQ
             producer.Dispose();
         }
 
-        [Fact]
+        [Fact(Skip = "需要配置ACL的RocketMQ服务器支持")]
         public void PublishMessageTest()
         {
             using var producer = CreateProducerInstance(TestTopic);
@@ -48,7 +48,7 @@ namespace XUnitTestRocketMQ
             producer.Dispose();
         }
 
-        [Fact]
+        [Fact(Skip = "需要配置ACL的RocketMQ服务器支持")]
         public void ConsumeMessageTest()
         {
             using var consumer = CreateConsumerInstance(TestTopic);
