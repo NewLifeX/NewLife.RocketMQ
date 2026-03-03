@@ -183,7 +183,7 @@ public class NameClient : ClusterClient
                     bk.Permission = (Permissions)item["perm"].ToInt();
                     bk.ReadQueueNums = item["readQueueNums"].ToInt();
                     bk.WriteQueueNums = item["writeQueueNums"].ToInt();
-                    bk.TopicSynFlag = item["topicSynFlag"].ToInt();
+                    bk.TopicSynFlag = item["topicSysFlag"].ToInt();
                 }
             }
 
@@ -193,7 +193,8 @@ public class NameClient : ClusterClient
             Brokers = list;
 
             // 缓存每个主题的Broker信息
-            _topicBrokers[topic] = list;
+            if (!String.IsNullOrEmpty(topic))
+                _topicBrokers[topic] = list;
 
             // 结果检查
             if (list.Count == 0)
@@ -209,7 +210,7 @@ public class NameClient : ClusterClient
         }
         catch (ResponseException ex)
         {
-            if (!topic.Equals(MqBase.DefaultTopic) && ResponseCode.TOPIC_NOT_EXIST.Equals(ex.Code))
+            if (!MqBase.DefaultTopic.Equals(topic) && ResponseCode.TOPIC_NOT_EXIST.Equals(ex.Code))
             {
                 WriteLog("未能找到主题[{0}]，将读取默认主题[TBW102]的替代。", topic);
                 var rs = GetRouteInfo(MqBase.DefaultTopic);

@@ -71,7 +71,7 @@ public class MessageTests
 
         var ext = header.GetProperties();
         //Assert.Equal(11, ext.Count);
-        Assert.Equal("WAIT\u0001False\u0002TAGS\u0001Tag1\u0002KEYS\u0001Key1\u0002DELAY\u00012\u0002", ext["i"]);
+        Assert.Equal("TAGS\u0001Tag1\u0002KEYS\u0001Key1\u0002DELAY\u00012\u0002WAIT\u0001False\u0002", ext["i"]);
 
         var broker = new BrokerClient([""]);
         var cmd = broker.CreateCommand(RequestCode.SEND_MESSAGE_V2, null, ext);

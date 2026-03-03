@@ -12,7 +12,7 @@ namespace XUnitTestRocketMQ;
 public class ConsumerTests
 {
     private static Consumer _consumer;
-    [Fact]
+    [Fact(Skip = "需要RocketMQ服务器支持")]
     public static void ConsumeTest()
     {
         var set = BasicTest.GetConfig();

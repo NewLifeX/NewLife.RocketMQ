@@ -25,7 +25,7 @@ public class AliyunIssuesTests
         InstanceId = "MQ_INST_xxxxxxxxxxxx_AXxCwUhm"
     };
 
-    [Fact]
+    [Fact(Skip = "需要阿里云RocketMQ服务器支持")]
     public void ProducerForAliyun_Test()
     {
         var producer = new Producer()
@@ -50,7 +50,7 @@ public class AliyunIssuesTests
         producer.Dispose();
     }
 
-    [Fact]
+    [Fact(Skip = "需要阿里云RocketMQ服务器支持")]
     public void ConsumerForAliyun_Test()
     {
         var consumer = new Consumer()
