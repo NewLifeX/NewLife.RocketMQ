@@ -1,8 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net10.0</TargetFrameworks>
+    <AssemblyTitle>RocketMQ测试程序</AssemblyTitle>
+    <Description>NewLife.RocketMQ 功能测试与示例程序</Description>
     <OutputPath>..\Bin\Test</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>

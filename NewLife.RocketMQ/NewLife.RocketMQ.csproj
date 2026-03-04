@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net45;net461;netstandard2.0;netstandard2.1</TargetFrameworks>
-    <AssemblyTitle>企业级纯托管 RocketMQ 客户端</AssemblyTitle>
-    <Description>纯托管企业级 RocketMQ 客户端，支持 Remoting 协议（4.x）和 gRPC 协议（5.x），零外部依赖（无需 Java、gRPC、Protobuf 第三方库），完整的企业级特性（消费重试、死信队列、事务回查、顺序消费），统一云厂商适配（阿里云、华为云、腾讯云、Apache ACL），十亿级项目验证</Description>
+    <AssemblyTitle>RocketMQ纯托管客户端</AssemblyTitle>
+    <Description>企业级纯托管 RocketMQ 客户端，双协议支持 Remoting 4.x/5.x 和 gRPC 5.x Proxy，零外部依赖，无需 Java、gRPC、Protobuf 第三方库，统一适配阿里云、华为云、腾讯云及 Apache ACL，完整企业级特性（消费重试、死信队列、事务消息、顺序消费、Pop 消费），十亿级项目验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2026 新生命开发团队</Copyright>
     <VersionPrefix>3.0</VersionPrefix>
