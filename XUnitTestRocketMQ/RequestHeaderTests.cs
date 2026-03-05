@@ -164,8 +164,10 @@ public class RequestHeaderTests
 
         var dic = header.GetProperties();
 
-        // 值是原始 Boolean 对象（非字符串）
+        // 值是原始 Boolean 对象（非字符串），且为 true
         Assert.True(dic.ContainsKey("fromTransactionCheck"));
+        var fromTransactionCheck = Assert.IsType<Boolean>(dic["fromTransactionCheck"]);
+        Assert.True(fromTransactionCheck);
     }
     #endregion
 }

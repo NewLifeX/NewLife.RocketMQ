@@ -84,15 +84,16 @@ public class MessageQueueTests
     }
 
     [Fact]
-    [DisplayName("GetHashCode_不同属性通常不同哈希")]
-    public void GetHashCode_DifferentProperties_DifferentHash()
+    [DisplayName("GetHashCode_同一实例多次调用相同哈希")]
+    public void GetHashCode_SameInstance_MultipleCalls_SameHash()
     {
-        var q1 = new MessageQueue { Topic = "test1", BrokerName = "broker-a", QueueId = 0 };
-        var q2 = new MessageQueue { Topic = "test2", BrokerName = "broker-a", QueueId = 0 };
+        var q = new MessageQueue { Topic = "test1", BrokerName = "broker-a", QueueId = 0 };
 
-        // 不同对象的哈希值不保证不同，但通常不同
-        // 这里只验证相同属性哈希一致
-        Assert.Equal(q1.GetHashCode(), q1.GetHashCode());
+        // 同一实例在一次执行过程中多次调用 GetHashCode，结果应保持一致
+        var h1 = q.GetHashCode();
+        var h2 = q.GetHashCode();
+
+        Assert.Equal(h1, h2);
     }
 
     [Fact]
@@ -105,11 +106,11 @@ public class MessageQueueTests
         var dict = new Dictionary<MessageQueue, String>();
         dict[q1] = "value";
 
-        // q2 与 q1 相等，应能查到
-        // 注意：Dictionary 使用 GetHashCode + Equals
-        // MessageQueue.Equals 返回 true 但默认 Dictionary 用引用比较
-        // 除非重写了 Equals 和 GetHashCode
-        Assert.True(dict.ContainsKey(q1));
+        // q2 与 q1 属性相同且相等，应能作为键查到
+        // 注意：Dictionary 使用 GetHashCode + Equals 处理键的相等性
+        // 前提是 MessageQueue 正确重写了 Equals 和 GetHashCode
+        Assert.True(dict.ContainsKey(q2));
+        Assert.Equal("value", dict[q2]);
     }
     #endregion
 

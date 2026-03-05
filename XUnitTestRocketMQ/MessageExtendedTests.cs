@@ -210,6 +210,7 @@ public class MessageExtendedTests
         var props = msg.GetProperties();
 
         Assert.NotNull(props);
+        Assert.Equal(String.Empty, props);
     }
     #endregion
 
