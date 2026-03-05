@@ -65,7 +65,7 @@ public class ModelTests
     public void ConsumeEventArgs_PropertiesCanBeSet()
     {
         var mq = new MessageQueue { BrokerName = "b1", QueueId = 0 };
-        var msgs = new MessageExt[] { new() { Topic = "t1" } };
+        var msgs = new[] { new MessageExt { Topic = "t1" } };
         var pr = new PullResult { Status = PullStatus.Found };
 
         var args = new ConsumeEventArgs
