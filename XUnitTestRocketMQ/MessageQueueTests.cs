@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
@@ -101,7 +102,7 @@ public class MessageQueueTests
         var q1 = new MessageQueue { Topic = "test", BrokerName = "broker-a", QueueId = 0 };
         var q2 = new MessageQueue { Topic = "test", BrokerName = "broker-a", QueueId = 0 };
 
-        var dict = new System.Collections.Generic.Dictionary<MessageQueue, String>();
+        var dict = new Dictionary<MessageQueue, String>();
         dict[q1] = "value";
 
         // q2 与 q1 相等，应能查到

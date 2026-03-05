@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using NewLife.RocketMQ.Protocol.ConsumerStates;
 using Xunit;
@@ -27,7 +28,7 @@ public class ConsumerStatesModelTests
         var model = new ConsumerStatesModel
         {
             ConsumeTps = 1500.5,
-            OffsetTable = new System.Collections.Generic.Dictionary<MessageQueueModel, OffsetWrapperModel>
+            OffsetTable = new Dictionary<MessageQueueModel, OffsetWrapperModel>
             {
                 [mqModel] = new OffsetWrapperModel { BrokerOffset = 100, ConsumerOffset = 90 }
             }
