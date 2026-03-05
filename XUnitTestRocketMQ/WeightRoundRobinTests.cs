@@ -35,16 +35,30 @@ public class WeightRoundRobinTests
     [DisplayName("Set_相同权重不重复设置")]
     public void Set_SameWeights_NoReset()
     {
-        var lb = new WeightRoundRobin();
-        lb.Set([1, 2, 3]);
+        var lb1 = new WeightRoundRobin();
+        var lb2 = new WeightRoundRobin();
 
-        // 先选一次改变状态
-        lb.Get();
+        // 初次设置相同权重
+        lb1.Set([1, 2, 3]);
+        lb2.Set([1, 2, 3]);
 
-        // 再次设置相同权重，不应重置状态
-        lb.Set([1, 2, 3]);
+        // 先各选一次改变状态
+        lb1.Get();
+        lb2.Get();
 
-        Assert.True(lb.Ready);
+        // 对 lb1 再次设置相同权重，不应重置状态
+        lb1.Set([1, 2, 3]);
+
+        // Ready 仍应为 true
+        Assert.True(lb1.Ready);
+
+        // 后续多次 Get 的返回序列应与未再次 Set 的 lb2 完全一致
+        for (var i = 0; i < 10; i++)
+        {
+            var expected = lb2.Get();
+            var actual = lb1.Get();
+            Assert.Equal(expected, actual);
+        }
     }
 
     [Fact]
