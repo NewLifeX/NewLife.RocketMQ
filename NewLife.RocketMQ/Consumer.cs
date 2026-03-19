@@ -1474,12 +1474,13 @@ public class Consumer : MqBase
     #region Pop消费模式
     /// <summary>Pop方式拉取消息。5.0新增的轻量消费模式，无需客户端Rebalance</summary>
     /// <param name="brokerName">Broker名称</param>
+    /// <param name="queueId">队列编号。-1表示由Broker自动分配</param>
     /// <param name="maxNums">最大拉取数</param>
     /// <param name="invisibleTime">不可见时间（毫秒），消息被拉取后在此时间内不会被其他消费者看到</param>
     /// <param name="pollTime">长轮询等待时间（毫秒）</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns>拉取结果</returns>
-    public async Task<PullResult> PopMessageAsync(String brokerName, Int32 maxNums = 32, Int64 invisibleTime = 60_000, Int32 pollTime = 15_000, CancellationToken cancellationToken = default)
+    public async Task<PullResult> PopMessageAsync(String brokerName, Int32 queueId = -1, Int32 maxNums = 32, Int64 invisibleTime = 60_000, Int32 pollTime = 15_000, CancellationToken cancellationToken = default)
     {
         if (String.IsNullOrEmpty(brokerName)) throw new ArgumentNullException(nameof(brokerName));
 
@@ -1493,6 +1494,7 @@ public class Consumer : MqBase
             {
                 consumerGroup = Group,
                 topic = Topic,
+                queueId,
                 maxMsgNums = maxNums,
                 invisibleTime,
                 pollTime,
@@ -1528,11 +1530,12 @@ public class Consumer : MqBase
 
     /// <summary>确认Pop消息消费完成</summary>
     /// <param name="brokerName">Broker名称</param>
-    /// <param name="extraInfo">消息额外信息，Pop拉取时返回</param>
-    /// <param name="offset">消息偏移</param>
+    /// <param name="extraInfo">Pop检查点信息，即消息属性中的POP_CK字段值</param>
+    /// <param name="offset">消息在Queue中的偏移量</param>
+    /// <param name="queueId">队列编号</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public async Task<Boolean> AckMessageAsync(String brokerName, String extraInfo, Int64 offset, CancellationToken cancellationToken = default)
+    public async Task<Boolean> AckMessageAsync(String brokerName, String extraInfo, Int64 offset, Int32 queueId = -1, CancellationToken cancellationToken = default)
     {
         using var span = Tracer?.NewSpan($"mq:{Name}:AckMessage", offset);
         try
@@ -1546,6 +1549,7 @@ public class Consumer : MqBase
                 topic = Topic,
                 extraInfo,
                 offset,
+                queueId,
             };
 
             await bk.InvokeAsync(RequestCode.ACK_MESSAGE, null, header, true, cancellationToken).ConfigureAwait(false);
@@ -1559,14 +1563,28 @@ public class Consumer : MqBase
         }
     }
 
-    /// <summary>修改Pop消息不可见时间，延长消费处理窗口</summary>
+    /// <summary>确认Pop消息消费完成。自动从消息属性中提取Pop检查点信息（POP_CK）</summary>
     /// <param name="brokerName">Broker名称</param>
-    /// <param name="extraInfo">消息额外信息</param>
-    /// <param name="offset">消息偏移</param>
-    /// <param name="invisibleTime">新的不可见时间（毫秒）</param>
+    /// <param name="msg">通过Pop方式拉取的消息</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public async Task<Boolean> ChangeInvisibleTimeAsync(String brokerName, String extraInfo, Int64 offset, Int64 invisibleTime, CancellationToken cancellationToken = default)
+    public Task<Boolean> AckMessageAsync(String brokerName, MessageExt msg, CancellationToken cancellationToken = default)
+    {
+        if (msg == null) throw new ArgumentNullException(nameof(msg));
+        if (String.IsNullOrEmpty(msg.PopCheckPoint)) throw new ArgumentException("消息不含Pop检查点信息（POP_CK属性缺失），请确认该消息是通过Pop方式拉取的。", nameof(msg));
+
+        return AckMessageAsync(brokerName, msg.PopCheckPoint, msg.QueueOffset, msg.QueueId, cancellationToken);
+    }
+
+    /// <summary>修改Pop消息不可见时间，延长消费处理窗口</summary>
+    /// <param name="brokerName">Broker名称</param>
+    /// <param name="extraInfo">Pop检查点信息，即消息属性中的POP_CK字段值</param>
+    /// <param name="offset">消息在Queue中的偏移量</param>
+    /// <param name="invisibleTime">新的不可见时间（毫秒）</param>
+    /// <param name="queueId">队列编号</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns></returns>
+    public async Task<Boolean> ChangeInvisibleTimeAsync(String brokerName, String extraInfo, Int64 offset, Int64 invisibleTime, Int32 queueId = -1, CancellationToken cancellationToken = default)
     {
         using var span = Tracer?.NewSpan($"mq:{Name}:ChangeInvisibleTime", offset);
         try
@@ -1581,6 +1599,7 @@ public class Consumer : MqBase
                 extraInfo,
                 offset,
                 invisibleTime,
+                queueId,
             };
 
             await bk.InvokeAsync(RequestCode.CHANGE_MESSAGE_INVISIBLETIME, null, header, true, cancellationToken).ConfigureAwait(false);
@@ -1592,6 +1611,20 @@ public class Consumer : MqBase
             WriteLog("修改不可见时间失败：{0}", ex.Message);
             return false;
         }
+    }
+
+    /// <summary>修改Pop消息不可见时间，延长消费处理窗口。自动从消息属性中提取Pop检查点信息（POP_CK）</summary>
+    /// <param name="brokerName">Broker名称</param>
+    /// <param name="msg">通过Pop方式拉取的消息</param>
+    /// <param name="invisibleTime">新的不可见时间（毫秒）</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns></returns>
+    public Task<Boolean> ChangeInvisibleTimeAsync(String brokerName, MessageExt msg, Int64 invisibleTime, CancellationToken cancellationToken = default)
+    {
+        if (msg == null) throw new ArgumentNullException(nameof(msg));
+        if (String.IsNullOrEmpty(msg.PopCheckPoint)) throw new ArgumentException("消息不含Pop检查点信息（POP_CK属性缺失），请确认该消息是通过Pop方式拉取的。", nameof(msg));
+
+        return ChangeInvisibleTimeAsync(brokerName, msg.PopCheckPoint, msg.QueueOffset, invisibleTime, msg.QueueId, cancellationToken);
     }
 
     /// <summary>批量确认Pop消息消费完成</summary>

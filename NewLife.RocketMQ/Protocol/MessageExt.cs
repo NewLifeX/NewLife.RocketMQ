@@ -58,6 +58,13 @@ public class MessageExt : Message, IAccessor
 
     /// <summary>消息编号</summary>
     public String MsgId { get; set; }
+
+    /// <summary>Pop检查点信息。Pop消费模式下由Broker在消息属性中返回，Ack/ChangeInvisibleTime操作时需传入此值</summary>
+    public String PopCheckPoint
+    {
+        get => Properties.TryGetValue("POP_CK", out var str) ? str : null;
+        set => Properties["POP_CK"] = value;
+    }
     #endregion
 
     #region 构造
