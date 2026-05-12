@@ -129,10 +129,24 @@ public class MessageExt : Message, IAccessor
                 throw new NotSupportedException($"消息使用 SysFlag 压缩类型 {compressType} (1=LZ4,2=ZSTD)，当前实现仅支持 ZLIB/DEFLATE。");
 
             // 兼容两种 DEFLATE 包装：
-            // 1) RFC1950 ZLIB 格式：以 CMF 字节开头，低 4 位必须为 8 (DEFLATE)，典型首字节 0x78
+            // 1) RFC1950 ZLIB 格式：2 字节头部为 CMF/FLG，需同时满足：
+            //    - CM = 8（DEFLATE）
+            //    - CINFO <= 7（32K 窗口及以下）
+            //    - (CMF << 8 | FLG) % 31 == 0
             // 2) RFC1951 RAW DEFLATE：直接是 DEFLATE 块头，没有 2 字节 ZLIB 包裹
-            // 通过首字节低 4 位是否为 8 判断走哪条路径，兼顾 Java 官方客户端与 NewLife/部分 5.x 客户端
-            Body = (Body != null && Body.Length >= 2 && (Body[0] & 0x0F) == 8)
+            // 仅当头部满足 RFC1950 约束时才剥离 2 字节，避免将 RAW DEFLATE 误判为 ZLIB
+            var hasZlibHeader = false;
+            if (Body != null && Body.Length >= 2)
+            {
+                var cmf = Body[0];
+                var flg = Body[1];
+                hasZlibHeader =
+                    (cmf & 0x0F) == 8 &&
+                    (cmf >> 4) <= 7 &&
+                    (((cmf << 8) + flg) % 31) == 0;
+            }
+
+            Body = hasZlibHeader
                 ? Body.ReadBytes(2, -1).Decompress()
                 : Body.Decompress();
         }
