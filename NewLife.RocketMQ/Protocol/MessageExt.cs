@@ -91,18 +91,25 @@ public class MessageExt : Message, IAccessor
         CommitLogOffset = reader.ReadInt64();
         SysFlag = reader.ReadInt32();
 
-        // SysFlag第2位(0x04)标识IPv6地址。IPv4=4字节，IPv6=16字节
-        var isIPv6 = (SysFlag & 4) != 0;
-        var ipLen = isIPv6 ? 16 : 4;
+        // 参考 Apache RocketMQ MessageSysFlag：
+        // 0x01 COMPRESSED_FLAG, 0x02 MULTI_TAGS_FLAG,
+        // 0x04/0x08/0x0C TRANSACTION_PREPARED/COMMIT/ROLLBACK,
+        // 0x10 BORNHOST_V6_FLAG, 0x20 STOREHOSTADDRESS_V6_FLAG,
+        // 0x40 NEED_UNWRAP_FLAG, 0x80 INNER_BATCH_FLAG
+        // BornHost 与 StoreHost 由两个独立标志位决定地址族，可能不同
+        var bornHostV6 = (SysFlag & 0x10) != 0;
+        var storeHostV6 = (SysFlag & 0x20) != 0;
+        var bornIpLen = bornHostV6 ? 16 : 4;
+        var storeIpLen = storeHostV6 ? 16 : 4;
 
         BornTimestamp = reader.ReadInt64();
-        var buf = reader.ReadBytes(ipLen).ToArray();
+        var buf = reader.ReadBytes(bornIpLen).ToArray();
         var ip = new IPAddress(buf);
         var port = reader.ReadInt32();
         BornHost = $"{ip}:{port}";
 
         StoreTimestamp = reader.ReadInt64();
-        var buf2 = reader.ReadBytes(ipLen).ToArray();
+        var buf2 = reader.ReadBytes(storeIpLen).ToArray();
         var ip2 = new IPAddress(buf2);
         var port2 = reader.ReadInt32();
         StoreHost = $"{ip2}:{port2}";
@@ -115,11 +122,19 @@ public class MessageExt : Message, IAccessor
         Body = reader.ReadBytes(len).ToArray();
         if ((SysFlag & 1) == 1)
         {
-            /*uncompress*/
-            // ZLIB格式RFC1950，要去掉头部两个字节
-            Body = Body.ReadBytes(2, -1).Decompress();
-            //var gs = new MemoryStream(Body);
-            //Body = gs.DecompressGZip().ReadBytes();
+            // RocketMQ 5.x 在 SysFlag 第 8-10 位编码压缩类型（COMPRESSION_TYPE_COMPARATOR = 0x700）：
+            // 0(默认)/0x300 = ZLIB，0x100 = LZ4，0x200 = ZSTD
+            var compressType = (SysFlag >> 8) & 0x7;
+            if (compressType == 1 || compressType == 2)
+                throw new NotSupportedException($"消息使用 SysFlag 压缩类型 {compressType} (1=LZ4,2=ZSTD)，当前实现仅支持 ZLIB/DEFLATE。");
+
+            // 兼容两种 DEFLATE 包装：
+            // 1) RFC1950 ZLIB 格式：以 CMF 字节开头，低 4 位必须为 8 (DEFLATE)，典型首字节 0x78
+            // 2) RFC1951 RAW DEFLATE：直接是 DEFLATE 块头，没有 2 字节 ZLIB 包裹
+            // 通过首字节低 4 位是否为 8 判断走哪条路径，兼顾 Java 官方客户端与 NewLife/部分 5.x 客户端
+            Body = (Body != null && Body.Length >= 2 && (Body[0] & 0x0F) == 8)
+                ? Body.ReadBytes(2, -1).Decompress()
+                : Body.Decompress();
         }
 
         // 主题
@@ -130,8 +145,8 @@ public class MessageExt : Message, IAccessor
         var str = reader.ReadBytes(len2).ToArray().ToStr();
         ParseProperties(str);
 
-        // MsgId：IPv4为16字节(4+4+8)，IPv6为28字节(16+4+8)
-        var idLen = isIPv6 ? 28 : 16;
+        // MsgId 由 BornHost(4|16) + Port(4) + CommitLogOffset(8) 组成
+        var idLen = bornHostV6 ? 28 : 16;
         var idBuf = new Byte[idLen];
         var idWriter = new SpanWriter(idBuf) { IsLittleEndian = false };
         idWriter.Write(buf);
@@ -178,8 +193,8 @@ public class MessageExt : Message, IAccessor
             var msg = new MessageExt();
             if (!msg.Read(ref reader)) break;
 
-            // SysFlag第4位(0x10)标识批量消息，Body内嵌多条子消息
-            if ((msg.SysFlag & 0x10) != 0 && msg.Body != null && msg.Body.Length > 0)
+            // INNER_BATCH_FLAG(0x80) 标识批量消息，Body 内嵌多条子消息
+            if ((msg.SysFlag & 0x80) != 0 && msg.Body != null && msg.Body.Length > 0)
             {
                 var batches = DecodeBatch(msg);
                 list.AddRange(batches);
@@ -237,7 +252,7 @@ public class MessageExt : Message, IAccessor
                     // 从父消息继承上下文信息
                     QueueId = parent.QueueId,
                     CommitLogOffset = parent.CommitLogOffset,
-                    SysFlag = parent.SysFlag & ~0x10, // 清除批量标志
+                    SysFlag = parent.SysFlag & ~0x80, // 清除 INNER_BATCH_FLAG
                     BornTimestamp = parent.BornTimestamp,
                     BornHost = parent.BornHost,
                     StoreTimestamp = parent.StoreTimestamp,
