@@ -7,91 +7,90 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTest.Cloud
+namespace XUnitTest.Cloud;
+
+public class SupportApacheAclTest
 {
-    public class SupportApacheAclTest
+    private const String NameServerAddress = "127.0.0.1:9876";
+    private const String TestTopic = "newlife_acl_test_topic";
+
+    /// <summary>
+    /// 创建Topic时默认为系统 Topic => TBW102,可省略
+    /// </summary>
+    private const String DefaultSysTopic = "TBW102";
+
+    private readonly AclOptions _aclOptions = new AclOptions() {AccessKey = "rocketmq2AcKey", SecretKey = "rocketmq2SeKey", OnsChannel = "LOCAL"};
+    
+    [Fact]
+    public void CreateTopicTest()
     {
-        private const String NameServerAddress = "127.0.0.1:9876";
-        private const String TestTopic = "newlife_acl_test_topic";
+        using var producer = CreateProducerInstance(DefaultSysTopic);
+        producer.Start();
+        producer.CreateTopic(TestTopic, 2);
+        producer.Dispose();
+    }
 
-        /// <summary>
-        /// 创建Topic时默认为系统 Topic => TBW102,可省略
-        /// </summary>
-        private const String DefaultSysTopic = "TBW102";
+    [Fact]
+    public void PublishMessageTest()
+    {
+        using var producer = CreateProducerInstance(TestTopic);
+        producer.Start();
 
-        private readonly AclOptions _aclOptions = new AclOptions() {AccessKey = "rocketmq2AcKey", SecretKey = "rocketmq2SeKey", OnsChannel = "LOCAL"};
-        
-        [Fact(Skip = "需要配置ACL的RocketMQ服务器支持")]
-        public void CreateTopicTest()
+        var pubResultList = new List<Boolean>();
+        for (var i = 0; i < 10; i++)
         {
-            using var producer = CreateProducerInstance(DefaultSysTopic);
-            producer.Start();
-            producer.CreateTopic(TestTopic, 2);
-            producer.Dispose();
+            const String message = "大家好才是真的好！";
+            var pubResult = producer.Publish(message, "new_life_test_tag");
+            pubResultList.Add(pubResult.Status == SendStatus.SendOK);
         }
 
-        [Fact(Skip = "需要配置ACL的RocketMQ服务器支持")]
-        public void PublishMessageTest()
-        {
-            using var producer = CreateProducerInstance(TestTopic);
-            producer.Start();
+        Assert.True(pubResultList.All(_ => true));
+        producer.Dispose();
+    }
 
-            var pubResultList = new List<Boolean>();
-            for (var i = 0; i < 10; i++)
+    [Fact]
+    public void ConsumeMessageTest()
+    {
+        using var consumer = CreateConsumerInstance(TestTopic);
+        consumer.OnConsume = OnConsume;
+        consumer.Start();
+        Thread.Sleep(3000);
+       
+        static Boolean OnConsume(MessageQueue q, MessageExt[] ms)
+        {
+            Console.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
+
+            foreach (var item in ms.ToList())
             {
-                const String message = "大家好才是真的好！";
-                var pubResult = producer.Publish(message, "new_life_test_tag");
-                pubResultList.Add(pubResult.Status == SendStatus.SendOK);
+                Console.WriteLine($"消息：主键【{item.Keys}】，产生时间【{item.BornTimestamp.ToDateTime()}】，内容【{item.Body.ToStr()}】");
             }
 
-            Assert.True(pubResultList.All(_ => true));
-            producer.Dispose();
+            return true;
         }
+    }
 
-        [Fact(Skip = "需要配置ACL的RocketMQ服务器支持")]
-        public void ConsumeMessageTest()
-        {
-            using var consumer = CreateConsumerInstance(TestTopic);
-            consumer.OnConsume = OnConsume;
-            consumer.Start();
-            Thread.Sleep(3000);
-           
-            static Boolean OnConsume(MessageQueue q, MessageExt[] ms)
-            {
-                Console.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
+    private Producer CreateProducerInstance(String topic)
+    {
+        var producer = new Producer();
 
-                foreach (var item in ms.ToList())
-                {
-                    Console.WriteLine($"消息：主键【{item.Keys}】，产生时间【{item.BornTimestamp.ToDateTime()}】，内容【{item.Body.ToStr()}】");
-                }
+        producer.NameServerAddress = NameServerAddress;
+        producer.Topic = topic;
+        producer.AclOptions = _aclOptions;
 
-                return true;
-            }
-        }
+        return producer;
+    }
+    
+    private Consumer CreateConsumerInstance(String topic)
+    {
+        var consumer = new Consumer();
 
-        private Producer CreateProducerInstance(String topic)
-        {
-            var producer = new Producer();
-
-            producer.NameServerAddress = NameServerAddress;
-            producer.Topic = topic;
-            producer.AclOptions = _aclOptions;
-
-            return producer;
-        }
+        consumer.NameServerAddress = NameServerAddress;
+        consumer.Topic = topic;
+        consumer.AclOptions = _aclOptions;
+        consumer.Group = "new_life_test_group";
+        consumer.FromLastOffset = true;
+        consumer.BatchSize = 5;
         
-        private Consumer CreateConsumerInstance(String topic)
-        {
-            var consumer = new Consumer();
-
-            consumer.NameServerAddress = NameServerAddress;
-            consumer.Topic = topic;
-            consumer.AclOptions = _aclOptions;
-            consumer.Group = "new_life_test_group";
-            consumer.FromLastOffset = true;
-            consumer.BatchSize = 5;
-            
-            return consumer;
-        }
+        return consumer;
     }
 }

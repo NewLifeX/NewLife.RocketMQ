@@ -25,7 +25,7 @@ public class QueryMessageTests
         Assert.Throws<ArgumentNullException>(() => producer.QueryMessageByKey("test", ""));
     }
 
-    [Fact(Skip = "需要RocketMQ服务器")]
+    [Fact]
     [DisplayName("QueryMessageByKey_按Key查询消息")]
     public void QueryMessageByKey_Integration()
     {

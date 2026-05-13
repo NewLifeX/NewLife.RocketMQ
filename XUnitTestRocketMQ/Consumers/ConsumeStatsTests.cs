@@ -11,7 +11,7 @@ namespace XUnitTest.Consumers;
 /// <summary>消费统计和过滤服务器测试</summary>
 public class ConsumeStatsTests
 {
-    [Fact(Skip = "需要RocketMQ服务器")]
+    [Fact]
     [DisplayName("GetConsumeStats_获取消费统计")]
     public void GetConsumeStats_Test()
     {
@@ -28,7 +28,7 @@ public class ConsumeStatsTests
         // 不做严格断言，仅验证不抛出异常
     }
 
-    [Fact(Skip = "需要RocketMQ服务器")]
+    [Fact]
     [DisplayName("GetTopicStatsInfo_获取Topic统计")]
     public void GetTopicStatsInfo_Test()
     {
@@ -45,7 +45,7 @@ public class ConsumeStatsTests
         // 不做严格断言，仅验证不抛出异常
     }
 
-    [Fact(Skip = "需要RocketMQ服务器")]
+    [Fact]
     [DisplayName("RegisterFilterServer_注册过滤服务器")]
     public void RegisterFilterServer_Test()
     {

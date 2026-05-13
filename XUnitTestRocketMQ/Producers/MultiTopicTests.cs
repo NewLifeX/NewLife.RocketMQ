@@ -68,7 +68,7 @@ public class MultiTopicTests
         Assert.Equal(mq1, mq2);
     }
 
-    [Fact(Skip = "需要RocketMQ服务器")]
+    [Fact]
     [DisplayName("Consumer_多Topic启动消费")]
     public void Consumer_MultiTopic_Start()
     {

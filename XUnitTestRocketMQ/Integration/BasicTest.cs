@@ -21,7 +21,8 @@ public class BasicTest
             var set = MqSetting.Current;
             if (set.IsNew)
             {
-                set.NameServer = "rocketmq.newlifex.com:9876";
+                //set.NameServer = "rocketmq.newlifex.com:9876";
+                set.NameServer = "localhost:9876";
                 set.Save();
             }
 

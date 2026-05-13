@@ -7,7 +7,7 @@ namespace XUnitTest.Producers;
 
 public class ProducerTests
 {
-    [Fact(Skip = "需要RocketMQ服务器支持")]
+    [Fact]
     public void CreateTopic()
     {
         var set = BasicTest.GetConfig();
@@ -28,7 +28,7 @@ public class ProducerTests
         Assert.True(rs > 0);
     }
 
-    [Fact(Skip = "需要RocketMQ服务器支持")]
+    [Fact]
     public static void ProduceTest()
     {
         var set = BasicTest.GetConfig();

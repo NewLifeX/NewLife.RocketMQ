@@ -43,7 +43,7 @@ public class BatchMessageTests
         Assert.Throws<ArgumentException>(() => mq.PublishBatch(new List<String>()));
     }
 
-    [Fact(Skip = "需要RocketMQ服务器")]
+    [Fact]
     [DisplayName("批量消息发送_发送多条消息")]
     public void PublishBatch_SendMultipleMessages()
     {

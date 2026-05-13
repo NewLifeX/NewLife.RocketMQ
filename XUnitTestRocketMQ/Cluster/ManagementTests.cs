@@ -11,7 +11,7 @@ namespace XUnitTest.Cluster;
 /// <summary>管理功能测试</summary>
 public class ManagementTests
 {
-    [Fact(Skip = "需要RocketMQ服务器")]
+    [Fact]
     [DisplayName("DeleteTopic_删除主题")]
     public void DeleteTopic_Test()
     {
@@ -29,7 +29,7 @@ public class ManagementTests
         Assert.True(count >= 0);
     }
 
-    [Fact(Skip = "需要RocketMQ服务器")]
+    [Fact]
     [DisplayName("CreateSubscriptionGroup_创建消费组")]
     public void CreateSubscriptionGroup_Test()
     {
@@ -45,7 +45,7 @@ public class ManagementTests
         Assert.True(count >= 0);
     }
 
-    [Fact(Skip = "需要RocketMQ服务器")]
+    [Fact]
     [DisplayName("DeleteSubscriptionGroup_删除消费组")]
     public void DeleteSubscriptionGroup_Test()
     {
@@ -62,7 +62,7 @@ public class ManagementTests
         Assert.True(count >= 0);
     }
 
-    [Fact(Skip = "需要RocketMQ服务器")]
+    [Fact]
     [DisplayName("ViewMessage_按ID查看消息")]
     public void ViewMessage_Test()
     {
@@ -84,7 +84,7 @@ public class ManagementTests
         // 不做严格断言，仅验证不抛出异常
     }
 
-    [Fact(Skip = "需要RocketMQ服务器")]
+    [Fact]
     [DisplayName("GetClusterInfo_获取集群信息")]
     public void GetClusterInfo_Test()
     {
@@ -100,7 +100,7 @@ public class ManagementTests
         // 不做严格断言，仅验证不抛出异常
     }
 
-    [Fact(Skip = "需要RocketMQ服务器")]
+    [Fact]
     [DisplayName("GetConsumerConnectionList_获取消费者连接列表")]
     public async Task GetConsumerConnectionList_Test()
     {
@@ -118,7 +118,7 @@ public class ManagementTests
         // 不做严格断言，仅验证不抛出异常
     }
 
-    [Fact(Skip = "需要RocketMQ服务器")]
+    [Fact]
     [DisplayName("ResetConsumerOffset_重置消费偏移")]
     public async Task ResetConsumerOffset_Test()
     {

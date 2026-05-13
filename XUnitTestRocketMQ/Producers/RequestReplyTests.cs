@@ -11,7 +11,7 @@ namespace XUnitTest.Producers;
 /// <summary>Request-Reply 特性测试</summary>
 public class RequestReplyTests
 {
-    [Fact(Skip = "需要RocketMQ服务器支持")]
+    [Fact]
     public void RequestSyncTest()
     {
         var set = BasicTest.GetConfig();
@@ -63,7 +63,7 @@ public class RequestReplyTests
         XTrace.WriteLine("收到响应: {0}", response.BodyString);
     }
 
-    [Fact(Skip = "需要RocketMQ服务器支持")]
+    [Fact]
     public async Task RequestAsyncTest()
     {
         var set = BasicTest.GetConfig();
@@ -115,7 +115,7 @@ public class RequestReplyTests
         XTrace.WriteLine("收到响应: {0}", response.BodyString);
     }
 
-    [Fact(Skip = "需要RocketMQ服务器支持")]
+    [Fact]
     public async Task RequestTimeoutTest()
     {
         var set = BasicTest.GetConfig();
