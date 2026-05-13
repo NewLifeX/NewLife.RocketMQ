@@ -5,7 +5,7 @@ using NewLife.RocketMQ.MessageTrace;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Trace;
 
 /// <summary>消息轨迹数据模型测试</summary>
 public class TraceModelTests

@@ -3,7 +3,7 @@ using System.ComponentModel;
 using NewLife.RocketMQ;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Consumers;
 
 /// <summary>消费限流测试</summary>
 public class ConcurrentConsumeTests

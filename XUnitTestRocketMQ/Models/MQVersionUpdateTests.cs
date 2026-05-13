@@ -4,7 +4,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Models;
 
 /// <summary>MQVersion相关测试</summary>
 public class MQVersionUpdateTests

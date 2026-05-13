@@ -6,7 +6,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Consumers;
 
 /// <summary>批量确认Pop消息测试</summary>
 public class BatchAckTests

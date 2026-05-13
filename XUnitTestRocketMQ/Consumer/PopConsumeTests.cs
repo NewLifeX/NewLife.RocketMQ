@@ -4,7 +4,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Consumers;
 
 /// <summary>Pop消费模式测试</summary>
 public class PopConsumeTests

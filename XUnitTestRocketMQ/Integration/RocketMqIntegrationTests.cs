@@ -7,7 +7,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Integration;
 
 /// <summary>Producer 集成测试</summary>
 /// <remarks>

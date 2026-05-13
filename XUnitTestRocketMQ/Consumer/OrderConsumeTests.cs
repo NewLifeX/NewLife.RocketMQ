@@ -3,7 +3,7 @@ using System.ComponentModel;
 using NewLife.RocketMQ;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Consumers;
 
 /// <summary>顺序消费锁定测试</summary>
 public class OrderConsumeTests

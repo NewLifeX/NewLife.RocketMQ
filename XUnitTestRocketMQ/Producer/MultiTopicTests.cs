@@ -5,7 +5,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Producers;
 
 /// <summary>多Topic订阅测试</summary>
 public class MultiTopicTests

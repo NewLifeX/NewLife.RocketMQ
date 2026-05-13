@@ -5,7 +5,7 @@ using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Models;
 
 public class MessageTests
 {

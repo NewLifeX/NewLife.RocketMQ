@@ -3,7 +3,7 @@ using System.ComponentModel;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Models;
 
 /// <summary>Message扩展属性测试（补充覆盖）</summary>
 public class MessageExtendedTests

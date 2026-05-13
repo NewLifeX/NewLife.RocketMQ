@@ -5,7 +5,7 @@ using Xunit;
 
 #nullable enable
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Integration;
 
 /// <summary>RocketMQ 集成测试 Fixture</summary>
 /// <remarks>

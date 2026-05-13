@@ -5,9 +5,10 @@ using NewLife.RocketMQ.Protocol;
 using System;
 using System.Linq;
 using System.Threading;
+using XUnitTestRocketMQ.Integration;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Consumers;
 
 public class ConsumerTests
 {

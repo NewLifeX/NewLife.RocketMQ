@@ -7,9 +7,10 @@ using NewLife;
 using NewLife.Data;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
+using XUnitTestRocketMQ.Integration;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Producers;
 
 /// <summary>批量消息发送测试</summary>
 [Collection("Basic")]

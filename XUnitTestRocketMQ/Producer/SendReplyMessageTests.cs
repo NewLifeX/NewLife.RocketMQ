@@ -5,7 +5,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Producers;
 
 /// <summary>Consumer.SendReply / SendReplyAsync 消息构建与参数校验测试</summary>
 public class SendReplyMessageTests

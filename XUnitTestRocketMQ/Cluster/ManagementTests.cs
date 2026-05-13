@@ -5,9 +5,10 @@ using System.Threading.Tasks;
 using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
+using XUnitTestRocketMQ.Integration;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Cluster;
 
 /// <summary>管理功能测试</summary>
 public class ManagementTests

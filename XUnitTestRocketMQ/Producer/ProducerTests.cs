@@ -3,9 +3,10 @@ using NewLife;
 using NewLife.Data;
 using NewLife.Log;
 using NewLife.RocketMQ;
+using XUnitTestRocketMQ.Integration;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Producers;
 
 public class ProducerTests
 {

@@ -3,7 +3,7 @@ using System.ComponentModel;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Protocol;
 
 /// <summary>协议数据结构测试</summary>
 public class ProtocolDataTests

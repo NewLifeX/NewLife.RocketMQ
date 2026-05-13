@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Models;
 
 public class MQVersionTests
 {

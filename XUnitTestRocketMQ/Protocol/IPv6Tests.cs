@@ -6,7 +6,7 @@ using NewLife.Data;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Protocol;
 
 /// <summary>IPv6消息解码测试</summary>
 public class IPv6Tests

@@ -3,7 +3,7 @@ using System.ComponentModel;
 using NewLife.RocketMQ.Common;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Cluster;
 
 /// <summary>带权重负载均衡算法测试</summary>
 public class WeightRoundRobinTests

@@ -1,9 +1,10 @@
 ﻿using System;
 using System.ComponentModel;
 using NewLife.RocketMQ;
+using XUnitTestRocketMQ.Integration;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Cluster;
 
 /// <summary>按Key查询消息测试</summary>
 public class QueryMessageTests

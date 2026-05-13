@@ -11,7 +11,7 @@ using NewLife.RocketMQ.Grpc;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Protocol;
 
 /// <summary>SpanReader/SpanWriter重构验证测试</summary>
 /// <remarks>

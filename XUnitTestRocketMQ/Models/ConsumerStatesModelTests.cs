@@ -4,7 +4,7 @@ using System.ComponentModel;
 using NewLife.RocketMQ.Protocol.ConsumerStates;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Models;
 
 /// <summary>消费者状态模型测试</summary>
 public class ConsumerStatesModelTests

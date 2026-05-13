@@ -7,7 +7,7 @@ using NewLife.RocketMQ.MessageTrace;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ;
+namespace XUnitTestRocketMQ.Producers;
 
 /// <summary>ISendMessageHook 钩子机制单元测试</summary>
 public class SendMessageHookTests
