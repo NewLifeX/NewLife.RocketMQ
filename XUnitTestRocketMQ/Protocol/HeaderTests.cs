@@ -4,7 +4,7 @@ using System.ComponentModel;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Protocol;
+namespace XUnitTest.Protocol;
 
 /// <summary>Header协议头测试</summary>
 public class HeaderTests

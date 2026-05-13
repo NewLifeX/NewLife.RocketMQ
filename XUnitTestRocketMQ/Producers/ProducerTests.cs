@@ -1,12 +1,9 @@
-﻿using Moq;
-using NewLife;
-using NewLife.Data;
-using NewLife.Log;
+﻿using NewLife.Log;
 using NewLife.RocketMQ;
-using XUnitTestRocketMQ.Integration;
 using Xunit;
+using XUnitTest.Integration;
 
-namespace XUnitTestRocketMQ.Producers;
+namespace XUnitTest.Producers;
 
 public class ProducerTests
 {

@@ -4,7 +4,7 @@ using System.ComponentModel;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Models;
+namespace XUnitTest.Models;
 
 /// <summary>SendResult发送结果测试</summary>
 public class SendResultTests

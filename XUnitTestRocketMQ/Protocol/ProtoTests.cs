@@ -5,7 +5,7 @@ using NewLife.Buffers;
 using NewLife.RocketMQ.Grpc;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Protocol;
+namespace XUnitTest.Protocol;
 
 /// <summary>Protobuf编解码器测试</summary>
 public class ProtoTests

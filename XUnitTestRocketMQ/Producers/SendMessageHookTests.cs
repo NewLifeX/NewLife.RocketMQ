@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using Moq;
@@ -7,7 +7,7 @@ using NewLife.RocketMQ.MessageTrace;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Producers;
+namespace XUnitTest.Producers;
 
 /// <summary>ISendMessageHook 钩子机制单元测试</summary>
 public class SendMessageHookTests

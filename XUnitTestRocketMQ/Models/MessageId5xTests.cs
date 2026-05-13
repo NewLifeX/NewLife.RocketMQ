@@ -3,7 +3,7 @@ using System.ComponentModel;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Models;
+namespace XUnitTest.Models;
 
 /// <summary>5.x MessageId格式测试</summary>
 public class MessageId5xTests

@@ -4,7 +4,7 @@ using NewLife.RocketMQ.Models;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Models;
+namespace XUnitTest.Models;
 
 /// <summary>模型和枚举测试</summary>
 public class ModelTests

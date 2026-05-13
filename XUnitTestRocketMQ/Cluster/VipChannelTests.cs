@@ -4,7 +4,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Client;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Cluster;
+namespace XUnitTest.Cluster;
 
 /// <summary>VIP通道测试</summary>
 public class VipChannelTests

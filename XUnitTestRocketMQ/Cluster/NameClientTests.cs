@@ -7,7 +7,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Cluster;
+namespace XUnitTest.Cluster;
 
 public class NameClientTests
 {

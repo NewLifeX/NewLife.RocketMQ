@@ -5,7 +5,7 @@ using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Models;
+namespace XUnitTest.Models;
 
 /// <summary>MqBase基类属性测试</summary>
 public class MqBasePropertyTests

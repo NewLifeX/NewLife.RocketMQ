@@ -3,7 +3,7 @@ using System.ComponentModel;
 using NewLife.RocketMQ;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Models;
+namespace XUnitTest.Models;
 
 /// <summary>BrokerInfo代理信息测试</summary>
 public class BrokerInfoTests

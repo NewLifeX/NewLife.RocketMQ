@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading;
 using NewLife;
 using NewLife.Log;
@@ -6,7 +6,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Trace
+namespace XUnitTest.Trace
 {
     public class MessageTraceTests
     {

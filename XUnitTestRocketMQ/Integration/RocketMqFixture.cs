@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Xunit;
 
 #nullable enable
 
-namespace XUnitTestRocketMQ.Integration;
+namespace XUnitTest.Integration;
 
 /// <summary>RocketMQ 集成测试 Fixture</summary>
 /// <remarks>

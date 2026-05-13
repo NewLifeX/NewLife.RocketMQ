@@ -7,7 +7,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Cloud;
+namespace XUnitTest.Cloud;
 
 /// <summary>
 /// 修复Issues调用阿里云版RocketMQ相关问题

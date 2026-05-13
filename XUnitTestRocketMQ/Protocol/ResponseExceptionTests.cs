@@ -3,7 +3,7 @@ using System.ComponentModel;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Protocol;
+namespace XUnitTest.Protocol;
 
 /// <summary>ResponseException响应异常测试</summary>
 public class ResponseExceptionTests

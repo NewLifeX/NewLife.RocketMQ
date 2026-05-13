@@ -4,7 +4,7 @@ using System.ComponentModel;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Models;
+namespace XUnitTest.Models;
 
 /// <summary>MessageQueue消息队列标识测试</summary>
 public class MessageQueueTests

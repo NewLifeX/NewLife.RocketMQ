@@ -1,14 +1,14 @@
-﻿using NewLife;
+﻿using System;
+using System.Linq;
+using System.Threading;
+using NewLife;
 using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
-using System;
-using System.Linq;
-using System.Threading;
-using XUnitTestRocketMQ.Integration;
 using Xunit;
+using XUnitTest.Integration;
 
-namespace XUnitTestRocketMQ.Consumers;
+namespace XUnitTest.Consumers;
 
 public class ConsumerTests
 {

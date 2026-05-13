@@ -5,7 +5,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Consumers;
+namespace XUnitTest.Consumers;
 
 /// <summary>消费重试功能测试</summary>
 public class RetryTests

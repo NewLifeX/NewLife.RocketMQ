@@ -1,13 +1,12 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
-using NewLife;
 using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
-using XUnitTestRocketMQ.Integration;
 using Xunit;
+using XUnitTest.Integration;
 
-namespace XUnitTestRocketMQ.Producers;
+namespace XUnitTest.Producers;
 
 /// <summary>Request-Reply 特性测试</summary>
 public class RequestReplyTests

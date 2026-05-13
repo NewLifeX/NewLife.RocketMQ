@@ -8,7 +8,7 @@ using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Protocol;
+namespace XUnitTest.Protocol;
 
 public class CommandTests
 {

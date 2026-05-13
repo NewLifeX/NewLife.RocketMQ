@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Producers;
+namespace XUnitTest.Producers;
 
 /// <summary>Consumer.SendReply / SendReplyAsync 消息构建与参数校验测试</summary>
 public class SendReplyMessageTests

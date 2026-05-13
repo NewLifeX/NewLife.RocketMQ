@@ -3,7 +3,7 @@ using System.ComponentModel;
 using NewLife.RocketMQ;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Cloud;
+namespace XUnitTest.Cloud;
 
 /// <summary>云厂商适配器接口测试</summary>
 public class CloudProviderTests

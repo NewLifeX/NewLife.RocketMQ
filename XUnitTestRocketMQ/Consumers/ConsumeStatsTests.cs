@@ -3,10 +3,10 @@ using System.ComponentModel;
 using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
-using XUnitTestRocketMQ.Integration;
 using Xunit;
+using XUnitTest.Integration;
 
-namespace XUnitTestRocketMQ.Consumers;
+namespace XUnitTest.Consumers;
 
 /// <summary>消费统计和过滤服务器测试</summary>
 public class ConsumeStatsTests

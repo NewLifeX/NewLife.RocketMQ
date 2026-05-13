@@ -4,7 +4,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Consumers;
+namespace XUnitTest.Consumers;
 
 /// <summary>SQL92过滤功能测试</summary>
 public class SQL92FilterTests

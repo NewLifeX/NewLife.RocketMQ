@@ -4,7 +4,7 @@ using System.Linq;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Protocol;
+namespace XUnitTest.Protocol;
 
 /// <summary>请求头GetProperties方法测试</summary>
 public class RequestHeaderTests

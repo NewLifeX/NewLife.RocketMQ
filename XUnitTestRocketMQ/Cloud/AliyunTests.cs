@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Cloud;
+namespace XUnitTest.Cloud;
 
 public class AliyunTests
 {

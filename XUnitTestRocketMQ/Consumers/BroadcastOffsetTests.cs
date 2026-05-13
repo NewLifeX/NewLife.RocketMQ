@@ -5,7 +5,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Models;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Consumers;
+namespace XUnitTest.Consumers;
 
 /// <summary>广播模式本地偏移持久化测试</summary>
 public class BroadcastOffsetTests

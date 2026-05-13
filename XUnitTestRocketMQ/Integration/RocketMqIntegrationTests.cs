@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
@@ -7,32 +7,28 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Integration;
+namespace XUnitTest.Integration;
 
 /// <summary>Producer 集成测试</summary>
 /// <remarks>
 /// 需要本机启动 RocketMQ 并设置环境变量 ROCKETMQ_NAMESERVER=127.0.0.1:9876。
 /// 启动命令：dotnet run --file scripts/RocketMqSetup.cs
 /// </remarks>
+/// <remarks>初始化</remarks>
+/// <param name="fixture">RocketMQ Fixture</param>
 [Collection("RocketMQ")]
-public class ProducerIntegrationTests : IClassFixture<RocketMqFixture>
+public class ProducerIntegrationTests(RocketMqFixture fixture) : IClassFixture<RocketMqFixture>
 {
-    private readonly RocketMqFixture _fixture;
-
-    /// <summary>初始化</summary>
-    /// <param name="fixture">RocketMQ Fixture</param>
-    public ProducerIntegrationTests(RocketMqFixture fixture) => _fixture = fixture;
-
     [SkippableFact]
     [DisplayName("发送普通消息_返回SendOK")]
     public async Task PublishMessage_ReturnsSuccess()
     {
-        _fixture.SkipIfUnavailable();
+        fixture.SkipIfUnavailable();
 
         using var producer = new Producer
         {
             Topic             = "integration-test-topic",
-            NameServerAddress = _fixture.NameServerAddress,
+            NameServerAddress = fixture.NameServerAddress,
         };
         producer.Start();
 
@@ -45,12 +41,12 @@ public class ProducerIntegrationTests : IClassFixture<RocketMqFixture>
     [DisplayName("发送带属性的消息_属性正常保存")]
     public async Task PublishMessageWithProperties_PropertiesPreserved()
     {
-        _fixture.SkipIfUnavailable();
+        fixture.SkipIfUnavailable();
 
         using var producer = new Producer
         {
             Topic             = "integration-test-topic",
-            NameServerAddress = _fixture.NameServerAddress,
+            NameServerAddress = fixture.NameServerAddress,
         };
         producer.Start();
 
@@ -70,12 +66,12 @@ public class ProducerIntegrationTests : IClassFixture<RocketMqFixture>
     [DisplayName("并发发送多条消息_全部成功")]
     public async Task PublishMessagesParallel_AllSucceed()
     {
-        _fixture.SkipIfUnavailable();
+        fixture.SkipIfUnavailable();
 
         using var producer = new Producer
         {
             Topic             = "integration-test-topic",
-            NameServerAddress = _fixture.NameServerAddress,
+            NameServerAddress = fixture.NameServerAddress,
         };
         producer.Start();
 
@@ -94,20 +90,16 @@ public class ProducerIntegrationTests : IClassFixture<RocketMqFixture>
 }
 
 /// <summary>Consumer 集成测试</summary>
+/// <remarks>初始化</remarks>
+/// <param name="fixture">RocketMQ Fixture</param>
 [Collection("RocketMQ")]
-public class ConsumerIntegrationTests : IClassFixture<RocketMqFixture>
+public class ConsumerIntegrationTests(RocketMqFixture fixture) : IClassFixture<RocketMqFixture>
 {
-    private readonly RocketMqFixture _fixture;
-
-    /// <summary>初始化</summary>
-    /// <param name="fixture">RocketMQ Fixture</param>
-    public ConsumerIntegrationTests(RocketMqFixture fixture) => _fixture = fixture;
-
     [SkippableFact]
     [DisplayName("先发再消费_能收到消息")]
     public async Task ProduceThenConsume_MessageReceived()
     {
-        _fixture.SkipIfUnavailable();
+        fixture.SkipIfUnavailable();
 
         const String topic   = "integration-consume-topic";
         const String content = "Hello Consumer";
@@ -115,7 +107,7 @@ public class ConsumerIntegrationTests : IClassFixture<RocketMqFixture>
         using var producer = new Producer
         {
             Topic             = topic,
-            NameServerAddress = _fixture.NameServerAddress,
+            NameServerAddress = fixture.NameServerAddress,
         };
         producer.Start();
         await producer.PublishAsync(content);
@@ -125,7 +117,7 @@ public class ConsumerIntegrationTests : IClassFixture<RocketMqFixture>
         {
             Topic             = topic,
             Group             = "integration-consumer-group",
-            NameServerAddress = _fixture.NameServerAddress,
+            NameServerAddress = fixture.NameServerAddress,
         };
 
         consumer.OnConsume = (queue, msgs) =>

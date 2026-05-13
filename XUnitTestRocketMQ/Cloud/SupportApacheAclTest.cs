@@ -7,7 +7,7 @@ using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Cloud
+namespace XUnitTest.Cloud
 {
     public class SupportApacheAclTest
     {

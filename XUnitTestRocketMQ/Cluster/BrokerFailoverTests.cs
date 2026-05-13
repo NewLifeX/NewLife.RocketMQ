@@ -4,7 +4,7 @@ using System.Linq;
 using NewLife.RocketMQ;
 using Xunit;
 
-namespace XUnitTestRocketMQ.Cluster;
+namespace XUnitTest.Cluster;
 
 /// <summary>Broker主从切换测试</summary>
 public class BrokerFailoverTests
