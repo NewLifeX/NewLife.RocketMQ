@@ -131,7 +131,7 @@ public class BatchMessageTests
         var ipBytes = new Byte[] { 127, 0, 0, 1 };
         var topic = "batch_topic"u8.ToArray();
         var props = ""u8.ToArray();
-        var sysFlag = 0x10; // 批量消息标志
+        var sysFlag = 0x80; // INNER_BATCH_FLAG，标识该消息 Body 内嵌多条子消息
 
         var storeSize = 4 + 4 + 4 + 4 + 4 + 8 + 8 + 4 +
                         8 + 4 + 4 +
@@ -283,10 +283,11 @@ public class BatchMessageTests
     [DisplayName("SysFlag批量位判断")]
     public void SysFlag_Batch_Bit()
     {
-        Assert.NotEqual(0, 0x10 & 0x10);  // 批量
-        Assert.Equal(0, 0 & 0x10);        // 普通
-        Assert.NotEqual(0, 0x11 & 0x10);  // 压缩+批量
-        Assert.Equal(0, 0x01 & 0x10);     // 仅压缩
+        // INNER_BATCH_FLAG = 0x80
+        Assert.NotEqual(0, 0x80 & 0x80);  // 批量
+        Assert.Equal(0, 0 & 0x80);        // 普通
+        Assert.NotEqual(0, 0x81 & 0x80);  // 压缩+批量
+        Assert.Equal(0, 0x01 & 0x80);     // 仅压缩
     }
     #endregion
 }

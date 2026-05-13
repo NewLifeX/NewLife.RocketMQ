@@ -38,8 +38,16 @@ public class Command : IAccessor, IMessage
     /// <summary>是否单向</summary>
     public Boolean OneWay { get; set; }
 
-    /// <summary>是否异常</summary>
-    Boolean IMessage.Error { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+    /// <summary>是否异常。当响应码不为 SUCCESS(0) 时为 true</summary>
+    Boolean IMessage.Error
+    {
+        get => Header != null && Header.Code != (Int32)ResponseCode.SUCCESS;
+        set
+        {
+            if (Header != null)
+                Header.Code = value ? (Int32)ResponseCode.SYSTEM_ERROR : (Int32)ResponseCode.SUCCESS;
+        }
+    }
     #endregion
 
     #region 构造

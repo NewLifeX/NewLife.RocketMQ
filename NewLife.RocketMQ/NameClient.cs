@@ -137,6 +137,8 @@ public class NameClient : ClusterClient
             var js = rs.ReadBodyAsJson();
 
             var list = new List<BrokerInfo>();
+            if (js == null) return list;
+
             // 解析broker集群地址
             if (js["brokerDatas"] is IList<Object> bs)
             {

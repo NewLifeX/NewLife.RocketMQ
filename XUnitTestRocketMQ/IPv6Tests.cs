@@ -40,8 +40,8 @@ public class IPv6Tests
         var ms = new MemoryStream();
 
         var ipBytes = ipv6 ? IPAddress.IPv6Loopback.GetAddressBytes() : new Byte[] { 127, 0, 0, 1 };
-        // SysFlag: 第2位(0x04)标识IPv6
-        var sysFlag = ipv6 ? 4 : 0;
+        // SysFlag: 0x10=BORNHOST_V6_FLAG, 0x20=STOREHOSTADDRESS_V6_FLAG
+        var sysFlag = ipv6 ? (0x10 | 0x20) : 0;
 
         var body = "hello"u8.ToArray();
         var topic = "test_topic"u8.ToArray();
@@ -130,7 +130,7 @@ public class IPv6Tests
         Assert.Equal(1, msg.QueueId);
         Assert.Equal(100, msg.QueueOffset);
         Assert.Equal(200, msg.CommitLogOffset);
-        Assert.NotEqual(0, msg.SysFlag & 4); // 是IPv6
+        Assert.NotEqual(0, msg.SysFlag & 0x10); // BornHost 是IPv6
         Assert.Contains("::1", msg.BornHost);
         Assert.Contains("::1", msg.StoreHost);
         Assert.Contains("9876", msg.BornHost);
@@ -142,19 +142,24 @@ public class IPv6Tests
     }
 
     [Fact]
-    [DisplayName("SysFlag第2位判断IPv6")]
+    [DisplayName("SysFlag_IPv6标志位判断")]
     public void SysFlag_IPv6_Bit()
     {
-        // SysFlag=0 -> IPv4
-        Assert.Equal(0, 0 & 4);
+        // BORNHOST_V6_FLAG = 0x10, STOREHOSTADDRESS_V6_FLAG = 0x20
+        // SysFlag=0 -> BornHost IPv4
+        Assert.Equal(0, 0 & 0x10);
 
-        // SysFlag=4 -> IPv6
-        Assert.NotEqual(0, 4 & 4);
+        // SysFlag=0x10 -> BornHost IPv6
+        Assert.NotEqual(0, 0x10 & 0x10);
 
-        // SysFlag=5(压缩+IPv6) -> IPv6
-        Assert.NotEqual(0, 5 & 4);
+        // SysFlag=0x11(压缩+BornHostIPv6) -> BornHost IPv6
+        Assert.NotEqual(0, 0x11 & 0x10);
 
-        // SysFlag=1(仅压缩) -> IPv4
-        Assert.Equal(0, 1 & 4);
+        // SysFlag=0x01(仅压缩) -> BornHost IPv4
+        Assert.Equal(0, 0x01 & 0x10);
+
+        // STOREHOSTADDRESS_V6_FLAG = 0x20
+        Assert.NotEqual(0, 0x20 & 0x20);
+        Assert.Equal(0, 0x10 & 0x20); // BornHostV6 不影响 StoreHostV6 判断
     }
 }

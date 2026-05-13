@@ -41,6 +41,14 @@ public class Producer : MqBase
     private readonly IList<ISendMessageHook> _sendMessageHooks = new List<ISendMessageHook>();
     private AsyncTraceDispatcher _traceDispatcher;
 
+    /// <summary>注册发送消息钩子。在消息发送前后调用</summary>
+    /// <param name="hook">钩子实现</param>
+    public void RegisterSendMessageHook(ISendMessageHook hook)
+    {
+        if (hook == null) throw new ArgumentNullException(nameof(hook));
+        _sendMessageHooks.Add(hook);
+    }
+
     /// <summary>请求超时时间。默认3000ms</summary>
     public Int32 RequestTimeout { get; set; } = 3_000;
 

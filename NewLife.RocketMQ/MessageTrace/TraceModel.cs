@@ -107,13 +107,10 @@ namespace NewLife.RocketMQ.MessageTrace
     /// </summary>
     public class ConsumeMessageContext
     {
-        /// <summary>
-        /// 
-        /// </summary>
+        /// <summary>消费分组</summary>
         public String ConsumerGroup;
 
-        /// <summary>
-
+        /// <summary>消息列表</summary>
         public List<MessageExt> MsgList;
 
         /// <summary>
@@ -147,13 +144,14 @@ namespace NewLife.RocketMQ.MessageTrace
         public DateTime BornHost;
     }
 
-    /// <summary>
-    /// 轨迹类型
-    /// </summary>
+    /// <summary>轨迹类型</summary>
     public enum TraceType
     {
+        /// <summary>发送轨迹</summary>
         Pub,
+        /// <summary>消费前轨迹</summary>
         SubBefore,
+        /// <summary>消费后轨迹</summary>
         SubAfter,
     }
 

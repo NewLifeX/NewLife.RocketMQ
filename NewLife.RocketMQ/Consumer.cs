@@ -91,6 +91,14 @@ public class Consumer : MqBase
     private readonly IList<IConsumeMessageHook> _consumeMessageHooks = new List<IConsumeMessageHook>();
     private AsyncTraceDispatcher _traceDispatcher;
 
+    /// <summary>注册消费消息钩子。在消息消费前后调用</summary>
+    /// <param name="hook">钩子实现</param>
+    public void RegisterConsumeMessageHook(IConsumeMessageHook hook)
+    {
+        if (hook == null) throw new ArgumentNullException(nameof(hook));
+        _consumeMessageHooks.Add(hook);
+    }
+
     /// <summary>本地偏移存储路径。广播模式时使用，默认当前目录下的 .offsets/{Group}.json</summary>
     public String OffsetStorePath { get; set; }
 
