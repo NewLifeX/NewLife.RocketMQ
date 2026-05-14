@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using NewLife.RocketMQ;
 using Xunit;
 
@@ -26,7 +27,7 @@ public class OrderConsumeTests
 
     [Fact]
     [DisplayName("LockBatchMQAsync_空列表返回空")]
-    public async void LockBatchMQAsync_EmptyList_ReturnsEmpty()
+    public async Task LockBatchMQAsync_EmptyList_ReturnsEmpty()
     {
         using var consumer = new Consumer();
         var result = await consumer.LockBatchMQAsync([]);
@@ -35,7 +36,7 @@ public class OrderConsumeTests
 
     [Fact]
     [DisplayName("LockBatchMQAsync_Null列表返回空")]
-    public async void LockBatchMQAsync_NullList_ReturnsEmpty()
+    public async Task LockBatchMQAsync_NullList_ReturnsEmpty()
     {
         using var consumer = new Consumer();
         var result = await consumer.LockBatchMQAsync(null);
@@ -44,7 +45,7 @@ public class OrderConsumeTests
 
     [Fact]
     [DisplayName("UnlockBatchMQAsync_空列表不抛异常")]
-    public async void UnlockBatchMQAsync_EmptyList_NoException()
+    public async Task UnlockBatchMQAsync_EmptyList_NoException()
     {
         using var consumer = new Consumer();
         await consumer.UnlockBatchMQAsync([]);
@@ -52,7 +53,7 @@ public class OrderConsumeTests
 
     [Fact]
     [DisplayName("UnlockBatchMQAsync_Null列表不抛异常")]
-    public async void UnlockBatchMQAsync_NullList_NoException()
+    public async Task UnlockBatchMQAsync_NullList_NoException()
     {
         using var consumer = new Consumer();
         await consumer.UnlockBatchMQAsync(null);

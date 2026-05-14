@@ -501,9 +501,14 @@ public abstract class MqBase : DisposeBase
     /// <summary>更新或创建主题。重复执行时为更新</summary>
     /// <param name="topic">主题</param>
     /// <param name="queueNum">队列数</param>
-    /// <param name="topicSysFlag"></param>
-    public virtual Int32 CreateTopic(String topic, Int32 queueNum, Int32 topicSysFlag = 0)
+    /// <param name="topicSysFlag">系统标志位，默认0</param>
+    /// <param name="topicMessageType">Topic消息类型，默认Normal。指定Lite可创建轻量动态Topic（需RocketMQ 5.5.0+，RIP-83）</param>
+    public virtual Int32 CreateTopic(String topic, Int32 queueNum, Int32 topicSysFlag = 0, TopicMessageType topicMessageType = TopicMessageType.Normal)
     {
+        // topicMessageType 字段在 RocketMQ 5.x Broker 中作为字符串传递
+        // Lite 类型需要 RocketMQ 5.5.0+ (RIP-83)，旧版 Broker 忽略该字段
+        var topicMessageTypeStr = topicMessageType.ToString();
+
         var header = new
         {
             topic,
@@ -514,6 +519,7 @@ public abstract class MqBase : DisposeBase
             topicFilterType = "SINGLE_TAG",
             topicSysFlag,
             order = false,
+            topicMessageType = topicMessageTypeStr,
         };
 
         var count = 0;

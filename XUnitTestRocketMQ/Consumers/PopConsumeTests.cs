@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
@@ -11,7 +12,7 @@ public class PopConsumeTests
 {
     [Fact]
     [DisplayName("PopMessageAsync_Null的BrokerName抛出异常")]
-    public async void PopMessageAsync_NullBrokerName_ThrowsException()
+    public async Task PopMessageAsync_NullBrokerName_ThrowsException()
     {
         using var consumer = new Consumer();
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
@@ -20,7 +21,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("PopMessageAsync_空BrokerName抛出异常")]
-    public async void PopMessageAsync_EmptyBrokerName_ThrowsException()
+    public async Task PopMessageAsync_EmptyBrokerName_ThrowsException()
     {
         using var consumer = new Consumer();
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
@@ -29,7 +30,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("PopMessageAsync_可指定queueId参数")]
-    public async void PopMessageAsync_WithQueueId_ThrowsWhenBrokerNameNull()
+    public async Task PopMessageAsync_WithQueueId_ThrowsWhenBrokerNameNull()
     {
         using var consumer = new Consumer();
         // 验证带queueId的重载依然会在brokerName为null时抛出异常
@@ -39,7 +40,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("AckMessageAsync_无Broker连接时返回false")]
-    public async void AckMessageAsync_NoBroker_ReturnsFalse()
+    public async Task AckMessageAsync_NoBroker_ReturnsFalse()
     {
         using var consumer = new Consumer();
         // 未Start，无Broker连接
@@ -49,7 +50,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("AckMessageAsync_指定queueId_无Broker连接时返回false")]
-    public async void AckMessageAsync_WithQueueId_NoBroker_ReturnsFalse()
+    public async Task AckMessageAsync_WithQueueId_NoBroker_ReturnsFalse()
     {
         using var consumer = new Consumer();
         var result = await consumer.AckMessageAsync("nonexistent", "extra", 0, queueId: 2);
@@ -58,7 +59,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("AckMessageAsync_传入MessageExt_Null消息抛出异常")]
-    public async void AckMessageAsync_NullMsg_ThrowsException()
+    public async Task AckMessageAsync_NullMsg_ThrowsException()
     {
         using var consumer = new Consumer();
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
@@ -67,7 +68,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("AckMessageAsync_传入MessageExt_缺少POP_CK属性抛出异常")]
-    public async void AckMessageAsync_MsgWithoutPopCk_ThrowsArgumentException()
+    public async Task AckMessageAsync_MsgWithoutPopCk_ThrowsArgumentException()
     {
         using var consumer = new Consumer();
         var msg = new MessageExt { QueueId = 1, QueueOffset = 100 };
@@ -78,7 +79,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("AckMessageAsync_传入MessageExt_无Broker连接时返回false")]
-    public async void AckMessageAsync_WithMsgExt_NoBroker_ReturnsFalse()
+    public async Task AckMessageAsync_WithMsgExt_NoBroker_ReturnsFalse()
     {
         using var consumer = new Consumer();
         var msg = new MessageExt { QueueId = 1, QueueOffset = 100 };
@@ -89,7 +90,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("ChangeInvisibleTimeAsync_无Broker连接时返回false")]
-    public async void ChangeInvisibleTimeAsync_NoBroker_ReturnsFalse()
+    public async Task ChangeInvisibleTimeAsync_NoBroker_ReturnsFalse()
     {
         using var consumer = new Consumer();
         var result = await consumer.ChangeInvisibleTimeAsync("nonexistent", "extra", 0, 30000);
@@ -98,7 +99,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("ChangeInvisibleTimeAsync_指定queueId_无Broker连接时返回false")]
-    public async void ChangeInvisibleTimeAsync_WithQueueId_NoBroker_ReturnsFalse()
+    public async Task ChangeInvisibleTimeAsync_WithQueueId_NoBroker_ReturnsFalse()
     {
         using var consumer = new Consumer();
         var result = await consumer.ChangeInvisibleTimeAsync("nonexistent", "extra", 0, 30000, queueId: 3);
@@ -107,7 +108,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("ChangeInvisibleTimeAsync_传入MessageExt_Null消息抛出异常")]
-    public async void ChangeInvisibleTimeAsync_NullMsg_ThrowsException()
+    public async Task ChangeInvisibleTimeAsync_NullMsg_ThrowsException()
     {
         using var consumer = new Consumer();
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
@@ -116,7 +117,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("ChangeInvisibleTimeAsync_传入MessageExt_缺少POP_CK属性抛出异常")]
-    public async void ChangeInvisibleTimeAsync_MsgWithoutPopCk_ThrowsArgumentException()
+    public async Task ChangeInvisibleTimeAsync_MsgWithoutPopCk_ThrowsArgumentException()
     {
         using var consumer = new Consumer();
         var msg = new MessageExt { QueueId = 2, QueueOffset = 200 };
@@ -127,7 +128,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("ChangeInvisibleTimeAsync_传入MessageExt_无Broker连接时返回false")]
-    public async void ChangeInvisibleTimeAsync_WithMsgExt_NoBroker_ReturnsFalse()
+    public async Task ChangeInvisibleTimeAsync_WithMsgExt_NoBroker_ReturnsFalse()
     {
         using var consumer = new Consumer();
         var msg = new MessageExt { QueueId = 2, QueueOffset = 200 };
@@ -162,7 +163,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("ChangeInvisibleTimeAsync_默认incrementReconsumeTimes为true_无Broker时返回false")]
-    public async void ChangeInvisibleTimeAsync_DefaultIncrementTrue_NoBroker_ReturnsFalse()
+    public async Task ChangeInvisibleTimeAsync_DefaultIncrementTrue_NoBroker_ReturnsFalse()
     {
         using var consumer = new Consumer();
         // 默认 incrementReconsumeTimes=true，与旧行为相同
@@ -172,7 +173,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("ChangeInvisibleTimeAsync_incrementReconsumeTimesFalse_无Broker时返回false")]
-    public async void ChangeInvisibleTimeAsync_IncrementFalse_NoBroker_ReturnsFalse()
+    public async Task ChangeInvisibleTimeAsync_IncrementFalse_NoBroker_ReturnsFalse()
     {
         using var consumer = new Consumer();
         // incrementReconsumeTimes=false 时传 reconsumeTimes=-1，旧版 Broker 会忽略该字段
@@ -182,7 +183,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("ChangeInvisibleTimeAsync_MessageExt重载_默认incrementReconsumeTimesTrue")]
-    public async void ChangeInvisibleTimeAsync_MsgExt_DefaultIncrementTrue_NoBroker_ReturnsFalse()
+    public async Task ChangeInvisibleTimeAsync_MsgExt_DefaultIncrementTrue_NoBroker_ReturnsFalse()
     {
         using var consumer = new Consumer();
         var msg = new MessageExt { QueueId = 1, QueueOffset = 100 };
@@ -193,7 +194,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("ChangeInvisibleTimeAsync_MessageExt重载_incrementReconsumeTimesFalse_无Broker时返回false")]
-    public async void ChangeInvisibleTimeAsync_MsgExt_IncrementFalse_NoBroker_ReturnsFalse()
+    public async Task ChangeInvisibleTimeAsync_MsgExt_IncrementFalse_NoBroker_ReturnsFalse()
     {
         using var consumer = new Consumer();
         var msg = new MessageExt { QueueId = 1, QueueOffset = 100 };
@@ -204,7 +205,7 @@ public class PopConsumeTests
 
     [Fact]
     [DisplayName("ChangeInvisibleTimeAsync_MessageExt重载_无POP_CK_incrementFalse_仍抛出异常")]
-    public async void ChangeInvisibleTimeAsync_MsgExt_NoPOpCk_IncrementFalse_ThrowsException()
+    public async Task ChangeInvisibleTimeAsync_MsgExt_NoPOpCk_IncrementFalse_ThrowsException()
     {
         using var consumer = new Consumer();
         var msg = new MessageExt { QueueId = 1, QueueOffset = 100 };
