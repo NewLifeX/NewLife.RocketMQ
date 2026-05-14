@@ -239,6 +239,14 @@ public abstract class ClusterClient : DisposeBase
         dic["AccessKey"] = accessKey;
         dic["OnsChannel"] = onsChannel;
 
+        // ACL 2.0 资源级权限字段（RocketMQ 5.3+）。与 ACL 1.x HMAC 签名共存，旧版 Broker 会忽略不认识的字段
+        if (provider is AclProvider acl2 && acl2.AclEnabled)
+        {
+            dic["aclEnabled"] = "true";
+            if (acl2.ResourceType > 0) dic["resourceType"] = acl2.ResourceType.ToString();
+            if (!acl2.ResourceName.IsNullOrEmpty()) dic["resourceName"] = acl2.ResourceName;
+        }
+
         // 按照 asscii 排序已有 key
         var comparer = Comparer<string>.Create(string.CompareOrdinal);
         foreach (var item in dic.OrderBy(e => e.Key, comparer).ToDictionary(e => e.Key, e => e.Value))

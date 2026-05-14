@@ -242,4 +242,65 @@ public class MessageTests
     }
 
     #endregion
+
+    #region F056 LMQ 轻量消息队列辅助方法
+
+    [Fact]
+    [DisplayName("LMQ_常量值正确")]
+    public void Lmq_Constants_AreCorrect()
+    {
+        Assert.Equal("INNER_MULTI_DISPATCH", Message.PROPERTY_INNER_MULTI_DISPATCH);
+        Assert.Equal("INNER_CONSUMER_QUEUE", Message.PROPERTY_INNER_CONSUMER_QUEUE);
+    }
+
+    [Fact]
+    [DisplayName("LMQ_SetLmqDestination_设置分发目标")]
+    public void Lmq_SetLmqDestination_SetsProperty()
+    {
+        var message = new Message();
+        message.SetLmqDestination("device-001");
+
+        Assert.Equal("device-001", message.GetLmqDestination());
+        Assert.Equal("device-001", message.Properties[Message.PROPERTY_INNER_MULTI_DISPATCH]);
+    }
+
+    [Fact]
+    [DisplayName("LMQ_SetLmqDestination_多目标分号分隔")]
+    public void Lmq_SetLmqDestination_MultipleTargets()
+    {
+        var message = new Message();
+        message.SetLmqDestination("device-001%device-002%device-003");
+
+        Assert.Equal("device-001%device-002%device-003", message.GetLmqDestination());
+    }
+
+    [Fact]
+    [DisplayName("LMQ_GetLmqDestination_未设置时返回null")]
+    public void Lmq_GetLmqDestination_NotSet_ReturnsNull()
+    {
+        var message = new Message();
+        Assert.Null(message.GetLmqDestination());
+    }
+
+    [Fact]
+    [DisplayName("LMQ_SetLmqDestination_空值抛出异常")]
+    public void Lmq_SetLmqDestination_EmptyTopic_Throws()
+    {
+        var message = new Message();
+        Assert.Throws<ArgumentNullException>(() => message.SetLmqDestination(null));
+        Assert.Throws<ArgumentNullException>(() => message.SetLmqDestination(""));
+    }
+
+    [Fact]
+    [DisplayName("LMQ_SetLmqDestination_属性出现在GetProperties中")]
+    public void Lmq_SetLmqDestination_InGetProperties()
+    {
+        var message = new Message();
+        message.SetLmqDestination("lmq-topic-001");
+
+        var props = message.GetProperties();
+        Assert.Contains("INNER_MULTI_DISPATCH\x01lmq-topic-001\x02", props);
+    }
+
+    #endregion
 }

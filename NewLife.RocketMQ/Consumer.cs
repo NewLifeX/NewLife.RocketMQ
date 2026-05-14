@@ -1590,9 +1590,10 @@ public class Consumer : MqBase
     /// <param name="offset">消息在Queue中的偏移量</param>
     /// <param name="invisibleTime">新的不可见时间（毫秒）</param>
     /// <param name="queueId">队列编号</param>
+    /// <param name="incrementReconsumeTimes">是否递增重试次数。默认true；设为false可延迟重试而不消耗重试机会（需RocketMQ 5.5.0+）</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public async Task<Boolean> ChangeInvisibleTimeAsync(String brokerName, String extraInfo, Int64 offset, Int64 invisibleTime, Int32 queueId = -1, CancellationToken cancellationToken = default)
+    public async Task<Boolean> ChangeInvisibleTimeAsync(String brokerName, String extraInfo, Int64 offset, Int64 invisibleTime, Int32 queueId = -1, Boolean incrementReconsumeTimes = true, CancellationToken cancellationToken = default)
     {
         using var span = Tracer?.NewSpan($"mq:{Name}:ChangeInvisibleTime", offset);
         try
@@ -1600,15 +1601,34 @@ public class Consumer : MqBase
             var bk = GetBroker(brokerName);
             if (bk == null) return false;
 
-            var header = new
+            // incrementReconsumeTimes=false 时传 reconsumeTimes=-1，Broker 5.5.0+ 识别该值表示不递增重试次数
+            // 旧版 Broker 会忽略不认识的字段，向后兼容
+            Object header;
+            if (incrementReconsumeTimes)
             {
-                consumerGroup = Group,
-                topic = Topic,
-                extraInfo,
-                offset,
-                invisibleTime,
-                queueId,
-            };
+                header = new
+                {
+                    consumerGroup = Group,
+                    topic = Topic,
+                    extraInfo,
+                    offset,
+                    invisibleTime,
+                    queueId,
+                };
+            }
+            else
+            {
+                header = new
+                {
+                    consumerGroup = Group,
+                    topic = Topic,
+                    extraInfo,
+                    offset,
+                    invisibleTime,
+                    queueId,
+                    reconsumeTimes = -1,
+                };
+            }
 
             await bk.InvokeAsync(RequestCode.CHANGE_MESSAGE_INVISIBLETIME, null, header, true, cancellationToken).ConfigureAwait(false);
             return true;
@@ -1625,14 +1645,15 @@ public class Consumer : MqBase
     /// <param name="brokerName">Broker名称</param>
     /// <param name="msg">通过Pop方式拉取的消息</param>
     /// <param name="invisibleTime">新的不可见时间（毫秒）</param>
+    /// <param name="incrementReconsumeTimes">是否递增重试次数。默认true；设为false可延迟重试而不消耗重试机会（需RocketMQ 5.5.0+）</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public Task<Boolean> ChangeInvisibleTimeAsync(String brokerName, MessageExt msg, Int64 invisibleTime, CancellationToken cancellationToken = default)
+    public Task<Boolean> ChangeInvisibleTimeAsync(String brokerName, MessageExt msg, Int64 invisibleTime, Boolean incrementReconsumeTimes = true, CancellationToken cancellationToken = default)
     {
         if (msg == null) throw new ArgumentNullException(nameof(msg));
         if (String.IsNullOrEmpty(msg.PopCheckPoint)) throw new ArgumentException("消息不含Pop检查点信息（POP_CK属性缺失），请确认该消息是通过Pop方式拉取的。", nameof(msg));
 
-        return ChangeInvisibleTimeAsync(brokerName, msg.PopCheckPoint, msg.QueueOffset, invisibleTime, msg.QueueId, cancellationToken);
+        return ChangeInvisibleTimeAsync(brokerName, msg.PopCheckPoint, msg.QueueOffset, invisibleTime, msg.QueueId, incrementReconsumeTimes, cancellationToken);
     }
 
     /// <summary>批量确认Pop消息消费完成</summary>

@@ -125,30 +125,7 @@ public class MessageExt : Message, IAccessor
             // RocketMQ 5.x 在 SysFlag 第 8-10 位编码压缩类型（COMPRESSION_TYPE_COMPARATOR = 0x700）：
             // 0(默认)/0x300 = ZLIB，0x100 = LZ4，0x200 = ZSTD
             var compressType = (SysFlag >> 8) & 0x7;
-            if (compressType == 1 || compressType == 2)
-                throw new NotSupportedException($"消息使用 SysFlag 压缩类型 {compressType} (1=LZ4,2=ZSTD)，当前实现仅支持 ZLIB/DEFLATE。");
-
-            // 兼容两种 DEFLATE 包装：
-            // 1) RFC1950 ZLIB 格式：2 字节头部为 CMF/FLG，需同时满足：
-            //    - CM = 8（DEFLATE）
-            //    - CINFO <= 7（32K 窗口及以下）
-            //    - (CMF << 8 | FLG) % 31 == 0
-            // 2) RFC1951 RAW DEFLATE：直接是 DEFLATE 块头，没有 2 字节 ZLIB 包裹
-            // 仅当头部满足 RFC1950 约束时才剥离 2 字节，避免将 RAW DEFLATE 误判为 ZLIB
-            var hasZlibHeader = false;
-            if (Body != null && Body.Length >= 2)
-            {
-                var cmf = Body[0];
-                var flg = Body[1];
-                hasZlibHeader =
-                    (cmf & 0x0F) == 8 &&
-                    (cmf >> 4) <= 7 &&
-                    (((cmf << 8) + flg) % 31) == 0;
-            }
-
-            Body = hasZlibHeader
-                ? Body.ReadBytes(2, -1).Decompress()
-                : Body.Decompress();
+            Body = MessageCompressorRegistry.GetOrThrow(compressType).Decompress(Body);
         }
 
         // 主题

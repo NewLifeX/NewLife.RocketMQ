@@ -72,6 +72,7 @@ public class GrpcMessagingService : IDisposable
     /// <param name="properties">用户属性</param>
     /// <param name="messageGroup">消息分组（FIFO消息）</param>
     /// <param name="deliveryTimestamp">定时投递时间（延迟消息）</param>
+    /// <param name="priority">消息优先级（0=无优先级，1~16=从低到高）。需 RocketMQ 5.4.0+ Broker 支持（RIP-80）</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns>发送结果</returns>
     public async Task<SendMessageResponse> SendMessageAsync(
@@ -82,6 +83,7 @@ public class GrpcMessagingService : IDisposable
         IDictionary<String, String> properties = null,
         String messageGroup = null,
         DateTime? deliveryTimestamp = null,
+        Int32 priority = 0,
         CancellationToken cancellationToken = default)
     {
         var sysProps = new GrpcSystemProperties
@@ -90,6 +92,7 @@ public class GrpcMessagingService : IDisposable
             MessageType = GrpcMessageType.NORMAL,
             BornTimestamp = DateTime.UtcNow,
             BornHost = Environment.MachineName,
+            Priority = priority,
         };
 
         if (keys != null && keys.Count > 0)

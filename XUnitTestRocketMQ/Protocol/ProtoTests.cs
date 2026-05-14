@@ -566,4 +566,118 @@ public class ProtoTests
         Assert.Contains(GrpcMessageType.DELAY, result.AcceptMessageTypes);
     }
     #endregion
+
+    #region F053 gRPC Priority 优先级字段（field 20）
+
+    [Fact]
+    [System.ComponentModel.DisplayName("GrpcSystemProperties_Priority默认为0")]
+    public void GrpcSystemProperties_Priority_DefaultZero()
+    {
+        var sysProps = new GrpcSystemProperties();
+        Assert.Equal(0, sysProps.Priority);
+    }
+
+    [Fact]
+    [System.ComponentModel.DisplayName("GrpcSystemProperties_Priority写入读取正确")]
+    public void GrpcSystemProperties_Priority_RoundTrip()
+    {
+        var sysProps = new GrpcSystemProperties
+        {
+            Tag = "tagA",
+            MessageId = "msg-001",
+            MessageType = GrpcMessageType.NORMAL,
+            BornTimestamp = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            BornHost = "localhost",
+            Priority = 8,
+        };
+
+        var buf = new Byte[512];
+        var writer = new SpanWriter(buf);
+        sysProps.Write(ref writer);
+
+        var data = writer.WrittenSpan.ToArray();
+        var reader = new SpanReader(data);
+        var result = new GrpcSystemProperties();
+        result.Read(ref reader);
+
+        Assert.Equal("tagA", result.Tag);
+        Assert.Equal("msg-001", result.MessageId);
+        Assert.Equal(8, result.Priority);
+    }
+
+    [Fact]
+    [System.ComponentModel.DisplayName("GrpcSystemProperties_Priority为0时不写入字节")]
+    public void GrpcSystemProperties_PriorityZero_NotSerialized()
+    {
+        var sysProps = new GrpcSystemProperties
+        {
+            Tag = "tagA",
+            MessageType = GrpcMessageType.NORMAL,
+            BornTimestamp = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            BornHost = "localhost",
+            Priority = 0,
+        };
+
+        var buf = new Byte[512];
+        var writer = new SpanWriter(buf);
+        sysProps.Write(ref writer);
+        var data = writer.WrittenSpan.ToArray();
+
+        // 不含 field 20 时，数据里不应出现 field 20 的 tag (tag = field<<3|0 = 20<<3 = 160 = 0xA0)
+        Assert.DoesNotContain((Byte)0xA0, data);
+    }
+
+    [Fact]
+    [System.ComponentModel.DisplayName("GrpcSystemProperties_Priority最大值16正确序列化")]
+    public void GrpcSystemProperties_PriorityMax_RoundTrip()
+    {
+        var sysProps = new GrpcSystemProperties
+        {
+            MessageType = GrpcMessageType.NORMAL,
+            BornTimestamp = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            BornHost = "localhost",
+            Priority = 16,
+        };
+
+        var buf = new Byte[512];
+        var writer = new SpanWriter(buf);
+        sysProps.Write(ref writer);
+
+        var data = writer.WrittenSpan.ToArray();
+        var reader = new SpanReader(data);
+        var result = new GrpcSystemProperties();
+        result.Read(ref reader);
+
+        Assert.Equal(16, result.Priority);
+    }
+
+    [Fact]
+    [System.ComponentModel.DisplayName("GrpcMessage_含Priority完整消息编解码")]
+    public void GrpcMessage_WithPriority_RoundTrip()
+    {
+        var msg = new GrpcMessage
+        {
+            Topic = new GrpcResource { ResourceNamespace = "ns", Name = "priority-topic" },
+            SystemProperties = new GrpcSystemProperties
+            {
+                Tag = "tag1",
+                MessageType = GrpcMessageType.NORMAL,
+                BornTimestamp = DateTime.UtcNow,
+                BornHost = "localhost",
+                Priority = 5,
+            },
+            Body = new Byte[] { 0x01, 0x02 },
+        };
+
+        var data = ProtoExtensions.Serialize(msg);
+
+        var reader = new SpanReader(data);
+        var result = new GrpcMessage();
+        result.Read(ref reader);
+
+        Assert.Equal("priority-topic", result.Topic.Name);
+        Assert.Equal(5, result.SystemProperties.Priority);
+    }
+
+    #endregion
 }

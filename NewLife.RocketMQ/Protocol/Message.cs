@@ -224,4 +224,24 @@ public class Message
         return false;
     }
     #endregion
+
+    #region LMQ 轻量消息队列（F056）
+    /// <summary>LMQ多分发目标属性名。设置此属性将消息分发到指定的轻量队列（RocketMQ 4.9+）</summary>
+    public const String PROPERTY_INNER_MULTI_DISPATCH = "INNER_MULTI_DISPATCH";
+
+    /// <summary>LMQ消费者队列属性名。订阅指定LMQ队列时使用</summary>
+    public const String PROPERTY_INNER_CONSUMER_QUEUE = "INNER_CONSUMER_QUEUE";
+
+    /// <summary>设置LMQ分发目标。将消息分发到指定的轻量队列，适合物联网设备级消息隔离</summary>
+    /// <param name="lmqTopic">目标LMQ队列名（Topic形式），多个用%分隔</param>
+    public void SetLmqDestination(String lmqTopic)
+    {
+        if (String.IsNullOrEmpty(lmqTopic)) throw new ArgumentNullException(nameof(lmqTopic));
+        Properties[PROPERTY_INNER_MULTI_DISPATCH] = lmqTopic;
+    }
+
+    /// <summary>获取LMQ分发目标。返回INNER_MULTI_DISPATCH属性值，未设置时返回null</summary>
+    /// <returns>LMQ队列名，未设置时返回null</returns>
+    public String GetLmqDestination() => Properties.TryGetValue(PROPERTY_INNER_MULTI_DISPATCH, out var v) ? v : null;
+    #endregion
 }

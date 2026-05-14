@@ -157,4 +157,59 @@ public class PopConsumeTests
         Assert.Equal(200052, (Int32)RequestCode.CHANGE_MESSAGE_INVISIBLETIME);
         Assert.Equal(200151, (Int32)RequestCode.BATCH_ACK_MESSAGE);
     }
+
+    // F055: ChangeInvisibleDuration 不递增重试次数
+
+    [Fact]
+    [DisplayName("ChangeInvisibleTimeAsync_默认incrementReconsumeTimes为true_无Broker时返回false")]
+    public async void ChangeInvisibleTimeAsync_DefaultIncrementTrue_NoBroker_ReturnsFalse()
+    {
+        using var consumer = new Consumer();
+        // 默认 incrementReconsumeTimes=true，与旧行为相同
+        var result = await consumer.ChangeInvisibleTimeAsync("nonexistent", "extra", 0, 30000, incrementReconsumeTimes: true);
+        Assert.False(result);
+    }
+
+    [Fact]
+    [DisplayName("ChangeInvisibleTimeAsync_incrementReconsumeTimesFalse_无Broker时返回false")]
+    public async void ChangeInvisibleTimeAsync_IncrementFalse_NoBroker_ReturnsFalse()
+    {
+        using var consumer = new Consumer();
+        // incrementReconsumeTimes=false 时传 reconsumeTimes=-1，旧版 Broker 会忽略该字段
+        var result = await consumer.ChangeInvisibleTimeAsync("nonexistent", "extra", 0, 30000, incrementReconsumeTimes: false);
+        Assert.False(result);
+    }
+
+    [Fact]
+    [DisplayName("ChangeInvisibleTimeAsync_MessageExt重载_默认incrementReconsumeTimesTrue")]
+    public async void ChangeInvisibleTimeAsync_MsgExt_DefaultIncrementTrue_NoBroker_ReturnsFalse()
+    {
+        using var consumer = new Consumer();
+        var msg = new MessageExt { QueueId = 1, QueueOffset = 100 };
+        msg.PopCheckPoint = "100 1700000000000 60000 1 broker-a 1";
+        var result = await consumer.ChangeInvisibleTimeAsync("nonexistent", msg, 30000, incrementReconsumeTimes: true);
+        Assert.False(result);
+    }
+
+    [Fact]
+    [DisplayName("ChangeInvisibleTimeAsync_MessageExt重载_incrementReconsumeTimesFalse_无Broker时返回false")]
+    public async void ChangeInvisibleTimeAsync_MsgExt_IncrementFalse_NoBroker_ReturnsFalse()
+    {
+        using var consumer = new Consumer();
+        var msg = new MessageExt { QueueId = 1, QueueOffset = 100 };
+        msg.PopCheckPoint = "100 1700000000000 60000 1 broker-a 1";
+        var result = await consumer.ChangeInvisibleTimeAsync("nonexistent", msg, 30000, incrementReconsumeTimes: false);
+        Assert.False(result);
+    }
+
+    [Fact]
+    [DisplayName("ChangeInvisibleTimeAsync_MessageExt重载_无POP_CK_incrementFalse_仍抛出异常")]
+    public async void ChangeInvisibleTimeAsync_MsgExt_NoPOpCk_IncrementFalse_ThrowsException()
+    {
+        using var consumer = new Consumer();
+        var msg = new MessageExt { QueueId = 1, QueueOffset = 100 };
+        // 没有 POP_CK，无论 incrementReconsumeTimes 是什么都应抛出异常
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            consumer.ChangeInvisibleTimeAsync("broker", msg, 30000, incrementReconsumeTimes: false));
+    }
 }

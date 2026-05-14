@@ -389,6 +389,10 @@ public class GrpcSystemProperties : ISpanSerializable
     /// <summary>追踪上下文</summary>
     public String TraceContext { get; set; }
 
+    /// <summary>消息优先级（0=无优先级，1~16=越大越高）。需 RocketMQ 5.4.0+ Broker 支持（RIP-80）。
+    /// 对应 Apache Proto SystemProperties 的 field 20。</summary>
+    public Int32 Priority { get; set; }
+
     /// <summary>写入</summary>
     /// <param name="writer">编码器</param>
     public void Write(ref SpanWriter writer)
@@ -411,6 +415,8 @@ public class GrpcSystemProperties : ISpanSerializable
         writer.WriteInt32(16, DeliveryAttempt);
         writer.WriteString(17, MessageGroup);
         writer.WriteString(18, TraceContext);
+        // field 19 口房设计不使用，priority 对应 field 20
+        if (Priority > 0) writer.WriteInt32(20, Priority);
     }
 
     /// <summary>读取</summary>
@@ -441,6 +447,7 @@ public class GrpcSystemProperties : ISpanSerializable
                 case 16: DeliveryAttempt = reader.ReadProtoInt32(); break;
                 case 17: MessageGroup = reader.ReadProtoString(); break;
                 case 18: TraceContext = reader.ReadProtoString(); break;
+                case 20: Priority = reader.ReadProtoInt32(); break;
                 default: reader.SkipField(wt); break;
             }
         }

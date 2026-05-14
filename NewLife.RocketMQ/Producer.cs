@@ -866,7 +866,7 @@ public class Producer : MqBase
         var compressOver = CompressOverBytes;
         if (compressOver > 0 && message.Body != null && message.Body.Length > compressOver)
         {
-            message.Body = message.Body.Compress();
+            message.Body = MessageCompressorRegistry.Get(0).Compress(message.Body);
             sysFlag |= 1; // 第0位表示压缩
         }
 
