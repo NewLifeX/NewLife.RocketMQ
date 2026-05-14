@@ -8,6 +8,7 @@ namespace XUnitTest.Producers;
 public class ProducerTests
 {
     [Fact]
+    [System.ComponentModel.DisplayName("Producer_创建主题_返回队列数")]
     public void CreateTopic()
     {
         var set = BasicTest.GetConfig();
@@ -29,6 +30,7 @@ public class ProducerTests
     }
 
     [Fact]
+    [System.ComponentModel.DisplayName("Producer_发送消息_不抛异常")]
     public static void ProduceTest()
     {
         var set = BasicTest.GetConfig();

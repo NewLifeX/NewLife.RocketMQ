@@ -13,7 +13,9 @@ namespace XUnitTest.Consumers;
 public class ConsumerTests
 {
     private static Consumer _consumer;
+
     [Fact]
+    [System.ComponentModel.DisplayName("Consumer集成测试_拉取消息不抛异常")]
     public static void ConsumeTest()
     {
         var set = BasicTest.GetConfig();

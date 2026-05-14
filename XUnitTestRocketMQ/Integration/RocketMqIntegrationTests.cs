@@ -19,12 +19,10 @@ namespace XUnitTest.Integration;
 [Collection("RocketMQ")]
 public class ProducerIntegrationTests(RocketMqFixture fixture) : IClassFixture<RocketMqFixture>
 {
-    [SkippableFact]
+    [Fact]
     [DisplayName("发送普通消息_返回SendOK")]
     public async Task PublishMessage_ReturnsSuccess()
     {
-        fixture.SkipIfUnavailable();
-
         using var producer = new Producer
         {
             Topic             = "integration-test-topic",
@@ -37,12 +35,10 @@ public class ProducerIntegrationTests(RocketMqFixture fixture) : IClassFixture<R
         Assert.NotEmpty(result.MsgId);
     }
 
-    [SkippableFact]
+    [Fact]
     [DisplayName("发送带属性的消息_属性正常保存")]
     public async Task PublishMessageWithProperties_PropertiesPreserved()
     {
-        fixture.SkipIfUnavailable();
-
         using var producer = new Producer
         {
             Topic             = "integration-test-topic",
@@ -62,12 +58,10 @@ public class ProducerIntegrationTests(RocketMqFixture fixture) : IClassFixture<R
         Assert.Equal(SendStatus.SendOK, result.Status);
     }
 
-    [SkippableFact]
+    [Fact]
     [DisplayName("并发发送多条消息_全部成功")]
     public async Task PublishMessagesParallel_AllSucceed()
     {
-        fixture.SkipIfUnavailable();
-
         using var producer = new Producer
         {
             Topic             = "integration-test-topic",
@@ -95,12 +89,10 @@ public class ProducerIntegrationTests(RocketMqFixture fixture) : IClassFixture<R
 [Collection("RocketMQ")]
 public class ConsumerIntegrationTests(RocketMqFixture fixture) : IClassFixture<RocketMqFixture>
 {
-    [SkippableFact]
+    [Fact]
     [DisplayName("先发再消费_能收到消息")]
     public async Task ProduceThenConsume_MessageReceived()
     {
-        fixture.SkipIfUnavailable();
-
         const String topic   = "integration-consume-topic";
         const String content = "Hello Consumer";
 

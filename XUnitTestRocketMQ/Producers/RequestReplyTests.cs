@@ -13,6 +13,7 @@ namespace XUnitTest.Producers;
 public class RequestReplyTests
 {
     [Fact]
+    [System.ComponentModel.DisplayName("RequestReply_同步请求_收到回复")]
     public void RequestSyncTest()
     {
         var set = BasicTest.GetConfig();
@@ -72,6 +73,7 @@ public class RequestReplyTests
     }
 
     [Fact]
+    [System.ComponentModel.DisplayName("RequestReply_异步请求_收到回复")]
     public async Task RequestAsyncTest()
     {
         var set = BasicTest.GetConfig();
