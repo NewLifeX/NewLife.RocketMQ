@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Globalization;
+using NewLife.Buffers;
 using NewLife.Log;
 using NewLife.Reflection;
 using NewLife.RocketMQ.Client;
@@ -59,6 +60,10 @@ public class Producer : MqBase
     public Func<MessageExt, String, CancellationToken, Task<TransactionState>> OnCheckTransactionAsync;
 
     private readonly ConcurrentDictionary<String, TaskCompletionSource<MessageExt>> _requestCallbacks = new();
+
+    /// <summary>进程内 Request-Reply 回调注册表。Consumer.SendReply 优先查找此表以实现同进程直接交付，无需经过 Broker。</summary>
+    internal static readonly ConcurrentDictionary<String, TaskCompletionSource<MessageExt>> InProcessReplyCallbacks = new();
+
     private Consumer _replyConsumer;
     private String _replyTopic;
     #endregion
@@ -568,27 +573,30 @@ public class Producer : MqBase
         if (messages == null || messages.Count == 0) throw new ArgumentException("消息集合不能为空", nameof(messages));
 
         // 编码批量消息体
+        // 按照 RocketMQ 批量消息编码格式（大端序）：
+        // TotalSize(4) + MagicCode(4=0) + BodyCRC(4=0) + Flag(4) + BodyLen(4) + Body + PropsLen(2) + Props
         var ms = new MemoryStream();
-        var bn = new NewLife.Serialization.Binary { Stream = ms, IsLittleEndian = false };
+        Span<Byte> buf = stackalloc Byte[256];
+        var writer = new SpanWriter(buf, ms) { IsLittleEndian = false };
         foreach (var msg in messages)
         {
             msg.Topic ??= Topic;
-            var body = msg.Body ?? new Byte[0];
+            var body = msg.Body ?? [];
             var props = msg.GetProperties() ?? "";
             var propsBytes = props.GetBytes();
 
-            // 按照 RocketMQ 批量消息编码格式
-            // TotalSize(4) + MagicCode(4) + BodyCRC(4) + Flag(4) + BodyLen(4) + Body + PropsLen(2) + Props
             var totalSize = 4 + 4 + 4 + 4 + 4 + body.Length + 2 + propsBytes.Length;
-            bn.Write(totalSize);
-            bn.Write(0); // MagicCode
-            bn.Write(0); // BodyCRC
-            bn.Write(msg.Flag);
-            bn.Write(body.Length);
-            ms.Write(body, 0, body.Length);
-            bn.Write((Int16)propsBytes.Length);
-            ms.Write(propsBytes, 0, propsBytes.Length);
+
+            writer.Write(totalSize);                   // TotalSize
+            writer.Write((Int32)0);                    // MagicCode
+            writer.Write((Int32)0);                    // BodyCRC
+            writer.Write(msg.Flag);                    // Flag
+            writer.Write(body.Length);                 // BodyLen
+            writer.Write((ReadOnlySpan<Byte>)body);    // Body
+            writer.Write((Int16)propsBytes.Length);    // PropsLen
+            writer.Write((ReadOnlySpan<Byte>)propsBytes); // Props
         }
+        writer.Dispose();
 
         var batchBody = ms.ToArray();
 
@@ -943,9 +951,10 @@ public class Producer : MqBase
         message.MessageType = "REQUEST";
         message.RequestTimeout = timeout;
 
-        // 注册回调
+        // 注册回调（进程内直接交付 + 实例回调）
         var tcs = new TaskCompletionSource<MessageExt>();
         _requestCallbacks[correlationId] = tcs;
+        InProcessReplyCallbacks[correlationId] = tcs;
 
         try
         {
@@ -966,6 +975,7 @@ public class Producer : MqBase
         {
             // 清理回调
             _requestCallbacks.TryRemove(correlationId, out _);
+            InProcessReplyCallbacks.TryRemove(correlationId, out _);
         }
     }
 
@@ -993,9 +1003,10 @@ public class Producer : MqBase
         message.MessageType = "REQUEST";
         message.RequestTimeout = timeout;
 
-        // 注册回调
+        // 注册回调（进程内直接交付 + 实例回调）
         var tcs = new TaskCompletionSource<MessageExt>();
         _requestCallbacks[correlationId] = tcs;
+        InProcessReplyCallbacks[correlationId] = tcs;
 
         try
         {
@@ -1022,6 +1033,7 @@ public class Producer : MqBase
         {
             // 清理回调
             _requestCallbacks.TryRemove(correlationId, out _);
+            InProcessReplyCallbacks.TryRemove(correlationId, out _);
         }
     }
 

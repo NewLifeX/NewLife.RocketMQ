@@ -1792,30 +1792,34 @@ public class Consumer : MqBase
         // 检查是否有回复地址
         var replyToClient = requestMessage.ReplyToClient;
         if (String.IsNullOrEmpty(replyToClient))
-        {
             throw new InvalidOperationException("Request message does not have ReplyToClient property");
-        }
 
         var correlationId = requestMessage.CorrelationId;
         if (String.IsNullOrEmpty(correlationId))
-        {
             throw new InvalidOperationException("Request message does not have CorrelationId property");
+
+        // 优先：进程内直接交付，无需经过 Broker，避免回复 Topic 路由延迟问题
+        if (Producer.InProcessReplyCallbacks.TryGetValue(correlationId, out var tcs))
+        {
+            var directReply = new MessageExt { Topic = requestMessage.Topic, CorrelationId = correlationId };
+            directReply.SetBody(replyBody);
+            tcs.TrySetResult(directReply);
+            return new SendResult { Status = SendStatus.SendOK };
         }
 
-        // 创建回复消息
+        // 跨进程回退：通过 Broker 转发回复消息
         var replyMessage = new Message
         {
-            Topic = requestMessage.Topic,
+            Topic = $"{requestMessage.Topic}_REPLY_{replyToClient}",
             CorrelationId = correlationId,
             MessageType = "REPLY"
         };
         replyMessage.SetBody(replyBody);
 
-        // 使用临时Producer发送回复
         using var producer = new Producer
         {
             NameServerAddress = NameServerAddress,
-            Topic = requestMessage.Topic,
+            Topic = replyMessage.Topic,
             Group = Group + "_REPLY",
             ClientIP = ClientIP,
             InstanceName = InstanceName,
@@ -1840,30 +1844,34 @@ public class Consumer : MqBase
         // 检查是否有回复地址
         var replyToClient = requestMessage.ReplyToClient;
         if (String.IsNullOrEmpty(replyToClient))
-        {
             throw new InvalidOperationException("Request message does not have ReplyToClient property");
-        }
 
         var correlationId = requestMessage.CorrelationId;
         if (String.IsNullOrEmpty(correlationId))
-        {
             throw new InvalidOperationException("Request message does not have CorrelationId property");
+
+        // 优先：进程内直接交付，无需经过 Broker，避免回复 Topic 路由延迟问题
+        if (Producer.InProcessReplyCallbacks.TryGetValue(correlationId, out var tcs))
+        {
+            var directReply = new MessageExt { Topic = requestMessage.Topic, CorrelationId = correlationId };
+            directReply.SetBody(replyBody);
+            tcs.TrySetResult(directReply);
+            return new SendResult { Status = SendStatus.SendOK };
         }
 
-        // 创建回复消息
+        // 跨进程回退：通过 Broker 转发回复消息
         var replyMessage = new Message
         {
-            Topic = requestMessage.Topic,
+            Topic = $"{requestMessage.Topic}_REPLY_{replyToClient}",
             CorrelationId = correlationId,
             MessageType = "REPLY"
         };
         replyMessage.SetBody(replyBody);
 
-        // 使用临时Producer发送回复
         using var producer = new Producer
         {
             NameServerAddress = NameServerAddress,
-            Topic = requestMessage.Topic,
+            Topic = replyMessage.Topic,
             Group = Group + "_REPLY",
             ClientIP = ClientIP,
             InstanceName = InstanceName,

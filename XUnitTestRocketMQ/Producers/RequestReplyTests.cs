@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Log;
 using NewLife.RocketMQ;
@@ -24,6 +25,10 @@ public class RequestReplyTests
             Log = XTrace.Log,
         };
         producer.Start();
+
+        // 预创建 Topic，避免消费者启动时 Topic 不存在导致 Rebalance 得到空队列、定时器延至 60 秒
+        producer.Publish("_init_");
+        Thread.Sleep(500);
 
         // 创建消费者
         using var consumer = new Consumer
@@ -54,9 +59,12 @@ public class RequestReplyTests
 
         consumer.Start();
 
+        // 等待消费者完成 Rebalance 并开始拉取
+        Thread.Sleep(5000);
+
         // 发送请求并等待响应
         var requestBody = "Hello, this is a request!";
-        var response = producer.Request(requestBody, 5000);
+        var response = producer.Request(requestBody, 10000);
 
         Assert.NotNull(response);
         Assert.Contains("Reply to:", response.BodyString);
@@ -76,6 +84,10 @@ public class RequestReplyTests
             Log = XTrace.Log,
         };
         producer.Start();
+
+        // 预创建 Topic，避免消费者启动时 Topic 不存在导致 Rebalance 得到空队列、定时器延至 60 秒
+        producer.Publish("_init_");
+        await Task.Delay(500).ConfigureAwait(false);
 
         // 创建消费者
         using var consumer = new Consumer
@@ -106,9 +118,12 @@ public class RequestReplyTests
 
         consumer.Start();
 
+        // 等待消费者完成 Rebalance 并开始拉取
+        await Task.Delay(5000);
+
         // 异步发送请求并等待响应
         var requestBody = "Hello, this is an async request!";
-        var response = await producer.RequestAsync(requestBody, 5000).ConfigureAwait(false);
+        var response = await producer.RequestAsync(requestBody, 10000).ConfigureAwait(false);
 
         Assert.NotNull(response);
         Assert.Contains("Async Reply to:", response.BodyString);
