@@ -130,9 +130,28 @@ namespace NewLife.RocketMQ.MessageTrace
 
         public void Dispose()
         {
+            // 停止接受新的轨迹请求，让后台任务感知取消
             _cancellationTokenSource.Cancel();
-            _dispatchTask.Wait(1000);
+
+            // 排空队列中剩余的轨迹记录（最多等 3 秒），避免丢失尾部数据
+            // 曾经仅 Wait(1000)，在高吞吐场景下末尾轨迹会被截断
+            var drainDeadline = DateTime.UtcNow.AddSeconds(3);
+            while (_traceQueue.Count > 0 && DateTime.UtcNow < drainDeadline)
+            {
+                Thread.Sleep(50);
+            }
+
+            try
+            {
+                _dispatchTask.Wait(TimeSpan.FromSeconds(3));
+            }
+            catch (AggregateException)
+            {
+                // 任务在取消后可能抛出 TaskCanceledException，统一吃掉
+            }
+
             _traceProducer.Stop();
+            _cancellationTokenSource.Dispose();
         }
     }
 }
