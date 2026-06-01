@@ -1,5 +1,35 @@
 # 更新日志
 
+## v3.1.2026.0601 (2026-06-01)
+
+### RocketMQ 5.x 协议增强（F052~F058）
+- **消息压缩可插拔**：实现 ZLIB/LZ4/ZSTD 压缩接口，支持按需注册压缩算法
+- **gRPC 优先级消息**：gRPC 通道支持消息优先级发送
+- **ACL 2.0 权限模型**：新增 ACL 2.0 权限验证支持，对齐 RocketMQ 最新安全规范
+- **Pop 不递增重试次数**：修正 Pop 消费时错误累加重试次数的行为，精确控制消费重试语义
+- **LMQ 轻量队列**：支持 Light Message Queue（LMQ），适用于百万级设备场景
+- **gRPC PushConsumer**：新增 gRPC PushConsumer 主流程与注册表机制
+
+### Lite Topic（F057）
+- **Lite Topic 支持**：新增 `TopicMessageType` 枚举，`MqBase.CreateTopic` 增加 `topicMessageType` 参数，支持 RocketMQ 5.5.0+ Lite Topic 动态创建，兼容旧版 Broker
+
+### 消息钩子机制
+- **MessageTrace Hook**：`Producer`/`Consumer` 新增消息钩子注册方法，支持消息轨迹与拦截扩展
+- **一键安装脚本**：新增 RocketMQ Windows 一键安装启动脚本，自动下载 JDK/RocketMQ 并配置环境，便于本地集成测试
+
+### Bug 修复
+- **[fix]** 修复 `MessageExt` 解压 Body 时的错误
+- **[fix]** 修正批量消息与 IPv6 `SysFlag` 标志位，严格对齐协议规范
+- **[fix]** 补充 `Command.Error` 实现和 `NameClient` 空指针检查
+- **[fix]** 修复 Pull Request 拉取目标查找逻辑
+
+### 测试与质量
+- 新增 42 个单元测试（F052~F058 覆盖），测试用例总数达 519
+- 完善端到端集成测试与 Request-Reply 机制验证
+- 重构测试目录（`Consumer` → `Consumers`，`Producer` → `Producers`）与命名空间对齐
+
+---
+
 ## v3.0.2026.0501 (2026-05-01)
 
 ### 问题修复

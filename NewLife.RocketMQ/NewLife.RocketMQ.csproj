@@ -5,7 +5,7 @@
     <Description>企业级纯托管 RocketMQ 客户端，双协议支持 Remoting 4.x/5.x 和 gRPC 5.x Proxy，零外部依赖，无需 Java、gRPC、Protobuf 第三方库，统一适配阿里云、华为云、腾讯云及 Apache ACL，完整企业级特性（消费重试、死信队列、事务消息、顺序消费、Pop 消费），十亿级项目验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2026 新生命开发团队</Copyright>
-    <VersionPrefix>3.0</VersionPrefix>
+    <VersionPrefix>3.1</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
     <FileVersion>$(Version)</FileVersion>
@@ -30,7 +30,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.RocketMQ</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;RocketMQ;纯托管;零依赖;Remoting;gRPC;阿里云;华为云;腾讯云;消息队列;MQ;分布式;事务消息;延迟消息;顺序消息;死信队列;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>修复Pop/Ack/ChangeInvisibleTime操作缺少queueId参数导致服务端异常；新增MessageExt便利方法简化消息属性访问；升级基础组件</PackageReleaseNotes>
+    <PackageReleaseNotes>新增 F052~F058 协议特性：消息压缩可插拔（ZLIB/LZ4/ZSTD）、gRPC 优先级消息、ACL 2.0、LMQ 轻量队列、gRPC PushConsumer；支持 RocketMQ 5.5.0+ Lite Topic 动态创建（F057）；新增 Producer/Consumer 消息钩子注册方法；修复 MessageExt 解压 Body 错误；新增 Windows 一键安装脚本</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -40,7 +40,7 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.203">
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -62,7 +62,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="11.15.2026.501" />
+    <PackageReference Include="NewLife.Core" Version="11.16.2026.601" />
   </ItemGroup>
 
 </Project>

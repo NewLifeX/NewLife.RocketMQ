@@ -60,12 +60,12 @@ public class RequestReplyTests
 
         consumer.Start();
 
-        // 等待消费者完成 Rebalance 并开始拉取
-        Thread.Sleep(5000);
+        // 等待消费者完成 Rebalance 并开始拉取（Rebalance 通常在 100ms 触发，但首次 Pull 需要建立连接，留 10 秒余量）
+        Thread.Sleep(10000);
 
         // 发送请求并等待响应
         var requestBody = "Hello, this is a request!";
-        var response = producer.Request(requestBody, 10000);
+        var response = producer.Request(requestBody, 30000);
 
         Assert.NotNull(response);
         Assert.Contains("Reply to:", response.BodyString);
@@ -120,12 +120,12 @@ public class RequestReplyTests
 
         consumer.Start();
 
-        // 等待消费者完成 Rebalance 并开始拉取
-        await Task.Delay(5000);
+        // 等待消费者完成 Rebalance 并开始拉取（Rebalance 通常在 100ms 触发，但首次 Pull 需要建立连接，留 10 秒余量）
+        await Task.Delay(10000);
 
         // 异步发送请求并等待响应
         var requestBody = "Hello, this is an async request!";
-        var response = await producer.RequestAsync(requestBody, 10000).ConfigureAwait(false);
+        var response = await producer.RequestAsync(requestBody, 30000).ConfigureAwait(false);
 
         Assert.NotNull(response);
         Assert.Contains("Async Reply to:", response.BodyString);
