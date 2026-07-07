@@ -1187,7 +1187,7 @@ public class Consumer : MqBase
                 catch (ResponseException ex) when (ex.Code == ResponseCode.TOPIC_NOT_EXIST)
                 {
                     // 主题尚未在Broker端创建，忽略偏移提交错误，首次消费后将自动提交偏移
-                    WriteLog("主题[{0}]在Broker端尚未创建，跳过初始偏移提交", store.Queue.Topic ?? Topic);
+                    WriteLog("主题[{0}]在Broker端尚未创建，跳过初始偏移提交", store.Queue.Topic ?? Topic ?? "unknown");
                 }
             }
             else
