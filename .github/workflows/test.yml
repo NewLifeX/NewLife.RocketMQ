@@ -33,33 +33,29 @@ jobs:
     - name: Download & Extract RocketMQ
       run: |
         RMQ_VERSION="5.3.1"
-        # 主用 Apache Archive，镜像为备用
-        curl -fsSL "https://archive.apache.org/dist/rocketmq/${RMQ_VERSION}/rocketmq-all-${RMQ_VERSION}-bin-release.zip" \
-          -o /tmp/rocketmq.zip || \
-        curl -fsSL "https://mirrors.tuna.tsinghua.edu.cn/apache/rocketmq/${RMQ_VERSION}/rocketmq-all-${RMQ_VERSION}-bin-release.zip" \
-          -o /tmp/rocketmq.zip
+        URL1="https://archive.apache.org/dist/rocketmq/${RMQ_VERSION}/rocketmq-all-${RMQ_VERSION}-bin-release.zip"
+        URL2="https://mirrors.tuna.tsinghua.edu.cn/apache/rocketmq/${RMQ_VERSION}/rocketmq-all-${RMQ_VERSION}-bin-release.zip"
+        curl -fsSL "$URL1" -o /tmp/rocketmq.zip || curl -fsSL "$URL2" -o /tmp/rocketmq.zip
         unzip -q /tmp/rocketmq.zip -d /tmp/
         mv /tmp/rocketmq-all-${RMQ_VERSION}-bin-release /tmp/rocketmq
         chmod +x /tmp/rocketmq/bin/*.sh
 
     - name: Start RocketMQ
       run: |
-        # 创建 broker.conf
-        cat > /tmp/rocketmq/conf/broker_test.conf << 'CONF'
-brokerClusterName=DefaultCluster
-brokerName=broker-a
-brokerId=0
-deleteWhen=04
-fileReservedTime=48
-brokerRole=ASYNC_MASTER
-flushDiskType=ASYNC_FLUSH
-autoCreateTopicEnable=true
-listenPort=10911
-storePathRootDir=/tmp/rocketmq/store
-brokerIP1=127.0.0.1
-diskMaxUsedSpaceRatio=100
-diskSpaceWarningLevelRatio=100
-CONF
+        RMQ_CONF=/tmp/rocketmq/conf/broker_test.conf
+        echo "brokerClusterName=DefaultCluster"  > $RMQ_CONF
+        echo "brokerName=broker-a"              >> $RMQ_CONF
+        echo "brokerId=0"                       >> $RMQ_CONF
+        echo "deleteWhen=04"                    >> $RMQ_CONF
+        echo "fileReservedTime=48"              >> $RMQ_CONF
+        echo "brokerRole=ASYNC_MASTER"          >> $RMQ_CONF
+        echo "flushDiskType=ASYNC_FLUSH"        >> $RMQ_CONF
+        echo "autoCreateTopicEnable=true"       >> $RMQ_CONF
+        echo "listenPort=10911"                 >> $RMQ_CONF
+        echo "storePathRootDir=/tmp/rocketmq/store" >> $RMQ_CONF
+        echo "brokerIP1=127.0.0.1"              >> $RMQ_CONF
+        echo "diskMaxUsedSpaceRatio=100"        >> $RMQ_CONF
+        echo "diskSpaceWarningLevelRatio=100"   >> $RMQ_CONF
 
         # 限制 JVM 内存（GitHub Actions 仅 7GB）
         export MAX_HEAP_SIZE="256m"
