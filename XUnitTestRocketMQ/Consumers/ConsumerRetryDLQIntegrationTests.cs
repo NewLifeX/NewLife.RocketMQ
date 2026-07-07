@@ -110,7 +110,7 @@ public class ConsumerRetryDLQIntegrationTests
         var advancedOffset = new SemaphoreSlim(0, 1);
 
         // 提前生成唯一标识，避免 lambda 闭包引用顺序问题
-        var stamp = Guid.NewGuid().ToString("N").Substring(0, 8);
+        var stamp = Guid.NewGuid().ToString("N")[..8];
 
         // 先启动消费者并等待重新平衡，确保消费者就绪后再发送消息
         // 若消息在消费者启动前发送，FromLastOffset=true 会跳过该消息
