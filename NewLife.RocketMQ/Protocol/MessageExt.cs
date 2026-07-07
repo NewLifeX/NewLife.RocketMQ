@@ -179,7 +179,7 @@ public class MessageExt : Message, IAccessor
         var reader = new SpanReader(buf) { IsLittleEndian = false };
 
         var list = new List<MessageExt>();
-        while (reader.FreeCapacity > 0)
+        while (reader.Available > 0)
         {
             var msg = new MessageExt();
             if (!msg.Read(ref reader)) break;
@@ -210,7 +210,7 @@ public class MessageExt : Message, IAccessor
         var list = new List<MessageExt>();
         var reader = new SpanReader(parent.Body) { IsLittleEndian = false };
 
-        while (reader.FreeCapacity > 0)
+        while (reader.Available > 0)
         {
             try
             {

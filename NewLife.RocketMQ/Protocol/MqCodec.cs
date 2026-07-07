@@ -39,7 +39,7 @@ class MqCodec : MessageCodec<Command>
     {
         var ss = context.Owner as IExtend;
         if (ss["Codec"] is not PacketCodec pc)
-            ss["Codec"] = pc = new PacketCodec { GetLength = p => GetLength(p, 0, -4) };
+            ss["Codec"] = pc = new PacketCodec { GetLength2 = p => GetLength(p, 0, -4) };
 
         var pks = pc.Parse(pk);
         foreach (var e in pks)

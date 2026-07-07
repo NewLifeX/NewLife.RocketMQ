@@ -56,10 +56,10 @@ public class LiteTopicTests
     public void TopicMessageType_Lite_ValueIsUnique()
     {
         var liteValue = (Int32)TopicMessageType.Lite;
-        Assert.NotEqual(liteValue, (Int32)TopicMessageType.Normal);
-        Assert.NotEqual(liteValue, (Int32)TopicMessageType.Fifo);
-        Assert.NotEqual(liteValue, (Int32)TopicMessageType.Delay);
-        Assert.NotEqual(liteValue, (Int32)TopicMessageType.Transaction);
+        Assert.NotEqual((Int32)TopicMessageType.Normal, liteValue);
+        Assert.NotEqual((Int32)TopicMessageType.Fifo, liteValue);
+        Assert.NotEqual((Int32)TopicMessageType.Delay, liteValue);
+        Assert.NotEqual((Int32)TopicMessageType.Transaction, liteValue);
     }
 
     [Fact]

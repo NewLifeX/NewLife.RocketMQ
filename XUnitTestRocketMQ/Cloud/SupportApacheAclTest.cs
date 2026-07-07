@@ -75,7 +75,11 @@ public class SupportApacheAclTest
 
         producer.NameServerAddress = NameServerAddress;
         producer.Topic = topic;
-        producer.AclOptions = _aclOptions;
+        producer.CloudProvider = new AclProvider
+        {
+            AccessKey = _aclOptions.AccessKey,
+            SecretKey = _aclOptions.SecretKey,
+        };
 
         return producer;
     }
@@ -86,7 +90,11 @@ public class SupportApacheAclTest
 
         consumer.NameServerAddress = NameServerAddress;
         consumer.Topic = topic;
-        consumer.AclOptions = _aclOptions;
+        consumer.CloudProvider = new AclProvider
+        {
+            AccessKey = _aclOptions.AccessKey,
+            SecretKey = _aclOptions.SecretKey,
+        };
         consumer.Group = "new_life_test_group";
         consumer.FromLastOffset = true;
         consumer.BatchSize = 5;

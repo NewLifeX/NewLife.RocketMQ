@@ -61,7 +61,7 @@ public class MessageTraceIntegrationTests
         traceConsumer.Start();
 
         // 稍等消费者注册完成
-        await Task.Delay(2000).ConfigureAwait(false);
+        await Task.Delay(2000);
 
         // 2. 创建开启轨迹的生产者，发送业务消息
         using var producer = new Producer
@@ -79,7 +79,7 @@ public class MessageTraceIntegrationTests
         XTrace.WriteLine($"发送结果: {sendResult}");
 
         // 3. 等待轨迹消息到达（最多 20 秒）
-        var received = await done.WaitAsync(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
+        var received = await done.WaitAsync(TimeSpan.FromSeconds(15));
 
         // RocketMQ 社区版可能未启用轨迹 Topic，若未收到则跳过断言但不让测试失败
         if (!received)
@@ -174,7 +174,7 @@ public class MessageTraceIntegrationTests
         businessConsumer.Start();
 
         // 4. 等待业务消息被消费（最多 15 秒）
-        var consumed = await businessReceived.WaitAsync(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
+        var consumed = await businessReceived.WaitAsync(TimeSpan.FromSeconds(15));
 
         if (!consumed)
         {
@@ -183,8 +183,8 @@ public class MessageTraceIntegrationTests
         }
 
         // 5. 等待轨迹到达（轨迹发送有延迟）
-        await Task.Delay(3000).ConfigureAwait(false);
-        var traceArrived = await done.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+        await Task.Delay(3000);
+        var traceArrived = await done.WaitAsync(TimeSpan.FromSeconds(5));
 
         if (!traceArrived)
         {

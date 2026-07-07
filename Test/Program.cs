@@ -124,11 +124,11 @@ class Program
             Group = "GID_newlife_Group02",
             NameServerAddress = "http://MQ_INST_1827694722767531_BXxCwUhm.mq-internet-access.mq-internet.aliyuncs.com:80",
 
-            Aliyun = new AliyunOptions
+            CloudProvider = new AliyunProvider
             {
                 AccessKey = "LTAI5tKTGShu31C61xRARVC4",
                 SecretKey = "a9oPwph1IcMGanWckzUOwOf3Ork8LO",
-                //InstanceId = "MQ_INST_1827694722767531_BXxCwUhm",
+                InstanceId = "MQ_INST_1827694722767531_BXxCwUhm",
             },
 
             FromLastOffset = true,

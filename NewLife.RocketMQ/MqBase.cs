@@ -1,9 +1,9 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Net.Http;
 using System.Reflection;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
-using System.Xml.Serialization;
 using NewLife.Log;
 using NewLife.Net;
 using NewLife.RocketMQ.Protocol;
@@ -345,7 +345,7 @@ public abstract class MqBase : DisposeBase
                 var server = _aliyunOptions?.Server;
                 if (!server.IsNullOrEmpty() && server.StartsWithIgnoreCase("http"))
                 {
-                    var http = new System.Net.Http.HttpClient();
+                    var http = new HttpClient();
                     var html = http.GetStringAsync(server).ConfigureAwait(false).GetAwaiter().GetResult();
 
                     if (!html.IsNullOrWhiteSpace()) NameServerAddress = html.Trim();
@@ -876,7 +876,7 @@ public abstract class MqBase : DisposeBase
     /// <param name="topic">主题。默认使用当前Topic</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns>路由查询结果</returns>
-    public async Task<Grpc.QueryRouteResponse> QueryRouteViaGrpcAsync(String topic = null, CancellationToken cancellationToken = default)
+    public virtual async Task<Grpc.QueryRouteResponse> QueryRouteViaGrpcAsync(String topic = null, CancellationToken cancellationToken = default)
     {
         if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
 

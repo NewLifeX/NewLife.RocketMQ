@@ -1,6 +1,6 @@
 namespace NewLife.RocketMQ.Protocol;
 
-/// <summary>Topic 消息类型。用于 <see cref="NewLife.RocketMQ.MqBase.CreateTopic"/> 的 topicMessageType 请求头字段。</summary>
+/// <summary>Topic 消息类型。用于 <c>MqBase.CreateTopic</c> 的 topicMessageType 请求头字段。</summary>
 /// <remarks>
 /// 对应 RocketMQ Broker 端的 <c>TopicMessageType</c> 枚举。
 /// LITE 类型需要 RocketMQ 5.5.0+ Broker（RIP-83），旧版 Broker 会忽略该字段并以 Normal 处理。

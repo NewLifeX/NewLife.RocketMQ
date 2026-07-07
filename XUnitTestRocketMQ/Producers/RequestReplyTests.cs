@@ -89,7 +89,7 @@ public class RequestReplyTests
 
         // 预创建 Topic，避免消费者启动时 Topic 不存在导致 Rebalance 得到空队列、定时器延至 60 秒
         producer.Publish("_init_");
-        await Task.Delay(500).ConfigureAwait(false);
+        await Task.Delay(500);
 
         // 创建消费者
         using var consumer = new Consumer
@@ -125,7 +125,7 @@ public class RequestReplyTests
 
         // 异步发送请求并等待响应
         var requestBody = "Hello, this is an async request!";
-        var response = await producer.RequestAsync(requestBody, 30000).ConfigureAwait(false);
+        var response = await producer.RequestAsync(requestBody, 30000);
 
         Assert.NotNull(response);
         Assert.Contains("Async Reply to:", response.BodyString);

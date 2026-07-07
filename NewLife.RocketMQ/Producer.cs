@@ -5,6 +5,7 @@ using NewLife.Log;
 using NewLife.Reflection;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Common;
+using NewLife.RocketMQ.Grpc;
 using NewLife.RocketMQ.MessageTrace;
 using NewLife.RocketMQ.Models;
 using NewLife.RocketMQ.Protocol;
@@ -152,9 +153,9 @@ public class Producer : MqBase
                 foreach (var hook in _sendMessageHooks)
                 {
                     try { hook.ExecuteHookBefore(context); }
-                    catch (Exception e) 
-                    { 
-                        if (Log.Enable) Log.Error(e.Message); 
+                    catch (Exception e)
+                    {
+                        if (Log.Enable) Log.Error(e.Message);
                     }
                 }
 
@@ -434,7 +435,7 @@ public class Producer : MqBase
                 cancellationToken: cancellationToken
             ).ConfigureAwait(false);
 
-            if (rs.Status?.Code != Grpc.GrpcCode.OK)
+            if (rs.Status?.Code != GrpcCode.OK)
                 throw new InvalidOperationException($"gRPC SendMessage failed: {rs.Status}");
 
             var entry = rs.Entries.FirstOrDefault();
@@ -1015,7 +1016,7 @@ public class Producer : MqBase
 
             // 等待响应，使用兼容的方式
             var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(timeout, cancellationToken)).ConfigureAwait(false);
-            
+
             if (completedTask == tcs.Task)
             {
                 return await tcs.Task.ConfigureAwait(false);
@@ -1120,7 +1121,7 @@ public class Producer : MqBase
             var bk = Clients?.FirstOrDefault();
             bk?.Invoke(RequestCode.END_TRANSACTION, null, header.GetProperties());
 
-        WriteLog("事务回查完成，事务ID={0}，状态={1}", transactionId, state);
+            WriteLog("事务回查完成，事务ID={0}，状态={1}", transactionId, state);
         }
         catch (Exception ex)
         {
@@ -1163,7 +1164,7 @@ public class Producer : MqBase
                 cancellationToken: cancellationToken
             ).ConfigureAwait(false);
 
-            if (rs.Status?.Code != Grpc.GrpcCode.OK)
+            if (rs.Status?.Code != GrpcCode.OK)
                 throw new InvalidOperationException($"gRPC SendMessage (delay) failed: {rs.Status}");
 
             var entry = rs.Entries.FirstOrDefault();
@@ -1208,7 +1209,7 @@ public class Producer : MqBase
                 cancellationToken: cancellationToken
             ).ConfigureAwait(false);
 
-            if (rs.Status?.Code != Grpc.GrpcCode.OK)
+            if (rs.Status?.Code != GrpcCode.OK)
                 throw new InvalidOperationException($"gRPC SendTransactionMessage failed: {rs.Status}");
 
             var entry = rs.Entries.FirstOrDefault();
@@ -1233,7 +1234,7 @@ public class Producer : MqBase
     /// <param name="commit">是否提交。true提交，false回滚</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public async Task<Grpc.GrpcEndTransactionResponse> EndTransactionViaGrpcAsync(
+    public async Task<GrpcEndTransactionResponse> EndTransactionViaGrpcAsync(
         String messageId,
         String transactionId,
         Boolean commit,
@@ -1245,7 +1246,7 @@ public class Producer : MqBase
             Topic,
             messageId,
             transactionId,
-            commit ? Grpc.GrpcTransactionResolution.COMMIT : Grpc.GrpcTransactionResolution.ROLLBACK,
+            commit ? GrpcTransactionResolution.COMMIT : GrpcTransactionResolution.ROLLBACK,
             cancellationToken
         ).ConfigureAwait(false);
     }
@@ -1254,7 +1255,7 @@ public class Producer : MqBase
     /// <param name="topic">主题名。默认使用当前Topic</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns>路由信息</returns>
-    public async Task<Grpc.QueryRouteResponse> QueryRouteViaGrpcAsync(String topic = null, CancellationToken cancellationToken = default)
+    public override async Task<QueryRouteResponse> QueryRouteViaGrpcAsync(String topic = null, CancellationToken cancellationToken = default)
     {
         if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
 

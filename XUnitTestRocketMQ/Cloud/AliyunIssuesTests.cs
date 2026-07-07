@@ -31,7 +31,12 @@ public class AliyunIssuesTests
         var producer = new Producer()
         {
             Topic = _testTopic,
-            Aliyun = _aliyunOptions,
+            CloudProvider = new AliyunProvider
+            {
+                AccessKey = _aliyunOptions.AccessKey,
+                SecretKey = _aliyunOptions.SecretKey,
+                InstanceId = _aliyunOptions.InstanceId,
+            },
             //NameServerAddress = "http://MQ_INST_xxxxxxxxxx_AXxCwUhm.mq-internet-access.mq-internet.aliyuncs.com:80",
             //如果不用上面的默认Server地址，直接将NameServerAddress设为你自己的TCP公网接收点地址也是可以的
         };
@@ -56,7 +61,12 @@ public class AliyunIssuesTests
         var consumer = new Consumer()
         {
             Topic = _testTopic,
-            Aliyun = _aliyunOptions,
+            CloudProvider = new AliyunProvider
+            {
+                AccessKey = _aliyunOptions.AccessKey,
+                SecretKey = _aliyunOptions.SecretKey,
+                InstanceId = _aliyunOptions.InstanceId,
+            },
             Group = _testGroup,
             FromLastOffset = true,
             BatchSize = 1,

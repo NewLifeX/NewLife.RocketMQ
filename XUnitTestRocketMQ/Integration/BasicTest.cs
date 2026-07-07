@@ -51,7 +51,7 @@ public class BasicTest
     /// <summary>TCP 连通性检测</summary>
     /// <param name="address">格式 host:port</param>
     /// <returns>可达返回 true</returns>
-    public static Boolean IsReachable(String? address)
+    public static Boolean IsReachable(String address)
     {
         if (String.IsNullOrEmpty(address)) return false;
         try

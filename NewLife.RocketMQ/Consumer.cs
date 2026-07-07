@@ -1276,7 +1276,7 @@ public class Consumer : MqBase
             var json = File.ReadAllText(file);
             if (String.IsNullOrWhiteSpace(json)) return [];
 
-            return JsonHelper.Default.Read<Dictionary<String, Int64>>(json) ?? [];
+            return JsonHelper.Default.Read<Dictionary<String, Int64>>(json, null) ?? [];
         }
         catch
         {

@@ -1,4 +1,6 @@
-﻿namespace NewLife.RocketMQ;
+﻿using System.Net.Http;
+
+namespace NewLife.RocketMQ;
 
 /// <summary>阿里云 RocketMQ 适配器</summary>
 public class AliyunProvider : ICloudProvider
@@ -53,7 +55,7 @@ public class AliyunProvider : ICloudProvider
         if (String.IsNullOrEmpty(addr) || !addr.StartsWith("http", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        var http = new System.Net.Http.HttpClient();
+        var http = new HttpClient();
         var html = http.GetStringAsync(addr).ConfigureAwait(false).GetAwaiter().GetResult();
 
         return String.IsNullOrWhiteSpace(html) ? null : html.Trim();

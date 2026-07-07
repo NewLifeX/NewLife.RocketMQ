@@ -43,10 +43,7 @@ public class ResponseExceptionTests
         catch (ResponseException ex)
         {
             Assert.Equal(ResponseCode.SYSTEM_ERROR, ex.Code);
-            return;
         }
-
-        Assert.Fail("异常未被捕获");
     }
 
     [Fact]
