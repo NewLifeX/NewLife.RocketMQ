@@ -6,6 +6,7 @@ using NewLife;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
+using XUnitTest.Integration;
 
 namespace XUnitTest.Cloud;
 
@@ -24,6 +25,7 @@ public class SupportApacheAclTest
     [Fact]
     public void CreateTopicTest()
     {
+        BasicTest.EnsureAvailable();
         using var producer = CreateProducerInstance(DefaultSysTopic);
         producer.Start();
         producer.CreateTopic(TestTopic, 2);
@@ -33,6 +35,7 @@ public class SupportApacheAclTest
     [Fact]
     public void PublishMessageTest()
     {
+        BasicTest.EnsureAvailable();
         using var producer = CreateProducerInstance(TestTopic);
         producer.Start();
 

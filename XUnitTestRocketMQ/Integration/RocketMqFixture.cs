@@ -26,14 +26,11 @@ public sealed class RocketMqFixture : IAsyncLifetime
 
     private Exception? _initException;
 
-    /// <summary>若 NameServer 不可达则跳过当前测试</summary>
-    public void SkipIfUnavailable()
+    /// <summary>确保 NameServer 可达，不可达时抛出异常（硬失败）</summary>
+    public void EnsureAvailable()
     {
         if (_initException != null)
-            Skip.If(true,
-                $"无法连接 RocketMQ：{_initException.Message}\n" +
-                "请检查 Config/RocketMQ.xml 中的 NameServer 配置，并确认 RocketMQ 服务已启动。\n" +
-                "启动本机 RocketMQ：dotnet run --file scripts/RocketMqSetup.cs");
+            throw _initException;
     }
 
     /// <inheritdoc/>
@@ -45,6 +42,8 @@ public sealed class RocketMqFixture : IAsyncLifetime
 
         NameServerAddress = addr ?? String.Empty;
         _initException    = VerifyConnection(NameServerAddress);
+        // 不可达直接硬失败，不做静默跳过
+        if (_initException != null) throw _initException;
         return Task.CompletedTask;
     }
 

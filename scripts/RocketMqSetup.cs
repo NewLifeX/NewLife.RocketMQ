@@ -221,6 +221,10 @@ static class RocketMqSetup
             listenPort=10911
             storePathRootDir={StoreDir.Replace('\\', '/')}
             brokerIP1=127.0.0.1
+            # 允许磁盘使用率到 100%，避免因磁盘满拒绝写入（测试环境）
+            diskMaxUsedSpaceRatio=100
+            diskSpaceWarningLevelRatio=100
+            logicalDiskSpaceCleanForciblyThreshold=1.0
             """;
 
         File.WriteAllText(BrokerConf, conf, new UTF8Encoding(false));

@@ -5,6 +5,7 @@ using NewLife.Log;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
+using XUnitTest.Integration;
 
 namespace XUnitTest.Trace;
 
@@ -17,6 +18,7 @@ public class MessageTraceTests
     [Fact]
     public void Producer_And_Consumer_With_Trace_Enabled_Should_Work()
     {
+        BasicTest.EnsureAvailable();
         // 使用 ManualResetEvent 来同步测试的完成
         var mre = new ManualResetEvent(false);
 

@@ -17,7 +17,7 @@ namespace XUnitTest.Integration;
 /// <remarks>初始化</remarks>
 /// <param name="fixture">RocketMQ Fixture</param>
 [Collection("RocketMQ")]
-public class ProducerIntegrationTests(RocketMqFixture fixture) : IClassFixture<RocketMqFixture>
+public class ProducerIntegrationTests(RocketMqFixture fixture)
 {
     [Fact]
     [DisplayName("发送普通消息_返回SendOK")]
@@ -87,7 +87,7 @@ public class ProducerIntegrationTests(RocketMqFixture fixture) : IClassFixture<R
 /// <remarks>初始化</remarks>
 /// <param name="fixture">RocketMQ Fixture</param>
 [Collection("RocketMQ")]
-public class ConsumerIntegrationTests(RocketMqFixture fixture) : IClassFixture<RocketMqFixture>
+public class ConsumerIntegrationTests(RocketMqFixture fixture)
 {
     [Fact]
     [DisplayName("先发再消费_能收到消息")]

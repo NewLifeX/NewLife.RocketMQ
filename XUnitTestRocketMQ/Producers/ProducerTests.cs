@@ -1,5 +1,6 @@
 ﻿using NewLife.Log;
 using NewLife.RocketMQ;
+using NewLife.RocketMQ.Protocol;
 using Xunit;
 using XUnitTest.Integration;
 
@@ -11,6 +12,7 @@ public class ProducerTests
     [System.ComponentModel.DisplayName("Producer_创建主题_返回队列数")]
     public void CreateTopic()
     {
+        BasicTest.EnsureAvailable();
         var set = BasicTest.GetConfig();
         var mq = new Producer
         {
@@ -30,9 +32,11 @@ public class ProducerTests
     }
 
     [Fact]
-    [System.ComponentModel.DisplayName("Producer_发送消息_不抛异常")]
-    public static void ProduceTest()
+    [System.ComponentModel.DisplayName("Producer_发送消息_全部返回SendOK")]
+    public void ProduceTest()
     {
+        BasicTest.EnsureAvailable();
+
         var set = BasicTest.GetConfig();
         using var mq = new Producer
         {
@@ -50,6 +54,7 @@ public class ProducerTests
             //var str = Rand.NextString(1337);
 
             var sr = mq.Publish(str, "TagA", null);
+            Assert.Equal(SendStatus.SendOK, sr.Status);
         }
     }
 }

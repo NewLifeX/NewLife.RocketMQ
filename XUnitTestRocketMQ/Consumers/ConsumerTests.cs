@@ -12,12 +12,14 @@ namespace XUnitTest.Consumers;
 
 public class ConsumerTests
 {
-    private static Consumer _consumer;
+    private Consumer _consumer;
 
     [Fact]
-    [System.ComponentModel.DisplayName("Consumer集成测试_拉取消息不抛异常")]
-    public static void ConsumeTest()
+    [System.ComponentModel.DisplayName("Consumer集成测试_启动消费不抛异常_并获取路由信息")]
+    public void ConsumeTest()
     {
+        BasicTest.EnsureAvailable();
+
         var set = BasicTest.GetConfig();
         var consumer = new Consumer
         {
@@ -36,7 +38,13 @@ public class ConsumerTests
 
         _consumer = consumer;
 
+        // 等待 Rebalance 后验证路由信息
         Thread.Sleep(3000);
+
+        // 验证消费者已获取到 Broker 路由信息
+        Assert.NotNull(consumer.Brokers);
+        Assert.NotEmpty(consumer.Brokers);
+        XTrace.WriteLine("Consumer 获取到 {0} 个 Broker", consumer.Brokers.Count);
         //foreach (var item in consumer.Clients)
         //{
         //    var rs = item.GetRuntimeInfo();
@@ -44,7 +52,7 @@ public class ConsumerTests
         //}
     }
 
-    private static Boolean OnConsume(MessageQueue q, MessageExt[] ms)
+    private Boolean OnConsume(MessageQueue q, MessageExt[] ms)
     {
         Console.WriteLine("[{0}@{1}]收到消息[{2}]", q.BrokerName, q.QueueId, ms.Length);
 

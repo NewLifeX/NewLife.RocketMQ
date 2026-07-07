@@ -14,7 +14,7 @@ public class BasicTest
 {
     private static MqSetting _config;
 
-    /// <summary>获取 RocketMQ 配置</summary>
+    /// <summary>获取 RocketMQ 配置并验证 NameServer 可达。不可达时硬失败。</summary>
     public static MqSetting GetConfig()
     {
         if (_config != null) return _config;
@@ -32,20 +32,26 @@ public class BasicTest
 
             XTrace.WriteLine("RocketMQ配置：{0}", set.NameServer);
 
-            return _config = set;
+            _config = set;
         }
+
+        // 首次获取配置时检查连通性，不可达直接硬失败
+        EnsureAvailable();
+
+        return _config;
     }
 
-    /// <summary>若 NameServer 不可达则跳过当前测试。适合不使用 RocketMqFixture 的集成测试方法。</summary>
-    public static void SkipIfUnavailable()
+    /// <summary>确保 NameServer 可达，不可达时抛出异常（硬失败）。</summary>
+    public static void EnsureAvailable()
     {
         var addr = Environment.GetEnvironmentVariable("ROCKETMQ_NAMESERVER");
         if (String.IsNullOrEmpty(addr)) addr = GetConfig().NameServer;
 
-        Skip.If(!IsReachable(addr),
-            $"无法连接 RocketMQ NameServer [{addr}]，跳过集成测试。\n" +
-            "请检查 Config/RocketMQ.xml 配置或通过 ROCKETMQ_NAMESERVER 环境变量指定地址。\n" +
-            "启动本机 RocketMQ：dotnet run --file scripts/RocketMqSetup.cs");
+        if (!IsReachable(addr))
+            throw new InvalidOperationException(
+                $"无法连接 RocketMQ NameServer [{addr}]。\n" +
+                "请确认 RocketMQ 服务已启动，或通过 ROCKETMQ_NAMESERVER 环境变量指定地址。\n" +
+                "启动本机 RocketMQ：dotnet run --file scripts/RocketMqSetup.cs");
     }
 
     /// <summary>TCP 连通性检测</summary>
