@@ -30,13 +30,20 @@ jobs:
           9.x
           10.x
 
-    - name: Download & Start RocketMQ
+    - name: Download & Extract RocketMQ
       run: |
         RMQ_VERSION="5.3.1"
-        wget -q "https://mirrors.tuna.tsinghua.edu.cn/apache/rocketmq/${RMQ_VERSION}/rocketmq-all-${RMQ_VERSION}-bin-release.zip" -O /tmp/rocketmq.zip
+        # 主用 Apache Archive，镜像为备用
+        curl -fsSL "https://archive.apache.org/dist/rocketmq/${RMQ_VERSION}/rocketmq-all-${RMQ_VERSION}-bin-release.zip" \
+          -o /tmp/rocketmq.zip || \
+        curl -fsSL "https://mirrors.tuna.tsinghua.edu.cn/apache/rocketmq/${RMQ_VERSION}/rocketmq-all-${RMQ_VERSION}-bin-release.zip" \
+          -o /tmp/rocketmq.zip
         unzip -q /tmp/rocketmq.zip -d /tmp/
         mv /tmp/rocketmq-all-${RMQ_VERSION}-bin-release /tmp/rocketmq
+        chmod +x /tmp/rocketmq/bin/*.sh
 
+    - name: Start RocketMQ
+      run: |
         # 创建 broker.conf
         cat > /tmp/rocketmq/conf/broker_test.conf << 'CONF'
 brokerClusterName=DefaultCluster
@@ -54,17 +61,39 @@ diskMaxUsedSpaceRatio=100
 diskSpaceWarningLevelRatio=100
 CONF
 
-        # 启动 NameServer
-        nohup /tmp/rocketmq/bin/mqnamesrv > /tmp/namesrv.log 2>&1 &
-        echo "等待 NameServer 启动..."
-        timeout 30 sh -c 'while ! grep -q "boot success" /tmp/namesrv.log 2>/dev/null; do sleep 1; done'
-        echo "NameServer 已启动"
+        # 限制 JVM 内存（GitHub Actions 仅 7GB）
+        export MAX_HEAP_SIZE="256m"
+        export HEAP_NEWSIZE="128m"
 
-        # 启动 Broker
+        echo "=== 启动 NameServer ==="
+        nohup /tmp/rocketmq/bin/mqnamesrv > /tmp/namesrv.log 2>&1 &
+        for i in $(seq 1 30); do
+          if grep -q "boot success" /tmp/namesrv.log 2>/dev/null; then
+            echo "NameServer 已启动 (PID=$(pgrep -f NamesrvStartup))"
+            break
+          fi
+          sleep 1
+        done
+        if ! grep -q "boot success" /tmp/namesrv.log 2>/dev/null; then
+          echo "=== NameServer 启动失败 ==="
+          cat /tmp/namesrv.log
+          exit 1
+        fi
+
+        echo "=== 启动 Broker ==="
         nohup /tmp/rocketmq/bin/mqbroker -c /tmp/rocketmq/conf/broker_test.conf -n 127.0.0.1:9876 > /tmp/broker.log 2>&1 &
-        echo "等待 Broker 启动..."
-        timeout 40 sh -c 'while ! grep -q "boot success" /tmp/broker.log 2>/dev/null; do sleep 1; done'
-        echo "Broker 已启动"
+        for i in $(seq 1 40); do
+          if grep -q "boot success" /tmp/broker.log 2>/dev/null; then
+            echo "Broker 已启动 (PID=$(pgrep -f BrokerStartup))"
+            break
+          fi
+          sleep 1
+        done
+        if ! grep -q "boot success" /tmp/broker.log 2>/dev/null; then
+          echo "=== Broker 启动失败 ==="
+          cat /tmp/broker.log
+          exit 1
+        fi
 
     - name: Build
       run: |
@@ -79,6 +108,5 @@ CONF
     - name: Stop RocketMQ
       if: always()
       run: |
-        # 清理 RocketMQ 进程
-        pkill -f mqbroker 2>/dev/null || true
-        pkill -f mqnamesrv 2>/dev/null || true
+        pkill -f BrokerStartup 2>/dev/null || true
+        pkill -f NamesrvStartup 2>/dev/null || true
