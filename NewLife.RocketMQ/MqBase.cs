@@ -366,7 +366,9 @@ public abstract class MqBase : DisposeBase
 
         // 阻塞获取Broker地址，确保首次使用之前已经获取到Broker地址
         var rs = client.GetRouteInfo(Topic);
-        DefaultTopicQueueNums = Math.Min(DefaultTopicQueueNums, rs.Where(e => e.Permission.HasFlag(Permissions.Write) && e.WriteQueueNums > 0).Select(e => e.WriteQueueNums).First());
+        var writeQueueNums = rs.Where(e => e.Permission.HasFlag(Permissions.Write) && e.WriteQueueNums > 0).Select(e => e.WriteQueueNums).FirstOrDefault();
+        if (writeQueueNums > 0)
+            DefaultTopicQueueNums = Math.Min(DefaultTopicQueueNums, writeQueueNums);
 
         foreach (var item in rs)
         {

@@ -1170,14 +1170,24 @@ public class Consumer : MqBase
                 {
                     offset = offsetTable.BrokerOffset;
                     if (offset <= 0) offset = await QueryMaxOffset(store.Queue, cancellationToken).ConfigureAwait(false);
+                    // 主题尚未在Broker端创建时，QueryMaxOffset 返回 -1，从头开始消费
+                    if (offset < 0) offset = 0;
                 }
                 else
                 {
                     offset = await QueryMinOffset(store.Queue, cancellationToken).ConfigureAwait(false);
+                    if (offset < 0) offset = 0;
                 }
 
                 store.Offset = store.CommitOffset = offset;
-                await UpdateOffset(store.Queue, offset, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await UpdateOffset(store.Queue, offset, cancellationToken).ConfigureAwait(false);
+                }
+                catch (ResponseException ex) when (ex.Code == ResponseCode.TOPIC_NOT_EXIST)
+                {
+                    // 主题尚未在Broker端创建，首次消费后将自动提交偏移
+                }
             }
             else
             {
