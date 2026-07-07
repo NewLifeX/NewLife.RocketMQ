@@ -105,23 +105,15 @@ public class ConsumerRetryDLQIntegrationTests
         const String topic = "nx_no_retry_test";
         const String group = "nx_no_retry_group";
 
-        using var producer = new Producer
-        {
-            Topic = topic,
-            NameServerAddress = set.NameServer,
-            Log = XTrace.Log,
-        };
-        producer.Start();
-        Thread.Sleep(2000);
-
-        var stamp = DateTime.UtcNow.Ticks.ToString();
-        producer.Publish($"no-retry-{stamp}");
-        Thread.Sleep(500);
-
         var receiveCount = 0;
         var receivedOnce = new SemaphoreSlim(0, 1);
         var advancedOffset = new SemaphoreSlim(0, 1);
 
+        // 提前生成唯一标识，避免 lambda 闭包引用顺序问题
+        var stamp = Guid.NewGuid().ToString("N").Substring(0, 8);
+
+        // 先启动消费者并等待重新平衡，确保消费者就绪后再发送消息
+        // 若消息在消费者启动前发送，FromLastOffset=true 会跳过该消息
         using var consumer = new Consumer
         {
             Topic = topic,
@@ -158,6 +150,16 @@ public class ConsumerRetryDLQIntegrationTests
             return true; // 第二次起放行，偏移推进
         };
         consumer.Start();
+        Thread.Sleep(3000);  // 等待消费者重新平衡完成
+
+        using var producer = new Producer
+        {
+            Topic = topic,
+            NameServerAddress = set.NameServer,
+            Log = XTrace.Log,
+        };
+        producer.Start();
+        producer.Publish($"no-retry-{stamp}");
 
         // 等待收到一次
         var got = await receivedOnce.WaitAsync(TimeSpan.FromSeconds(30));
