@@ -13,7 +13,7 @@
 
 ## 产品简介
 
-NewLife.RocketMQ 是新生命团队开发的**企业级纯托管 RocketMQ 客户端**，专为 .NET 生态设计。它同时支持 RocketMQ **Remoting 协议（4.x/5.x Broker）** 和 **gRPC Proxy 协议（5.x Proxy）**，覆盖生产者、消费者全部核心功能及企业级特性，统一适配阿里云、华为云、腾讯云及 Apache ACL 认证体系。
+NewLife.RocketMQ 是新生命团队开发的**企业级纯托管 RocketMQ 客户端**，专为 .NET 生态设计。同时支持 RocketMQ **Remoting 协议（4.x/5.x Broker）** 和 **gRPC Proxy 协议（5.x Proxy）**，覆盖生产者、消费者全部核心功能及企业级特性，统一适配阿里云、华为云、腾讯云及 Apache ACL 认证体系。
 
 **核心优势**：
 
@@ -333,7 +333,7 @@ MqBase (业务基类)
 └── AclProvider     (Apache ACL：HMAC-SHA1 签名)
 ```
 
-详见 [架构设计文档](Doc/NewLife.RocketMQ架构.md)、[需求文档](Doc/NewLife.RocketMQ需求.md)。
+详见 [需求文档](Doc/需求文档.md)、[功能清单](Doc/功能清单.md)、[架构设计文档](Doc/架构设计.md)、[竞品分析](Doc/竞品分析.md)。
 
 ---
 
@@ -387,24 +387,9 @@ MqBase (业务基类)
 
 ---
 
-## 与竞品对比
-
-| 维度 | NewLife.RocketMQ | Apache rocketmq-client-csharp | 官方 Java 客户端 |
-|------|:----------------:|:---------------------------:|:----------------:|
-| 协议支持 | Remoting + gRPC | 仅 gRPC | Remoting + gRPC |
-| 4.x 兼容 | ✅ | ❌ | ✅ |
-| 外部依赖 | **零依赖** | Google.Protobuf / Grpc.Net 等 | 多个依赖 |
-| .NET Framework | ✅ 4.5+ | ❌ | N/A（Java） |
-| 多云适配 | ✅ 内置四家 | ❌ | ❌ |
-| 事务/重试/死信 | ✅ 完整 | ✅ | ✅ |
-| 管理 API | ✅ 完整 | ❌ | ✅ |
-| 维护活跃度 | ✅ 持续维护 | ⚠️ 更新较慢 | ✅ 官方维护 |
-
----
-
 ## 测试覆盖
 
-30+ 测试类（xUnit），覆盖核心功能、高级特性、协议兼容、云厂商适配、性能优化等场景。
+39 个测试文件，529 个测试用例（xUnit），覆盖核心功能、高级特性、协议兼容、云厂商适配、E2E 集成测试等场景。
 
 ---
 
