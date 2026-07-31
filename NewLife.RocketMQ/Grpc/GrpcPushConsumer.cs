@@ -67,6 +67,9 @@ public class GrpcPushConsumer : IDisposable
     /// <summary>最大并发消费数（默认20）</summary>
     public Int32 MaxConcurrentConsume { get; set; } = 20;
 
+    /// <summary>心跳间隔。默认15秒，保持 Proxy 侧会话注册，防止会话被回收</summary>
+    public TimeSpan HeartbeatInterval { get; set; } = TimeSpan.FromSeconds(15);
+
     /// <summary>消息处理回调。返回 true 则 Ack，返回 false 或抛出异常则 ChangeInvisibleDuration</summary>
     public Func<GrpcMessage, Task<Boolean>> OnMessage { get; set; }
 
@@ -80,7 +83,9 @@ public class GrpcPushConsumer : IDisposable
     private GrpcMessagingService _service;
     private CancellationTokenSource _cts;
     private Task _consumeTask;
+    private Task _heartbeatTask;
     private SemaphoreSlim _semaphore;
+    private Int32 _inFlight;
     private Boolean _disposed;
 
     #endregion
@@ -96,6 +101,9 @@ public class GrpcPushConsumer : IDisposable
         if (Group.IsNullOrEmpty()) throw new InvalidOperationException("Group 不能为空");
         if (Endpoints.IsNullOrEmpty()) throw new InvalidOperationException("Endpoints 不能为空");
         if (OnMessage == null) throw new InvalidOperationException("OnMessage 回调不能为空");
+
+        // 重复启动防护
+        if (_consumeTask != null) throw new InvalidOperationException("Push Consumer 已启动");
 
         var grpcClient = new GrpcClient { Address = Endpoints };
         _service = new GrpcMessagingService
@@ -115,6 +123,9 @@ public class GrpcPushConsumer : IDisposable
 
         _consumeTask = Task.Run(() => ConsumeLoopAsync(routeResponse.MessageQueues, _cts.Token), _cts.Token);
 
+        // 心跳：保持 Proxy 侧会话注册，防止长时间运行会话被回收
+        _heartbeatTask = Task.Run(() => HeartbeatLoopAsync(_cts.Token), _cts.Token);
+
         Log.Info($"[GrpcPushConsumer] 已启动，Topic={Topic}，Group={Group}，队列数={routeResponse.MessageQueues.Count}");
     }
 
@@ -129,13 +140,42 @@ public class GrpcPushConsumer : IDisposable
         {
             if (_consumeTask != null)
                 await _consumeTask.ConfigureAwait(false);
+            if (_heartbeatTask != null)
+                await _heartbeatTask.ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             // 正常取消
         }
 
+        // 等待在途消息处理完成，避免任务仍在用已释放资源
+        while (Interlocked.CompareExchange(ref _inFlight, 0, 0) > 0)
+        {
+            await Task.Delay(50).ConfigureAwait(false);
+        }
+
         Log.Info("[GrpcPushConsumer] 已停止");
+    }
+
+    /// <summary>心跳循环。周期上报客户端存活，保持 Proxy 侧会话</summary>
+    private async Task HeartbeatLoopAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(HeartbeatInterval, cancellationToken).ConfigureAwait(false);
+                await _service.HeartbeatAsync(Group, GrpcClientType.PUSH_CONSUMER, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                Log.Warn($"[GrpcPushConsumer] 心跳失败: {ex.Message}");
+            }
+        }
     }
 
     #endregion
@@ -170,6 +210,8 @@ public class GrpcPushConsumer : IDisposable
                     await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                     // 并发处理（不 await，让循环继续拉取）
+                    // 注意：Task.Run 不传取消令牌，否则 token 取消时委托不执行导致信号量永久泄漏
+                    Interlocked.Increment(ref _inFlight);
                     _ = Task.Run(async () =>
                     {
                         try
@@ -179,8 +221,9 @@ public class GrpcPushConsumer : IDisposable
                         finally
                         {
                             _semaphore.Release();
+                            Interlocked.Decrement(ref _inFlight);
                         }
-                    }, cancellationToken);
+                    });
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -203,6 +246,29 @@ public class GrpcPushConsumer : IDisposable
         var messageId = msg.SystemProperties?.MessageId ?? "(unknown)";
 
         var success = false;
+        // 处理期间续租：防止 OnMessage 处理时间超过不可见时间导致消息被重投（重复消费）
+        using var renewalCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task renewalTask = null;
+        if (!receiptHandle.IsNullOrEmpty())
+        {
+            var interval = TimeSpan.FromMilliseconds(Math.Max(1_000, InvisibleDuration.TotalMilliseconds / 2));
+            renewalTask = Task.Run(async () =>
+            {
+                try
+                {
+                    while (!renewalCts.IsCancellationRequested)
+                    {
+                        await Task.Delay(interval, renewalCts.Token).ConfigureAwait(false);
+                        await _service.ChangeInvisibleDurationAsync(Topic, Group, receiptHandle, messageId, InvisibleDuration, renewalCts.Token).ConfigureAwait(false);
+                    }
+                }
+                catch
+                {
+                    // 续租失败不中断消息处理，交由后续 Ack/ChangeInvisibleDuration 兜底
+                }
+            });
+        }
+
         try
         {
             success = await OnMessage(msg).ConfigureAwait(false);
@@ -211,6 +277,14 @@ public class GrpcPushConsumer : IDisposable
         {
             Log.Error($"[GrpcPushConsumer] 处理消息 {messageId} 异常: {ex.Message}");
             success = false;
+        }
+        finally
+        {
+            renewalCts.Cancel();
+            if (renewalTask != null)
+            {
+                try { await renewalTask.ConfigureAwait(false); } catch { }
+            }
         }
 
         if (success)

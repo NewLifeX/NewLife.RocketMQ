@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace NewLife.RocketMQ.Protocol;
 
@@ -19,7 +19,7 @@ namespace NewLife.RocketMQ.Protocol;
 /// </remarks>
 public static class MessageCompressorRegistry
 {
-    private static readonly Dictionary<Int32, IMessageCompressor> _compressors = new();
+    private static readonly ConcurrentDictionary<Int32, IMessageCompressor> _compressors = new();
 
     static MessageCompressorRegistry()
     {
@@ -34,10 +34,7 @@ public static class MessageCompressorRegistry
     public static void Register(Int32 type, IMessageCompressor compressor)
     {
         if (compressor == null) throw new ArgumentNullException(nameof(compressor));
-        lock (_compressors)
-        {
-            _compressors[type] = compressor;
-        }
+        _compressors[type] = compressor;
     }
 
     /// <summary>获取压缩器，不存在则返回 null</summary>
@@ -45,11 +42,8 @@ public static class MessageCompressorRegistry
     /// <returns>压缩器实例，或 null</returns>
     public static IMessageCompressor Get(Int32 type)
     {
-        lock (_compressors)
-        {
-            _compressors.TryGetValue(type, out var c);
-            return c;
-        }
+        _compressors.TryGetValue(type, out var c);
+        return c;
     }
 
     /// <summary>获取压缩器，不存在则抛出 <see cref="NotSupportedException"/></summary>

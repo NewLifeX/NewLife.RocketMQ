@@ -115,10 +115,19 @@ public class BrokerInfoTests
         var bi1 = new BrokerInfo { Name = "broker-a", Addresses = ["10.0.0.1:10911"], ReadQueueNums = 4, WriteQueueNums = 4 };
         var bi2 = new BrokerInfo { Name = "broker-a", Addresses = ["10.0.0.1:10911"], ReadQueueNums = 4, WriteQueueNums = 4 };
 
-        // 由于 Addresses 是不同的数组实例，GetHashCode 可能不相等
-        // 只验证各自的哈希值是稳定的
-        Assert.Equal(bi1.GetHashCode(), bi1.GetHashCode());
-        Assert.Equal(bi2.GetHashCode(), bi2.GetHashCode());
+        // 相等性契约：Equals 为 true 的两个实例，GetHashCode 必须相同（Addresses 是不同数组实例也应相同）
+        Assert.True(bi1.Equals(bi2));
+        Assert.Equal(bi1.GetHashCode(), bi2.GetHashCode());
+    }
+
+    [Fact]
+    [DisplayName("BrokerInfo_空字段哈希安全")]
+    public void BrokerInfo_NullFields_HashSafe()
+    {
+        var bi = new BrokerInfo { Name = null, Addresses = null };
+
+        // 不抛异常即可（旧实现 Addresses.GetHashCode() 会 NRE）
+        _ = bi.GetHashCode();
     }
 
     [Fact]

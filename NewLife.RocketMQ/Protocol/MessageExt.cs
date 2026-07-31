@@ -2,6 +2,7 @@
 using NewLife.Buffers;
 using NewLife.Collections;
 using NewLife.Data;
+using NewLife.Log;
 using NewLife.Serialization;
 
 namespace NewLife.RocketMQ.Protocol;
@@ -119,6 +120,7 @@ public class MessageExt : Message, IAccessor
 
         // 主体
         var len = reader.ReadInt32();
+        if (len < 0 || len > reader.Available) throw new InvalidDataException($"消息体长度[{len}]非法，剩余[{reader.Available}]");
         Body = reader.ReadBytes(len).ToArray();
         if ((SysFlag & 1) == 1)
         {
@@ -130,9 +132,11 @@ public class MessageExt : Message, IAccessor
 
         // 主题
         len = reader.ReadByte();
+        if (len > reader.Available) throw new InvalidDataException($"主题长度[{len}]非法，剩余[{reader.Available}]");
         Topic = reader.ReadBytes(len).ToArray().ToStr();
 
         var len2 = reader.ReadInt16();
+        if (len2 < 0 || len2 > reader.Available) throw new InvalidDataException($"属性长度[{len2}]非法，剩余[{reader.Available}]");
         var str = reader.ReadBytes(len2).ToArray().ToStr();
         ParseProperties(str);
 
@@ -148,26 +152,38 @@ public class MessageExt : Message, IAccessor
         return true;
     }
 
-    /// <summary>从数据流中读取（向后兼容）</summary>
+    /// <summary>从数据流中读取（向后兼容）。不依赖 stream.Length，按 StoreSize 逐段读取，兼容 NetworkStream</summary>
     /// <param name="stream">数据流</param>
     /// <param name="context">上下文</param>
     /// <returns></returns>
     public Boolean Read(Stream stream, Object context = null)
     {
-        // 读取剩余数据到缓冲区
-        var remaining = (Int32)(stream.Length - stream.Position);
-        if (remaining <= 0) return false;
+        // 先读取 4 字节 StoreSize 确定消息大小（NetworkStream 不支持 Length/Position）
+        var headBuf = new Byte[4];
+        if (!ReadFull(stream, headBuf, 0, 4)) return false;
 
-        var buf = new Byte[remaining];
-        var n = stream.Read(buf, 0, remaining);
+        var storeSize = (headBuf[0] << 24) | (headBuf[1] << 16) | (headBuf[2] << 8) | headBuf[3];
+        if (storeSize <= 0 || storeSize > 4 * 1024 * 1024) return false;
 
-        var reader = new SpanReader(buf, 0, n) { IsLittleEndian = false };
-        var rs = Read(ref reader);
+        var buf = new Byte[storeSize];
+        Buffer.BlockCopy(headBuf, 0, buf, 0, 4);
+        if (!ReadFull(stream, buf, 4, storeSize - 4)) return false;
 
-        // 将流位置设置到实际读取位置
-        stream.Position = stream.Length - remaining + reader.Position;
+        var reader = new SpanReader(buf) { IsLittleEndian = false };
+        return Read(ref reader);
+    }
 
-        return rs;
+    /// <summary>循环读取指定长度的数据</summary>
+    private static Boolean ReadFull(Stream stream, Byte[] buffer, Int32 offset, Int32 count)
+    {
+        var totalRead = 0;
+        while (totalRead < count)
+        {
+            var read = stream.Read(buffer, offset + totalRead, count - totalRead);
+            if (read <= 0) return false;
+            totalRead += read;
+        }
+        return true;
     }
 
     /// <summary>读取所有消息</summary>
@@ -181,8 +197,18 @@ public class MessageExt : Message, IAccessor
         var list = new List<MessageExt>();
         while (reader.Available > 0)
         {
-            var msg = new MessageExt();
-            if (!msg.Read(ref reader)) break;
+            MessageExt msg;
+            try
+            {
+                msg = new MessageExt();
+                if (!msg.Read(ref reader)) break;
+            }
+            catch (Exception ex)
+            {
+                // 单条坏消息不影响整批解析，跳过并记录，避免整批消息全部丢失
+                XTrace.WriteLine("解码消息失败，跳过：{0}", ex.Message);
+                break;
+            }
 
             // INNER_BATCH_FLAG(0x80) 标识批量消息，Body 内嵌多条子消息
             if ((msg.SysFlag & 0x80) != 0 && msg.Body != null && msg.Body.Length > 0)
@@ -280,15 +306,21 @@ public class MessageExt : Message, IAccessor
     #endregion
 
     #region 5.x MessageId
-    /// <summary>创建5.x格式的MessageId。格式：01{VERSION}{MAC_HEX}{PID_HEX}{COUNTER_HEX}，共34个十六进制字符</summary>
+    /// <summary>随机数生成器。线程安全（加锁使用）</summary>
+    private static readonly Random _rand = new();
+
+    /// <summary>随机数锁</summary>
+    private static readonly Object _randLock = new();
+
+    /// <summary>创建5.x格式的MessageId。格式：01{VERSION}{MAC_HEX}{PID_HEX}{COUNTER_HEX}，共32个十六进制字符</summary>
     /// <param name="version">版本号，默认1</param>
     /// <param name="macBytes">MAC地址字节数组（6字节），为空时使用随机字节</param>
     /// <param name="processId">进程ID</param>
     /// <param name="counter">消息计数器</param>
-    /// <returns>5.x格式的MessageId（34字符十六进制字符串）</returns>
+    /// <returns>5.x格式的MessageId（32字符十六进制字符串）</returns>
     public static String CreateMessageId5x(Byte version, Byte[] macBytes, Int32 processId, Int32 counter)
     {
-        // 格式：01 + 1字节Version + 6字节MAC + 4字节PID + 4字节Counter = 16字节 = 32 hex + 前缀"01" = 34 hex
+        // 格式：01 + 1字节Version + 6字节MAC + 4字节PID + 4字节Counter = 16字节 = 32 hex
         var buf = new Byte[16];
         var writer = new SpanWriter(buf) { IsLittleEndian = false };
 
@@ -302,7 +334,10 @@ public class MessageExt : Message, IAccessor
         if (macBytes == null || macBytes.Length < 6)
         {
             var rand = new Byte[6];
-            new Random().NextBytes(rand);
+            lock (_randLock)
+            {
+                _rand.NextBytes(rand);
+            }
             writer.Write(rand);
         }
         else

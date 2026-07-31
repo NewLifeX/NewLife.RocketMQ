@@ -204,15 +204,28 @@ public static class ProtoExtensions
         if (map == null || map.Count == 0) return;
         foreach (var kv in map)
         {
-            var entryBuf = new Byte[512];
-            var entry = new SpanWriter(entryBuf);
-            WriteString(ref entry, 1, kv.Key);
-            WriteString(ref entry, 2, kv.Value);
-            var len = entry.WrittenCount;
+            // 使用重试缓冲区处理长 key/value，避免固定缓冲溢出
+            var size = 512;
+            while (true)
+            {
+                var entryBuf = new Byte[size];
+                var entry = new SpanWriter(entryBuf);
+                try
+                {
+                    WriteString(ref entry, 1, kv.Key);
+                    WriteString(ref entry, 2, kv.Value);
+                    var len = entry.WrittenCount;
 
-            WriteTag(ref writer, fieldNumber, 2);
-            WriteRawVarint(ref writer, (UInt64)len);
-            writer.Write(new ReadOnlySpan<Byte>(entryBuf, 0, len));
+                    WriteTag(ref writer, fieldNumber, 2);
+                    WriteRawVarint(ref writer, (UInt64)len);
+                    writer.Write(new ReadOnlySpan<Byte>(entryBuf, 0, len));
+                    break;
+                }
+                catch (InvalidOperationException)
+                {
+                    size = checked(size * 2);
+                }
+            }
         }
     }
 
@@ -349,6 +362,7 @@ public static class ProtoExtensions
     {
         var len = (Int32)ReadRawVarint(ref reader);
         if (len == 0) return "";
+        EnsureAvailable(ref reader, len);
         var buf = reader.ReadBytes(len).ToArray();
         return Encoding.UTF8.GetString(buf);
     }
@@ -358,6 +372,7 @@ public static class ProtoExtensions
     {
         var len = (Int32)ReadRawVarint(ref reader);
         if (len == 0) return [];
+        EnsureAvailable(ref reader, len);
         return reader.ReadBytes(len).ToArray();
     }
 
@@ -395,6 +410,7 @@ public static class ProtoExtensions
     {
         var len = (Int32)ReadRawVarint(ref reader);
         if (len == 0) return new T();
+        EnsureAvailable(ref reader, len);
 
         var subData = reader.ReadBytes(len).ToArray();
         var sub = new SpanReader(subData);
@@ -407,7 +423,10 @@ public static class ProtoExtensions
     public static (String Key, String Value) ReadMapEntry(ref this SpanReader reader)
     {
         var len = (Int32)ReadRawVarint(ref reader);
+        EnsureAvailable(ref reader, len);
+
         var subData = reader.ReadBytes(len).ToArray();
+
         var sub = new SpanReader(subData);
 
         String key = null;
@@ -431,6 +450,7 @@ public static class ProtoExtensions
     {
         var len = (Int32)ReadRawVarint(ref reader);
         if (len == 0) return DateTime.MinValue;
+        EnsureAvailable(ref reader, len);
 
         var subData = reader.ReadBytes(len).ToArray();
         var sub = new SpanReader(subData);
@@ -458,6 +478,7 @@ public static class ProtoExtensions
     {
         var len = (Int32)ReadRawVarint(ref reader);
         if (len == 0) return TimeSpan.Zero;
+        EnsureAvailable(ref reader, len);
 
         var subData = reader.ReadBytes(len).ToArray();
         var sub = new SpanReader(subData);
@@ -488,18 +509,28 @@ public static class ProtoExtensions
                 ReadRawVarint(ref reader);
                 break;
             case 1: // 64-bit
+                EnsureAvailable(ref reader, 8);
                 reader.ReadBytes(8);
                 break;
             case 2: // length-delimited
                 var len = (Int32)ReadRawVarint(ref reader);
+                EnsureAvailable(ref reader, len);
                 reader.ReadBytes(len);
                 break;
             case 5: // 32-bit
+                EnsureAvailable(ref reader, 4);
                 reader.ReadBytes(4);
                 break;
             default:
                 throw new InvalidDataException($"未知的线路类型: {wireType}");
         }
+    }
+
+    /// <summary>校验剩余字节数足够读取指定长度</summary>
+    private static void EnsureAvailable(ref SpanReader reader, Int32 len)
+    {
+        if (len < 0 || len > reader.Available)
+            throw new EndOfStreamException($"字段长度[{len}]超过剩余[{reader.Available}]");
     }
 
     #endregion

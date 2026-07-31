@@ -1,30 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
+﻿namespace NewLife.RocketMQ.Protocol;
 
-namespace NewLife.RocketMQ.Protocol
+/// <summary>拉取状态</summary>
+public enum PullStatus
 {
-    /// <summary>拉取状态</summary>
-    public enum PullStatus
-    {
-        /// <summary>已发现</summary>
-        Found = 0,
+    /// <summary>已发现</summary>
+    Found = 0,
 
-        /// <summary>没有新的消息</summary>
-        NoNewMessage = 1,
+    /// <summary>没有新的消息</summary>
+    NoNewMessage = 1,
 
-        /// <summary>没有匹配消息</summary>
-        NoMatchedMessage = 2,
+    /// <summary>没有匹配消息</summary>
+    NoMatchedMessage = 2,
 
-        /// <summary>偏移量非法</summary>
-        OffsetIllegal = 3,
+    /// <summary>偏移量非法</summary>
+    OffsetIllegal = 3,
 
-        /// <summary>未知类型</summary>
-        Unknown = 4
-    }
+    /// <summary>未知类型</summary>
+    Unknown = 4
+}
 
-    /// <summary>拉取结果</summary>
-    public class PullResult
-    {
+/// <summary>拉取结果</summary>
+public class PullResult
+{
         #region 属性
         /// <summary>状态</summary>
         public PullStatus Status { get; set; }
@@ -61,4 +58,3 @@ namespace NewLife.RocketMQ.Protocol
         }
         #endregion
     }
-}

@@ -66,20 +66,35 @@ public class SendMessageRequestHeader
     #endregion
 
     #region 方法
+    /// <summary>属性元数据缓存。避免每条消息发送时重复反射</summary>
+    private static readonly PropertyInfo[] _props = typeof(SendMessageRequestHeader).GetProperties();
+
+    /// <summary>XmlElement 短名映射（V2 协议单字母 key）</summary>
+    private static readonly Dictionary<String, String> _names = BuildNames();
+
+    private static Dictionary<String, String> BuildNames()
+    {
+        var dic = new Dictionary<String, String>();
+        foreach (var pi in _props)
+        {
+            var att = pi.GetCustomAttribute<XmlElementAttribute>();
+            if (att != null && !att.ElementName.IsNullOrEmpty()) dic[pi.Name] = att.ElementName;
+        }
+        return dic;
+    }
+
     /// <summary>获取属性字典</summary>
     /// <returns></returns>
     public IDictionary<String, Object> GetProperties()
     {
         var dic = new Dictionary<String, Object>();
 
-        foreach (var pi in GetType().GetProperties())
+        foreach (var pi in _props)
         {
             if (pi.GetIndexParameters().Length > 0) continue;
             if (pi.GetCustomAttribute<XmlIgnoreAttribute>() != null) continue;
 
-            var name = pi.Name;
-            var att = pi.GetCustomAttribute<XmlElementAttribute>();
-            if (att != null && !att.ElementName.IsNullOrEmpty()) name = att.ElementName;
+            var name = _names.TryGetValue(pi.Name, out var shortName) ? shortName : pi.Name;
 
             dic[name] = this.GetValue(pi);
         }

@@ -30,18 +30,23 @@ public class EndTransactionRequestHeader
     #endregion
 
     #region 方法
+    /// <summary>属性元数据缓存。避免事务操作时重复反射</summary>
+    private static readonly PropertyInfo[] _props = typeof(EndTransactionRequestHeader).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+    /// <summary>camelCase 属性名缓存</summary>
+    private static readonly String[] _names = _props.Select(e => Char.ToLowerInvariant(e.Name[0]) + e.Name.Substring(1)).ToArray();
+
     /// <summary>获取属性字典</summary>
     /// <returns></returns>
     public IDictionary<String, Object> GetProperties()
     {
         var dic = new Dictionary<String, Object>();
-        foreach (var pi in GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        for (var i = 0; i < _props.Length; i++)
         {
+            var pi = _props[i];
             if (pi.GetIndexParameters().Length > 0) continue;
-            var name = pi.Name;
-            if (!name.IsNullOrEmpty()) name = Char.ToLowerInvariant(name[0]) + name.Substring(1);
 
-            dic[name] = this.GetValue(pi);
+            dic[_names[i]] = this.GetValue(pi);
         }
 
         return dic;

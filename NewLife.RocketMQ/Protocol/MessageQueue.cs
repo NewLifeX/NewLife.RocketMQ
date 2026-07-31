@@ -26,12 +26,16 @@ public class MessageQueue
         return x.Topic == y.Topic && x.BrokerName == y.BrokerName && x.QueueId == y.QueueId;
     }
 
-    /// <summary>计算哈希</summary>
+    /// <summary>计算哈希。null 安全，与 Equals 字段一致</summary>
     /// <returns></returns>
     public override Int32 GetHashCode()
     {
         var obj = this;
-        return obj.Topic.GetHashCode() ^ obj.BrokerName.GetHashCode() ^ obj.QueueId;
+        var hash = 17;
+        hash = hash * 31 + (obj.Topic?.GetHashCode() ?? 0);
+        hash = hash * 31 + (obj.BrokerName?.GetHashCode() ?? 0);
+        hash = hash * 31 + obj.QueueId;
+        return hash;
     }
     #endregion
 

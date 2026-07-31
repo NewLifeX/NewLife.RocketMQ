@@ -32,7 +32,17 @@ public class Message
 
     /// <summary>消息体</summary>
     [XmlIgnore, IgnoreDataMember]
-    public Byte[] Body { get; set; }
+    public Byte[] Body
+    {
+        get => _body;
+        set
+        {
+            _body = value;
+            // 外部直接赋值 Body 时，使字符串缓存失效
+            _BodyString = null;
+        }
+    }
+    private Byte[] _body;
 
     private String _BodyString;
     /// <summary>消息体。字符串格式</summary>

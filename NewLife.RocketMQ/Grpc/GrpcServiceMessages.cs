@@ -945,9 +945,10 @@ public class GrpcSettings : ISpanSerializable
     {
         writer.WriteEnum(1, (Int32)ClientType);
         writer.WriteMessage(2, AccessPoint);
-        if (RequestTimeout != null) writer.WriteDuration(3, RequestTimeout.Value);
-        writer.WriteMessage(4, Publishing);
-        writer.WriteMessage(5, Subscription);
+        // 官方 Settings：field 3=user_agent，field 4=request_timeout，field 5=publishing，field 6=subscription
+        if (RequestTimeout != null) writer.WriteDuration(4, RequestTimeout.Value);
+        writer.WriteMessage(5, Publishing);
+        writer.WriteMessage(6, Subscription);
     }
 
     /// <summary>读取</summary>
@@ -962,9 +963,9 @@ public class GrpcSettings : ISpanSerializable
             {
                 case 1: ClientType = (GrpcClientType)reader.ReadEnum(); break;
                 case 2: AccessPoint = reader.ReadProtoMessage<GrpcEndpoints>(); break;
-                case 3: RequestTimeout = reader.ReadDuration(); break;
-                case 4: Publishing = reader.ReadProtoMessage<GrpcPublishingSettings>(); break;
-                case 5: Subscription = reader.ReadProtoMessage<GrpcSubscriptionSettings>(); break;
+                case 4: RequestTimeout = reader.ReadDuration(); break;
+                case 5: Publishing = reader.ReadProtoMessage<GrpcPublishingSettings>(); break;
+                case 6: Subscription = reader.ReadProtoMessage<GrpcSubscriptionSettings>(); break;
                 default: reader.SkipField(wt); break;
             }
         }

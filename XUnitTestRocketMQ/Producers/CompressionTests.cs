@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.IO;
 using NewLife;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Protocol;
@@ -162,6 +163,20 @@ public class CompressionTests
         var decompressed = compressor.Decompress(rawDeflated);
 
         Assert.Equal(original, decompressed);
+    }
+
+    [Fact]
+    [DisplayName("ZlibMessageCompressor_解压超过上限_抛出异常")]
+    public void Zlib_Decompress_ExceedsLimit_Throws()
+    {
+        // zip bomb 防护：解压输出超过 4MB 上限时抛异常，防止 OOM
+        var big = new Byte[ZlibMessageCompressor.MaxDecompressSize + 1024]; // 全 0，压缩比极高
+        var compressor = new ZlibMessageCompressor();
+        var compressed = compressor.Compress(big);
+
+        Assert.True(compressed.Length < big.Length);
+
+        Assert.Throws<InvalidDataException>(() => compressor.Decompress(compressed));
     }
 
     private class FakeCompressor : IMessageCompressor

@@ -60,14 +60,19 @@ public class BrokerInfo
             && x.ReadQueueNums == y.ReadQueueNums && x.WriteQueueNums == y.WriteQueueNums;
     }
 
-    /// <summary>计算哈希</summary>
+    /// <summary>计算哈希。与 Equals 保持一致（内容哈希），修复引用哈希导致字典查找失效的问题</summary>
     /// <returns></returns>
     public override Int32 GetHashCode()
     {
         var obj = this;
-        return obj.Name.GetHashCode() ^ obj.Addresses.GetHashCode()
-            ^ obj.Permission.GetHashCode() ^ obj.TopicSynFlag
-            ^ obj.ReadQueueNums ^ obj.WriteQueueNums;
+        var hash = 17;
+        hash = hash * 31 + (obj.Name?.GetHashCode() ?? 0);
+        hash = hash * 31 + (obj.Addresses == null ? 0 : String.Join(",", obj.Addresses).GetHashCode());
+        hash = hash * 31 + obj.Permission.GetHashCode();
+        hash = hash * 31 + obj.TopicSynFlag;
+        hash = hash * 31 + obj.ReadQueueNums;
+        hash = hash * 31 + obj.WriteQueueNums;
+        return hash;
     }
     #endregion
 }

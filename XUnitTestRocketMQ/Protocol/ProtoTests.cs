@@ -567,7 +567,7 @@ public class ProtoTests
     }
     #endregion
 
-    #region F053 gRPC Priority 优先级字段（field 20）
+    #region F053 gRPC Priority 优先级字段（field 22）
 
     [Fact]
     [System.ComponentModel.DisplayName("GrpcSystemProperties_Priority默认为0")]
@@ -623,8 +623,8 @@ public class ProtoTests
         sysProps.Write(ref writer);
         var data = writer.WrittenSpan.ToArray();
 
-        // 不含 field 20 时，数据里不应出现 field 20 的 tag (tag = field<<3|0 = 20<<3 = 160 = 0xA0)
-        Assert.DoesNotContain((Byte)0xA0, data);
+        // Priority=0 不写入，数据里不应出现 field 22 的 tag (tag = field<<3|0 = 22<<3 = 176 = 0xB0)
+        Assert.DoesNotContain((Byte)0xB0, data);
     }
 
     [Fact]

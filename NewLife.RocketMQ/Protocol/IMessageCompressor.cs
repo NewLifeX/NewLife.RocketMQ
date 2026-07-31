@@ -31,6 +31,9 @@ public interface IMessageCompressor
 /// </remarks>
 public class ZlibMessageCompressor : IMessageCompressor
 {
+    /// <summary>解压输出大小上限。默认4MB（RocketMQ 消息上限），防止 zip bomb</summary>
+    public const Int32 MaxDecompressSize = 4 * 1024 * 1024;
+
     /// <summary>压缩，输出 RFC1950 ZLIB 格式（2字节头 + deflate + Adler-32尾）</summary>
     /// <param name="data">原始字节</param>
     /// <returns>压缩后字节</returns>
@@ -61,7 +64,7 @@ public class ZlibMessageCompressor : IMessageCompressor
         return ms.ToArray();
     }
 
-    /// <summary>解压，自动兼容 RFC1950 ZLIB 格式（剥离2字节头）和 RAW DEFLATE 格式</summary>
+    /// <summary>解压，自动兼容 RFC1950 ZLIB 格式（剥离2字节头+4字节尾）和 RAW DEFLATE 格式</summary>
     /// <param name="data">压缩字节</param>
     /// <returns>原始字节</returns>
     public Byte[] Decompress(Byte[] data)
@@ -69,32 +72,57 @@ public class ZlibMessageCompressor : IMessageCompressor
         if (data == null) return null;
         if (data.Length == 0) return data;
 
-        var offset = 0;
-        var length = data.Length;
-
-        // 检测并跳过 RFC1950 ZLIB 2字节头部
-        if (data.Length >= 2)
+        // 检测 RFC1950 ZLIB 2字节头部
+        var hasZlibHeader = data.Length >= 2 && IsZlibHeader(data[0], data[1]);
+        if (hasZlibHeader)
         {
-            var cmf = data[0];
-            var flg = data[1];
-            var hasZlibHeader =
-                (cmf & 0x0F) == 8 &&
-                (cmf >> 4) <= 7 &&
-                (((cmf << 8) + flg) % 31) == 0;
-
-            if (hasZlibHeader)
+            // 标准 ZLIB：剥离 2 字节头 + 4 字节 Adler-32 尾
+            try
             {
-                offset = 2;
-                // 同时剥离末尾 Adler-32（4字节），若存在
-                length = data.Length - 2 - 4;
-                if (length < 0) length = data.Length - 2;
+                return DecompressCore(data, 2, data.Length - 6);
+            }
+            catch (InvalidDataException)
+            {
+                // 部分实现不含 Adler-32 尾，仅剥离头部重试
+            }
+            try
+            {
+                return DecompressCore(data, 2, data.Length - 2);
+            }
+            catch (InvalidDataException)
+            {
+                // 头部误判（概率极低），整体作为 RAW DEFLATE 重试
             }
         }
 
-        using var ms = new MemoryStream(data, offset, Math.Max(0, length));
+        // RAW DEFLATE
+        return DecompressCore(data, 0, data.Length);
+    }
+
+    /// <summary>检测是否为 RFC1950 ZLIB 头部</summary>
+    private static Boolean IsZlibHeader(Byte cmf, Byte flg)
+        => (cmf & 0x0F) == 8 && (cmf >> 4) <= 7 && (((cmf << 8) + flg) % 31) == 0;
+
+    /// <summary>核心解压。限制输出大小防止 zip bomb</summary>
+    private static Byte[] DecompressCore(Byte[] data, Int32 offset, Int32 length)
+    {
+        if (length < 0) length = data.Length - offset;
+        if (length <= 0) return [];
+
+        using var ms = new MemoryStream(data, offset, length);
         using var ds = new DeflateStream(ms, CompressionMode.Decompress);
         using var output = new MemoryStream();
-        ds.CopyTo(output);
+
+        var buf = new Byte[8192];
+        var total = 0;
+        Int32 read;
+        while ((read = ds.Read(buf, 0, buf.Length)) > 0)
+        {
+            total += read;
+            if (total > MaxDecompressSize) throw new InvalidDataException($"解压数据超过上限[{MaxDecompressSize}]");
+            output.Write(buf, 0, read);
+        }
+
         return output.ToArray();
     }
 

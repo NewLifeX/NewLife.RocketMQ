@@ -394,14 +394,28 @@ public class GrpcMessagingService : IDisposable
 
     #region 客户端资源上报
     /// <summary>上报客户端设置（Telemetry）。向Proxy上报客户端资源信息，包括设置、主题订阅等</summary>
+    /// <remarks>
+    /// Telemetry 是双向流式 RPC（stream TelemetryCommand → stream TelemetryCommand）。
+    /// 打开双向流后发送 Settings 命令，读取服务端返回的第一帧命令后关闭。
+    /// </remarks>
     /// <param name="settings">客户端设置</param>
     /// <param name="cancellationToken">取消通知</param>
-    /// <returns>服务端返回的Telemetry命令</returns>
+    /// <returns>服务端返回的Telemetry命令，无响应返回 null</returns>
     public async Task<TelemetryCommand> TelemetryAsync(GrpcSettings settings, CancellationToken cancellationToken = default)
     {
         var request = new TelemetryCommand { Settings = settings };
+        var requestData = ProtoExtensions.Serialize(request);
 
-        return await InvokeAsync<TelemetryCommand, TelemetryCommand>("Telemetry", request, cancellationToken).ConfigureAwait(false);
+        using var session = await Client.BidirectionalStreamingCallAsync(ServiceName, "Telemetry", requestData, cancellationToken).ConfigureAwait(false);
+        session.CompleteRequest();
+
+        var responseData = await session.ReadFrameAsync(cancellationToken).ConfigureAwait(false);
+        if (responseData == null || responseData.Length == 0) return null;
+
+        var reader = new SpanReader(responseData);
+        var response = new TelemetryCommand();
+        response.Read(ref reader);
+        return response;
     }
     #endregion
 

@@ -18,6 +18,9 @@ public class WeightRoundRobin : ILoadBalance
 
     /// <summary>次数</summary>
     private Int32[] _times;
+
+    /// <summary>并发锁。Get/Set 可能被多生产者/消费者线程并发调用</summary>
+    private readonly Object _lock = new();
     #endregion
 
     #region 方法
@@ -26,16 +29,20 @@ public class WeightRoundRobin : ILoadBalance
     public void Set(Int32[] weights)
     {
         if (weights == null) throw new ArgumentNullException(nameof(weights));
-        if (Weights != null && Weights.SequenceEqual(weights)) return;
 
-        Weights = weights;
+        lock (_lock)
+        {
+            if (Weights != null && Weights.SequenceEqual(weights)) return;
 
-        minWeight = weights.Min();
+            Weights = (Int32[])weights.Clone();
 
-        _states = new Int32[weights.Length];
-        _times = new Int32[weights.Length];
+            minWeight = Weights.Min();
 
-        Ready = true;
+            _states = new Int32[weights.Length];
+            _times = new Int32[weights.Length];
+
+            Ready = true;
+        }
     }
 
     /// <summary>根据权重选择，并返回该项是第几次选中</summary>
@@ -43,31 +50,34 @@ public class WeightRoundRobin : ILoadBalance
     /// <returns></returns>
     public Int32 Get(out Int32 times)
     {
-        times = 1;
-        var ts = _states;
-        if (ts == null) return 0;
-
-        // 选择状态最大值
-        var cur = GetMax(ts, out var idx);
-
-        // 如果所有状态都不达标，则集体加盐
-        if (cur < minWeight)
+        lock (_lock)
         {
-            for (var i = 0; i < Weights.Length; i++)
+            times = 1;
+            var ts = _states;
+            if (ts == null) return 0;
+
+            // 选择状态最大值
+            var cur = GetMax(ts, out var idx);
+
+            // 如果所有状态都不达标，则集体加盐
+            if (cur < minWeight)
             {
-                ts[i] += Weights[i];
+                for (var i = 0; i < Weights.Length; i++)
+                {
+                    ts[i] += Weights[i];
+                }
+
+                // 重新选择状态最大值
+                cur = GetMax(ts, out idx);
             }
 
-            // 重新选择状态最大值
-            cur = GetMax(ts, out idx);
+            // 已选择，减状态
+            ts[idx] -= minWeight;
+
+            times = ++_times[idx];
+
+            return idx;
         }
-
-        // 已选择，减状态
-        ts[idx] -= minWeight;
-
-        times = ++_times[idx];
-
-        return idx;
     }
 
     /// <summary>根据权重选择</summary>

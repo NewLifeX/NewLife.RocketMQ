@@ -1,19 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace NewLife.RocketMQ.Protocol;
 
-namespace NewLife.RocketMQ.Protocol
+/// <summary>消费者运行信息</summary>
+class ConsumerRunningInfo
 {
-    class ConsumerRunningInfo
-    {
-        #region 属性
-        public IDictionary<String,String> Properties { get; set; }
+    #region 属性
+    /// <summary>属性集合</summary>
+    public IDictionary<String, String> Properties { get; set; }
 
-        public SubscriptionData[] SubscriptionSet { get; set; }
+    /// <summary>订阅集合</summary>
+    public SubscriptionData[] SubscriptionSet { get; set; }
 
-        public String[] MqTable { get; set; }
-        #endregion
-    }
+    /// <summary>队列表</summary>
+    public String[] MqTable { get; set; }
+    #endregion
 }

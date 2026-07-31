@@ -1,5 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Threading;
+using System.Threading.Tasks;
 using NewLife.RocketMQ.Common;
 using Xunit;
 
@@ -173,6 +175,72 @@ public class WeightRoundRobinTests
             var idx2 = lb2.Get(out _);
             Assert.Equal(idx1, idx2);
         }
+    }
+
+    [Fact]
+    [DisplayName("Get_多线程并发_不抛异常且分配正确")]
+    public async Task Get_Concurrent_Safe()
+    {
+        var lb = new WeightRoundRobin();
+        lb.Set([1, 1, 1]);
+
+        var errors = 0;
+        var total = 0;
+        var tasks = new Task[8];
+        for (var t = 0; t < tasks.Length; t++)
+        {
+            tasks[t] = Task.Run(() =>
+            {
+                try
+                {
+                    for (var i = 0; i < 1000; i++)
+                    {
+                        var idx = lb.Get(out _);
+                        if (idx < 0 || idx >= 3) Interlocked.Increment(ref errors);
+                        Interlocked.Increment(ref total);
+                    }
+                }
+                catch
+                {
+                    Interlocked.Increment(ref errors);
+                }
+            });
+        }
+
+        await Task.WhenAll(tasks);
+
+        // 无异常、无越界索引，总调用数正确
+        Assert.Equal(0, errors);
+        Assert.Equal(8000, total);
+    }
+
+    [Fact]
+    [DisplayName("Get_并发下等权重均匀分配")]
+    public async Task Get_Concurrent_EvenDistribution()
+    {
+        var lb = new WeightRoundRobin();
+        lb.Set([1, 1, 1]);
+
+        var counts = new Int32[3];
+        var tasks = new Task[6];
+        for (var t = 0; t < tasks.Length; t++)
+        {
+            tasks[t] = Task.Run(() =>
+            {
+                for (var i = 0; i < 500; i++)
+                {
+                    var idx = lb.Get();
+                    Interlocked.Increment(ref counts[idx]);
+                }
+            });
+        }
+
+        await Task.WhenAll(tasks);
+
+        // 共 3000 次，等权重均匀分配（各约 1000）
+        Assert.Equal(1000, counts[0]);
+        Assert.Equal(1000, counts[1]);
+        Assert.Equal(1000, counts[2]);
     }
     #endregion
 }
