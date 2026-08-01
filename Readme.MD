@@ -166,6 +166,17 @@ consumer.OnConsume = (q, messages) =>
 };
 ```
 
+### 双协议消息转换
+
+```csharp
+// Remoting 消息转 gRPC 消息（需 netstandard2.1+）
+var grpcMsg = message.ToGrpcMessage();
+
+// gRPC 消息转 Remoting 扩展消息 / 基础消息
+var ext = grpcMsg.ToMessageExt();   // MessageExt（含全部系统属性）
+var msg = grpcMsg.ToMessage();      // Message（基础字段）
+```
+
 ---
 
 ## 消费者高级特性
@@ -324,6 +335,7 @@ MqBase (业务基类)
 └── gRPC 协议（5.x Proxy，netstandard2.1+）
     ├── GrpcClient (HTTP/2，Unary + Server Streaming)
     ├── GrpcMessagingService (11 个 RPC 方法)
+    ├── MessageConverter (Remoting ↔ gRPC 消息互转)
     └── ProtoWriter/ProtoReader (自研 Protobuf 编解码)
 
 云厂商适配层

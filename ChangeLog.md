@@ -1,5 +1,31 @@
 # 更新日志
 
+## v3.2.2026.0802 (2026-08-02)
+
+### gRPC 协议增强与健壮性
+- **MessageConverter 双协议转换助手**：新增公共 API，支持 Remoting（Message/MessageExt）与 gRPC（GrpcMessage）消息模型双向转换，消除调用方手写胶水代码
+- **gRPC 解析与并发健壮性**：修复枚举偏移、字段编号错误，增强 Protobuf 解析容错与并发安全，提升 PushConsumer 稳定性
+- **性能与架构优化**：优化 gRPC 编解码热点路径与整体架构
+
+### 云适配优化
+- **CloudProvider 统一**：统一阿里云、华为云、腾讯云及 Apache ACL 适配逻辑，升级依赖并优化多项细节
+
+### Bug 修复
+- **[fix]** 修复 WriteLog 空引用问题，Topic 名为空时兜底输出
+- **[fix]** 补充 TOPIC_NOT_EXIST 异常场景日志，使用 range slice 优化
+
+### 测试与质量
+- 新增 17 个云厂商单元测试，覆盖四家 Provider 适配器逻辑
+- 新增 gRPC 黄金字节样本、健壮性及 MessageConverter 单元测试
+- 修复 4 个 CI 测试失败（空 Broker 列表、消费初始化等场景）
+- 集成测试支持自动启动本地 RocketMQ 并硬失败
+
+### 其他优化
+- 重构 GitHub Actions RocketMQ 配置生成与下载方式，增强可读性和可维护性
+- 新增竞品分析文档，重构需求/功能清单/架构三件套文档体系并统一格式
+
+---
+
 ## v3.1.2026.0601 (2026-06-01)
 
 ### RocketMQ 5.x 协议增强（F052~F058）
