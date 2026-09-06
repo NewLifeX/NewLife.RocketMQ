@@ -144,7 +144,7 @@ public class Consumer : MqBase
 
         if (EnableMessageTrace)
         {
-            _traceDispatcher = new AsyncTraceDispatcher();
+            _traceDispatcher = new AsyncTraceDispatcher(this);
             _traceDispatcher.Start(NameServerAddress);
             _consumeMessageHooks.Add(new MessageTraceHook(_traceDispatcher));
         }

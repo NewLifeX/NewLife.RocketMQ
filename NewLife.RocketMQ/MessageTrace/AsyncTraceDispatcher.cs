@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Log;
+using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 
 namespace NewLife.RocketMQ.MessageTrace
@@ -21,7 +22,7 @@ namespace NewLife.RocketMQ.MessageTrace
         /// <summary>轨迹主题</summary>
         public const String TraceTopic = "RMQ_SYS_TRACE_TOPIC";
 
-        internal AsyncTraceDispatcher()
+        internal AsyncTraceDispatcher(MqBase host)
         {
             // 初始化内部生产者
             _traceProducer = new Producer
@@ -31,6 +32,22 @@ namespace NewLife.RocketMQ.MessageTrace
                 Group = "T_P_G_RMQ_SYS_TRACE_TOPIC",
                 Log = XTrace.Log,
             };
+
+            // 继承宿主的云厂商/ACL认证配置，否则轨迹消息发送到阿里云等会被拒绝（__accessKey is blank）
+            // 轨迹由内部独立Producer发送，须带与宿主一致的签名与实例路由
+            var provider = host?.CloudProvider;
+            if (provider != null)
+            {
+                _traceProducer.CloudProvider = provider;
+            }
+            else if (host != null)
+            {
+                // 兼容旧版 AliyunOptions/AclOptions，属性setter在CloudProvider为空时会自动同步生成Provider
+#pragma warning disable CS0618
+                _traceProducer.Aliyun = host.Aliyun;
+                _traceProducer.AclOptions = host.AclOptions;
+#pragma warning restore CS0618
+            }
 
             _traceQueue = new BlockingCollection<TraceContext>();
             _cancellationTokenSource = new CancellationTokenSource();

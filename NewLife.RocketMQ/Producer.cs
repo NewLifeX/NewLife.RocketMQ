@@ -78,7 +78,7 @@ public class Producer : MqBase
 
         if (EnableMessageTrace)
         {
-            _traceDispatcher = new AsyncTraceDispatcher();
+            _traceDispatcher = new AsyncTraceDispatcher(this);
             _traceDispatcher.Start(NameServerAddress);
             _sendMessageHooks.Add(new MessageTraceHook(_traceDispatcher));
         }
