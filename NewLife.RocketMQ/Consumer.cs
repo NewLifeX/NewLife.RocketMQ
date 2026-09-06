@@ -1094,14 +1094,12 @@ public class Consumer : MqBase
             {
                 if (store.Offset >= 0) continue;
 
-                var key = $"{store.Queue.Topic ?? Topic}@{store.Queue.BrokerName}@{store.Queue.QueueId}";
+                var key = $"{store?.Queue?.Topic ?? Topic}@{store?.Queue?.BrokerName}@{store?.Queue?.QueueId}";
                 // 兼容旧格式（不含Topic前缀）
-                if (!localOffsets.TryGetValue(key, out var offset) || offset < 0)
-                {
-                    var oldKey = $"{store.Queue.BrokerName}@{store.Queue.QueueId}";
-                    localOffsets.TryGetValue(oldKey, out offset);
-                }
-                if (offset >= 0)
+                var oldKey = $"{store?.Queue?.BrokerName}@{store?.Queue?.QueueId}";
+                var isExist = localOffsets.TryGetValue(key, out var offset) && offset >= 0 || localOffsets.TryGetValue(oldKey, out offset);
+
+                if (isExist && offset >= 0)
                 {
                     store.Offset = store.CommitOffset = offset;
                     WriteLog("从本地加载offset[{0}@{1}] Offset={2:n0}", store.Queue.BrokerName, store.Queue.QueueId, store.Offset);
