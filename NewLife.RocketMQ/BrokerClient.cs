@@ -1,6 +1,7 @@
 ﻿using NewLife.Log;
 using NewLife.Net;
 using NewLife.RocketMQ.Protocol;
+using NewLife.Serialization;
 using NewLife.Threading;
 
 namespace NewLife.RocketMQ;
@@ -74,6 +75,12 @@ public class BrokerClient : ClusterClient
     #region 心跳
     private TimerX _timer;
 
+    /// <summary>心跳是否已成功注册到Broker。注册成功后，重平衡查询前无需再补发心跳</summary>
+    public Boolean HeartbeatOK { get; private set; }
+
+    /// <summary>连接成功。重连后需要重新注册心跳</summary>
+    protected override void OnConnected() => HeartbeatOK = false;
+
     private void StartPing()
     {
         if (_timer == null)
@@ -116,13 +123,28 @@ public class BrokerClient : ClusterClient
                 body.ConsumerDataSet = cm.Data.ToArray();
             }
 
-            span?.AppendTag(body);
+            // Java Broker 使用 fastjson 解析心跳体，字段名必须是 camelCase（clientID/consumerDataSet/groupName…）
+            // JsonHost 默认输出 PascalCase，会导致 Broker 识别不到消费组而注册失败（表现为重平衡查询 "no consumer for this group"）
+            var json = body.ToJson(false, false, true);
+            span?.AppendTag(json);
 
-            // 心跳忽略错误。有时候报40错误
-            Invoke(RequestCode.HEART_BEAT, body, null, true);
+            // 心跳忽略错误。有时候报40错误，但需要记录结果以便排查注册问题
+            var rs = Invoke(RequestCode.HEART_BEAT, json.GetBytes(), null, true);
+            var code = rs?.Header?.Code ?? 0;
+            if (code == 0)
+            {
+                HeartbeatOK = true;
+                if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("心跳[{0}]成功", Name);
+            }
+            else
+            {
+                HeartbeatOK = false;
+                WriteLog("心跳[{0}]失败：{1} {2}", Name, code, rs?.Header?.Remark);
+            }
         }
         catch (Exception ex)
         {
+            HeartbeatOK = false;
             span?.SetError(ex, null);
 
             if (ex.GetTrue() is not TaskCanceledException)

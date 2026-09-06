@@ -409,7 +409,12 @@ public class Consumer : MqBase
             try
             {
                 var bk = GetBroker(item.Name);
-                //bk.Ping();
+                if (bk == null) continue;
+
+                // 先确保本消费者已注册（心跳），否则Broker返回 "no consumer for this group"，重平衡永远查不到自己
+                // 只有尚未注册成功时才补发心跳，注册成功后由 BrokerClient 定时心跳（30s）维持
+                if (!bk.HeartbeatOK) bk.Ping();
+
                 var rs = await bk.InvokeAsync(RequestCode.GET_CONSUMER_LIST_BY_GROUP, null, header).ConfigureAwait(false);
                 span?.AppendTag(rs.Payload?.ToStr());
                 //WriteLog(rs.Header.ExtFields?.ToJson());
@@ -420,6 +425,12 @@ public class Consumer : MqBase
                     {
                         if (!cs.Contains(clientId)) cs.Add(clientId);
                     }
+
+                    if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("在Broker[{0}]上查询消费组[{1}]消费者列表：{2}", item.Name, group, list.Count);
+                }
+                else
+                {
+                    WriteLog("在Broker[{0}]上未查询到消费组[{1}]的消费者列表", item.Name, group);
                 }
             }
             catch (Exception ex)
@@ -919,6 +930,9 @@ public class Consumer : MqBase
     public MessageQueue[] Queues => _Queues?.Select(e => e.Queue).ToArray();
 
     private QueueStore[] _Queues;
+
+    /// <summary>连续查询不到本组消费者的轮数。用于触发切换Broker节点（raft多节点连到非Leader时的自救）</summary>
+    private Int32 _emptyRounds;
     //private String[] _Consumers;
 
     class QueueStore
@@ -943,6 +957,35 @@ public class Consumer : MqBase
         #endregion
     }
 
+    /// <summary>连续多轮重平衡未果时，尝试把消费组所连Broker切换到下一个地址，规避连到非Leader/未就绪节点（raft多节点）</summary>
+    private void TrySwitchBroker()
+    {
+        foreach (var item in Brokers)
+        {
+            var bk = GetBroker(item.Name);
+            if (bk == null) continue;
+
+            // 只有多地址（如raft多节点）才需要切换，单节点切换无意义
+            if (bk.Servers == null || bk.Servers.Length <= 1) continue;
+
+            WriteLog("连续多轮未在Broker[{0}]上发现消费组[{1}]消费者，切换到下一个地址重试", item.Name, Group);
+            if (bk.SwitchServer())
+            {
+                // 连接重建后立即补发心跳注册
+                try
+                {
+                    bk.Ping();
+                }
+                catch (Exception ex)
+                {
+                    WriteLog("切换Broker后注册心跳失败：{0}", ex.Message);
+                }
+
+                break;
+            }
+        }
+    }
+
     /// <summary>重新平衡消费队列</summary>
     /// <returns></returns>
     public async Task<Boolean> Rebalance()
@@ -956,7 +999,17 @@ public class Consumer : MqBase
         if (_Queues == null) WriteLog("准备从所有Broker服务器上获取消费者列表，以确定当前消费者应该负责消费的queue分片");
 
         var cs = await GetConsumers(Group).ConfigureAwait(false);
-        if (cs.Count == 0) return false;
+        if (cs.Count == 0)
+        {
+            // 连续多轮未发现本组消费者，可能是当前连接节点不服务/未就绪，切换到Broker的下一个地址重试（raft多节点）
+            if (++_emptyRounds >= 3)
+            {
+                _emptyRounds = 0;
+                TrySwitchBroker();
+            }
+            return false;
+        }
+        _emptyRounds = 0;
 
         // 为所有订阅主题构建队列列表，按Topic分别分配
         var allTopics = GetEffectiveTopics();

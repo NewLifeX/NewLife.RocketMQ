@@ -36,6 +36,9 @@ public abstract class ClusterClient : DisposeBase
 
     private ISocketClient _Client;
     private SerializeType _serializeType = SerializeType.JSON;
+
+    /// <summary>当前使用的服务器地址下标。重连时从下一个地址开始尝试，避免始终钉在第一个地址</summary>
+    private Int32 _serverIndex = -1;
     #endregion
 
     #region 构造
@@ -86,8 +89,15 @@ public abstract class ClusterClient : DisposeBase
             if (client != null && client.Active && !client.Disposed) return;
             _Client = null;
 
-            foreach (var uri in Servers)
+            var servers = Servers;
+            if (servers == null || servers.Length == 0) throw new XException("[{0}]服务器地址为空！", Name);
+
+            // 从上一个成功地址的下一个开始轮询，避免始终钉在第一个地址（raft多节点集群可能连到非Leader）
+            if (_serverIndex >= servers.Length) _serverIndex = -1;
+            for (var i = 0; i < servers.Length; i++)
             {
+                var idx = (_serverIndex + 1 + i) % servers.Length;
+                var uri = servers[idx];
                 WriteLog("正在连接[{0}]", uri);
 
                 if (uri.Type == NetType.Unknown) uri.Type = NetType.Tcp;
@@ -112,13 +122,45 @@ public abstract class ClusterClient : DisposeBase
                     {
                         client.Received += Client_Received;
                         _Client = client;
+                        _serverIndex = idx;
+                        OnConnected();
+                        WriteLog("连接成功[{0}]", uri);
                         break;
                     }
                 }
                 catch { }
             }
 
-            if (_Client == null) throw new XException("[{0}]集群所有地址[{1}]连接失败！", Name, Servers.Length);
+            if (_Client == null) throw new XException("[{0}]集群所有地址[{1}]连接失败！", Name, servers.Length);
+        }
+    }
+
+    /// <summary>连接成功时调用。子类可重写以感知连接/重连事件</summary>
+    protected virtual void OnConnected()
+    {
+    }
+
+    /// <summary>切换到下一个服务器地址并重建连接。用于多节点集群中当前节点不可用/注册失败时切换到其他节点</summary>
+    /// <returns>是否切换成功</returns>
+    public Boolean SwitchServer()
+    {
+        WriteLog("切换服务器到下一个地址");
+
+        lock (this)
+        {
+            _Client.TryDispose();
+            _Client = null;
+        }
+
+        try
+        {
+            EnsureCreate();
+            return _Client != null;
+        }
+        catch (Exception ex)
+        {
+            WriteLog("切换服务器失败：{0}", ex.Message);
+            return false;
         }
     }
 
