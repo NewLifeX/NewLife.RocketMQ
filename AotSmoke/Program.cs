@@ -1,7 +1,8 @@
 ﻿// RocketMQ NativeAOT 冒烟测试
 //
 // 用途：以 NativeAOT（PublishAot=true）发布为原生可执行文件后运行，验证裁剪环境下以下链路仍然可用：
-//   帧编解码、请求头属性字典、JSON 序列化（含源生成成员访问器）、云厂商适配、消息体对象序列化、端到端收发。
+//   帧编解码、请求头属性字典、JSON 序列化（含源生成成员访问器）、云厂商适配、双协议消息转换、
+//   消息体对象序列化、埋点标签序列化，以及端到端收发（普通/对象体/批量/延迟、消费、偏移查询、顺序锁、POP 消费）。
 // 环境变量 ROCKETMQ_NAMESERVER（如 127.0.0.1:9876）可选；设置后追加真实收发用例，未设置时跳过。
 //
 // 本地：dotnet publish AotSmoke -c Release -r win-x64 -p:PublishAot=true && ./AotSmoke/bin/Release/net10.0/win-x64/publish/AotSmoke.exe
@@ -12,6 +13,8 @@ using NewLife;
 using NewLife.Data;
 using NewLife.Log;
 using NewLife.RocketMQ;
+using NewLife.RocketMQ.Grpc;
+using NewLife.RocketMQ.Models;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Reflection;
 using NewLife.Serialization;
@@ -25,6 +28,21 @@ void Check(String name, Action action)
     try
     {
         action();
+        Console.WriteLine($"[PASS] {name}");
+    }
+    catch (Exception ex)
+    {
+        failures.Add($"{name} => {ex.Message}");
+        Console.WriteLine($"[FAIL] {name} => {ex.Message}");
+    }
+}
+
+async Task CheckAsync(String name, Func<Task> action)
+{
+    count++;
+    try
+    {
+        await action();
         Console.WriteLine($"[PASS] {name}");
     }
     catch (Exception ex)
@@ -190,12 +208,68 @@ Check("消息体·对象体序列化", () =>
 
 Check("云厂商适配", () =>
 {
+    // Apache ACL：不转换 Topic/Group，不提供 NameServer 地址
+    var acl = new AclProvider { AccessKey = "k", SecretKey = "s" };
+    Assert(!acl.AclEnabled, "AclProvider.AclEnabled 默认应为 false");
+    Assert(acl.ResourceType == 0 && acl.ResourceName == null, "ACL 2.0 资源默认值不符");
+    Assert(!acl.Name.IsNullOrEmpty(), "AclProvider.Name 不应为空");
+    Assert(acl.TransformTopic("tp") == "tp", "Apache ACL 不应转换 Topic");
+    Assert(acl.TransformGroup("GID_x") == "GID_x", "Apache ACL 不应转换 Group");
+    Assert(acl.GetNameServerAddress() == null, "Apache ACL 不应提供 NameServer 地址");
+
+    var acl2 = new AclProvider { AccessKey = "k", SecretKey = "s", AclEnabled = true, ResourceType = 1, ResourceName = "tp" };
+    Assert(acl2.AclEnabled && acl2.ResourceType == 1 && acl2.ResourceName == "tp", "ACL 2.0 属性设置失败");
+
+    // 阿里云：实例 ID 前缀转换
     var aliyun = new AliyunProvider { AccessKey = "k", SecretKey = "s", InstanceId = "MQ_INST_1" };
     Assert(aliyun.TransformTopic("tp") == "MQ_INST_1%tp", "阿里云 Topic 前缀转换失败");
     Assert(aliyun.TransformGroup("GID_x") == "MQ_INST_1%GID_x", "阿里云 Group 前缀转换失败");
 
-    var acl = new AclProvider { AccessKey = "k", SecretKey = "s" };
-    Assert(acl.TransformTopic("tp") == "tp", "Apache ACL 不应转换 Topic");
+    var aliyun2 = new AliyunProvider { AccessKey = "k", SecretKey = "s" };
+    Assert(aliyun2.TransformTopic("tp") == "tp", "阿里云无实例 ID 不应转换 Topic");
+
+    // 华为云：不转换 Topic/Group，EnableSsl 默认关闭
+    var huawei = new HuaweiProvider { AccessKey = "k", SecretKey = "s", InstanceId = "HW_INST_1" };
+    Assert(huawei.TransformTopic("tp") == "tp", "华为云不应转换 Topic");
+    Assert(!huawei.EnableSsl, "HuaweiProvider.EnableSsl 默认应为 false");
+
+    // 腾讯云：命名空间前缀转换
+    var tencent = new TencentProvider { AccessKey = "k", SecretKey = "s", Namespace = "ns_x" };
+    Assert(tencent.TransformTopic("tp") == "ns_x%tp", "腾讯云 Topic 前缀转换失败");
+    Assert(tencent.TransformGroup("GID_x") == "ns_x%GID_x", "腾讯云 Group 前缀转换失败");
+
+    var tencent2 = new TencentProvider { AccessKey = "k", SecretKey = "s" };
+    Assert(tencent2.TransformTopic("tp") == "tp", "腾讯云无命名空间不应转换 Topic");
+
+    // 接口一致性
+    foreach (var provider in new ICloudProvider[] { aliyun, huawei, tencent, acl })
+    {
+        Assert(!provider.Name.IsNullOrEmpty(), $"{provider.GetType().Name}.Name 不应为空");
+    }
+});
+
+Check("双协议·消息模型转换", () =>
+{
+    var msg = new Message
+    {
+        Topic = "round-trip",
+        Body = new Byte[] { 0xAA, 0xBB },
+        Tags = "tagX",
+    };
+    msg.Properties["custom"] = "value";
+
+    var grpcMsg = msg.ToGrpcMessage();
+    Assert(grpcMsg.Topic?.Name == "round-trip", "gRPC Topic 映射不一致");
+    Assert(grpcMsg.SystemProperties?.Tag == "tagX", "gRPC Tag 映射不一致");
+    Assert(grpcMsg.UserProperties.ContainsKey("custom") && grpcMsg.UserProperties["custom"] == "value", "gRPC 用户属性映射不一致");
+
+    var back = grpcMsg.ToMessage();
+    Assert(back.Topic == "round-trip" && back.Tags == "tagX", "往返 Topic/Tags 不一致");
+    Assert(back.Body != null && back.Body.Length == 2 && back.Body[0] == 0xAA, "往返 Body 不一致");
+    Assert(back.Properties["custom"] == "value", "往返自定义属性不一致");
+
+    var ext = grpcMsg.ToMessageExt();
+    Assert(ext.Topic == "round-trip" && ext.Tags == "tagX", "gRPC→MessageExt 映射不一致");
 });
 
 Check("埋点·对象标签序列化", () =>
@@ -237,6 +311,11 @@ else
         var result2 = await producer.PublishAsync(new Dictionary<String, Object> { ["kind"] = "aot", ["value"] = 42 });
         Check("端到端·发送对象体", () => Assert(result2.Status == SendStatus.SendOK, $"发送状态 {result2.Status}"));
 
+        var result3 = producer.PublishBatch(["aot-batch-1", "aot-batch-2"]);
+        Check("端到端·批量发送", () => Assert(result3.Status == SendStatus.SendOK, $"发送状态 {result3.Status}"));
+
+        Check("端到端·延迟发送", () => producer.PublishDelay("aot-delay", DelayTimeLevels.S5));
+
         var tcs = new TaskCompletionSource<String>();
         using var consumer = new Consumer
         {
@@ -266,6 +345,52 @@ else
         {
             Check("端到端·消费", () => throw new Exception("30 秒内未收到消息"));
         }
+
+        // 消费后的管理面入口：偏移查询、顺序锁、消费者/连接列表、POP 消费
+        var queues = consumer.Queues;
+        if (queues == null || queues.Length == 0)
+            Console.WriteLine("[SKIP] 端到端·队列相关用例：未获取到已分配队列");
+        else
+        {
+            var mq = queues[0];
+
+            await CheckAsync("端到端·查询最大偏移", async () =>
+            {
+                var offset = await consumer.QueryMaxOffset(mq);
+                Assert(offset >= 0, $"最大偏移 {offset}");
+            });
+
+            await CheckAsync("端到端·顺序消费锁", async () =>
+            {
+                var locked = await consumer.LockBatchMQAsync([mq]);
+                Assert(locked != null, "锁定结果为空");
+                await consumer.UnlockBatchMQAsync([mq]);
+            });
+
+            await CheckAsync("端到端·POP 拉取与确认", async () =>
+            {
+                // 关闭长轮询（pollTime=0），避免客户端请求超时；此处验证 POP 请求编解码链路可用
+                var pr = await consumer.PopMessageAsync(mq.BrokerName, mq.QueueId, maxNums: 8, invisibleTime: 30_000, pollTime: 0);
+                Assert(pr != null, "POP 结果为空");
+                if (pr!.Messages != null && pr.Messages.Length > 0 && !pr.Messages[0].PopCheckPoint.IsNullOrEmpty())
+                {
+                    var acked = await consumer.AckMessageAsync(mq.BrokerName, pr.Messages[0]);
+                    Assert(acked, "POP 确认失败");
+                }
+            });
+        }
+
+        await CheckAsync("端到端·消费者列表", async () =>
+        {
+            var cs = await consumer.GetConsumers();
+            Assert(cs != null, "消费者列表为空");
+        });
+
+        await CheckAsync("端到端·连接列表", async () =>
+        {
+            var conn = await consumer.GetConsumerConnectionList();
+            Assert(conn != null, "连接列表为空");
+        });
     }
     catch (Exception ex)
     {

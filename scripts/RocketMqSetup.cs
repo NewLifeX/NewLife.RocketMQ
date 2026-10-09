@@ -4,6 +4,9 @@
 //   安装 + 启动：dotnet run --file scripts/RocketMqSetup.cs
 //   停止：       dotnet run --file scripts/RocketMqSetup.cs -- --stop
 //   状态查看：   dotnet run --file scripts/RocketMqSetup.cs -- --status
+//
+// 存储目录会自动挑选余量充足的分区（RocketMQ 在磁盘使用率 ≥90% 时拒绝写入）：
+//   优先安装盘，余量不足时改用可用空间最多的分区，路径形如 {盘符}:\RocketMQ\store
 // ============================================================
 
 using System;
@@ -26,6 +29,9 @@ static class RocketMqSetup
     const String VERSION      = "5.3.1";
     const String INSTALL_ROOT = @"C:\RocketMQ";
 
+    /// <summary>存储分区使用率上限。RocketMQ 源码把磁盘告警阈值硬钳制在 0.9，此处留出余量</summary>
+    const Double MAX_STORE_USED_RATIO = 0.85;
+
     static readonly String[] RMQ_MIRRORS =
     [
         $"https://mirrors.tuna.tsinghua.edu.cn/apache/rocketmq/{VERSION}/rocketmq-all-{VERSION}-bin-release.zip",
@@ -46,12 +52,53 @@ static class RocketMqSetup
     static String RmqHome    => Path.Combine(INSTALL_ROOT, $"rocketmq-{VERSION}");
     static String JdkHome    => Path.Combine(INSTALL_ROOT, "jdk17");
     static String JavaExe    => Path.Combine(JdkHome, "bin", "java.exe");
-    static String StoreDir   => Path.Combine(INSTALL_ROOT, "store");
+    static String StoreDir   => Path.Combine(SelectStoreRoot(), "store");
     static String LogDir     => Path.Combine(INSTALL_ROOT, "logs");
     static String NamesrvLog => Path.Combine(LogDir, "namesrv.log");
     static String BrokerLog  => Path.Combine(LogDir, "broker.log");
     static String BrokerConf => Path.Combine(INSTALL_ROOT, "broker.conf");
     static String PidFile    => Path.Combine(INSTALL_ROOT, "rocketmq.pids");
+
+    static String? _storeRoot;
+    static String? _storeInfo;
+
+    /// <summary>挑选存储根目录。优先安装盘，余量不足时改用可用空间最多的分区</summary>
+    /// <returns>存储根目录，形如 C:\RocketMQ 或 E:\RocketMQ</returns>
+    static String SelectStoreRoot()
+    {
+        if (_storeRoot != null) return _storeRoot;
+
+        var installDrive = Path.GetPathRoot(Path.GetFullPath(INSTALL_ROOT))!;
+        var drives = new List<(String Root, String Name, Int64 Free, Double UsedRatio)>();
+        foreach (var di in DriveInfo.GetDrives())
+        {
+            try
+            {
+                if (!di.IsReady || di.TotalSize <= 0) continue;
+                drives.Add((Path.GetPathRoot(di.RootDirectory.FullName)!, di.Name, di.AvailableFreeSpace,
+                    (Double)(di.TotalSize - di.AvailableFreeSpace) / di.TotalSize));
+            }
+            catch { }
+        }
+
+        // 安装盘余量充足则保持原位置；否则取可用空间最多且使用率合格的分区
+        var pick = drives.FirstOrDefault(e => e.Root.Equals(installDrive, StringComparison.OrdinalIgnoreCase) && e.UsedRatio < MAX_STORE_USED_RATIO);
+        if (pick.Root == null)
+            pick = drives.Where(e => e.UsedRatio < MAX_STORE_USED_RATIO).OrderByDescending(e => e.Free).FirstOrDefault();
+        if (pick.Root == null)
+            pick = drives.OrderByDescending(e => e.Free).FirstOrDefault();
+        if (pick.Root == null) pick = (INSTALL_ROOT, INSTALL_ROOT, 0, 0);
+
+        var root = pick.Root.Equals(installDrive, StringComparison.OrdinalIgnoreCase)
+            ? INSTALL_ROOT
+            : Path.Combine(pick.Root, "RocketMQ");
+
+        _storeInfo = $"存储分区 {pick.Name} 可用 {pick.Free / 1024 / 1024 / 1024}GB 使用率 {pick.UsedRatio:P0} → {root}";
+        if (pick.UsedRatio >= MAX_STORE_USED_RATIO)
+            _storeInfo += $"（使用率超过 {MAX_STORE_USED_RATIO:P0}，RocketMQ 在 ≥90% 时会拒绝写入）";
+
+        return _storeRoot = root;
+    }
 
     #endregion
 
@@ -208,6 +255,11 @@ static class RocketMqSetup
     {
         PrintStep("[3/4] 写入 broker.conf...");
         Directory.CreateDirectory(StoreDir);
+        if (_storeInfo != null)
+        {
+            if (_storeInfo.Contains("使用率超过", StringComparison.Ordinal)) PrintWarn(_storeInfo);
+            else PrintOk(_storeInfo);
+        }
 
         var conf = $"""
             brokerClusterName=DefaultCluster
@@ -221,7 +273,8 @@ static class RocketMqSetup
             listenPort=10911
             storePathRootDir={StoreDir.Replace('\\', '/')}
             brokerIP1=127.0.0.1
-            # 允许磁盘使用率到 100%，避免因磁盘满拒绝写入（测试环境）
+            # RocketMQ 会把 diskSpaceWarningLevelRatio 硬钳制在 0.9（源码 getDiskSpaceWarningLevelRatio），
+            # 写大值只能尽量放宽；真正的兜底是靠上面自动挑选余量充足的存储分区
             diskMaxUsedSpaceRatio=100
             diskSpaceWarningLevelRatio=100
             logicalDiskSpaceCleanForciblyThreshold=1.0
@@ -500,7 +553,7 @@ static class RocketMqSetup
         Console.WriteLine();
         Console.WriteLine("  运行集成测试：");
         Console.WriteLine("  $env:ROCKETMQ_NAMESERVER=\"127.0.0.1:9876\"");
-        Console.WriteLine("  dotnet test XUnitTestRocketMQ\\XUnitTestRocketMQ.csproj");
+        Console.WriteLine("  dotnet test XUnitTestRocketMQ\\XUnitTest.csproj");
         Console.WriteLine();
         Console.WriteLine("  停止：dotnet run --file scripts/RocketMqSetup.cs -- --stop");
         Console.WriteLine("============================================================");
