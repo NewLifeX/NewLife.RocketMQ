@@ -1,6 +1,4 @@
-﻿using System.Reflection;
-using System.Xml.Serialization;
-using NewLife.Reflection;
+﻿using System.Xml.Serialization;
 
 namespace NewLife.RocketMQ.Protocol;
 
@@ -46,27 +44,21 @@ public class PullMessageRequestHeader
     #endregion
 
     #region 方法
-    /// <summary>属性元数据缓存。避免每次拉取消息时重复反射</summary>
-    private static readonly PropertyInfo[] _props = typeof(PullMessageRequestHeader).GetProperties();
-
-    /// <summary>camelCase 属性名缓存</summary>
-    private static readonly String[] _names = _props.Select(e => Char.ToLowerInvariant(e.Name[0]) + e.Name.Substring(1)).ToArray();
-
-    /// <summary>获取属性字典</summary>
+    /// <summary>获取属性字典。显式列出属性，避免反射在 NativeAOT 裁剪后失效；保持键有序以便签名稳定</summary>
     /// <returns></returns>
-    public IDictionary<String, Object> GetProperties()
+    public IDictionary<String, Object> GetProperties() => new SortedList<String, Object>(StringComparer.Ordinal)
     {
-        //var dic = new Dictionary<String, Object>();
-        var dic = new SortedList<String, Object>(StringComparer.Ordinal);
-
-        for (var i = 0; i < _props.Length; i++)
-        {
-            var pi = _props[i];
-
-            dic[_names[i]] = this.GetValue(pi) + "";
-        }
-
-        return dic;
-    }
+        ["commitOffset"] = CommitOffset + "",
+        ["consumerGroup"] = ConsumerGroup + "",
+        ["expressionType"] = ExpressionType + "",
+        ["maxMsgNums"] = MaxMsgNums + "",
+        ["queueId"] = QueueId + "",
+        ["queueOffset"] = QueueOffset + "",
+        ["subVersion"] = SubVersion + "",
+        ["subscription"] = Subscription + "",
+        ["suspendTimeoutMillis"] = SuspendTimeoutMillis + "",
+        ["sysFlag"] = SysFlag + "",
+        ["topic"] = Topic + "",
+    };
     #endregion
 }

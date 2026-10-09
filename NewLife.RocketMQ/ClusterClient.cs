@@ -106,7 +106,13 @@ public abstract class ClusterClient : DisposeBase
                 client.Timeout = Timeout;
                 client.Log = Log;
                 if (Log != null && Log.Level <= LogLevel.Debug) client.Tracer = Tracer;
-                client.Add(new MqCodec { Timeout = Timeout });
+
+                // 协议模式：编解码交由会话的消息泵处理；请求-响应匹配超时与原编解码器超时保持一致
+                if (client is SessionBase session)
+                {
+                    session.Protocol = new MqCodec();
+                    session.MatchTimeout = Timeout;
+                }
 
                 // 关闭Tcp延迟以合并小包的算法，降低延迟
                 if (client is TcpSession tcp)
@@ -199,11 +205,26 @@ public abstract class ClusterClient : DisposeBase
                 if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("<= {0}", rs as Command);
 
                 var result = rs as Command;
-                if (rs != null && span is DefaultSpan ds2 && ds2.TraceFlag > 0)
+
+                // 等待方负责释放响应消息：v12 的响应体可能持有池化帧，先物化为独立数组再释放原帧；
+                // 下游继续按旧口径使用 result.Payload，生命周期不再依赖消息所有权
+                if (result != null)
+                {
+                    var pk = result.Payload;
+                    if (pk != null && pk.Total > 0)
+                        result.SetBody(new ArrayPacket(pk.ReadBytes()));
+                    else
+                    {
+                        result.Payload.TryDispose();
+                        result.SetBody(null);
+                    }
+                }
+
+                if (result != null && span is DefaultSpan ds2 && ds2.TraceFlag > 0)
                 {
                     span.AppendTag(Environment.NewLine);
-                    span.AppendTag(rs);
-                    span.AppendTag(result?.Payload?.ToStr());
+                    span.AppendTag(result);
+                    span.AppendTag(result.Payload?.ToStr());
                 }
 
                 return result;
@@ -389,12 +410,24 @@ public abstract class ClusterClient : DisposeBase
         if (extFields != null)
         {
             var dic = header.GetExtFields();
-            foreach (var item in extFields.ToDictionary())
+
+            // 字典直通，避免反射转换；匿名对象等自定义类型仍走 ToDictionary
+            if (extFields is IDictionary<String, Object> exts)
             {
-                if (item.Value != null && item.Value.GetType() == typeof(Boolean))
-                    dic[item.Key] = item.Value.ToBoolean() ? "true" : "false";
-                else
-                    dic[item.Key] = item.Value + "";
+                foreach (var item in exts)
+                {
+                    dic[item.Key] = item.Value is Boolean b ? (b ? "true" : "false") : item.Value + "";
+                }
+            }
+            else
+            {
+                foreach (var item in extFields.ToDictionary())
+                {
+                    if (item.Value != null && item.Value.GetType() == typeof(Boolean))
+                        dic[item.Key] = item.Value.ToBoolean() ? "true" : "false";
+                    else
+                        dic[item.Key] = item.Value + "";
+                }
             }
         }
 
@@ -422,6 +455,11 @@ public abstract class ClusterClient : DisposeBase
 
             return;
         }
+
+        // 大帧的消息体可能以流式绑定到达：事件处理器内的数据须在本轮内物化，
+        // 否则处理器读不到主体（ReadAllAsync 数据未到齐会等待，属同连接串行语义）
+        if (cmd.Payload == null && cmd.Body is { Remaining: > 0 } body)
+            cmd.SetBody(body.ReadAllAsync().GetAwaiter().GetResult());
 
         var rs = OnReceive(cmd);
         if (rs != null)

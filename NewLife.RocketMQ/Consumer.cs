@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Text;
 using System.Xml.Serialization;
 using NewLife.Data;
@@ -292,11 +293,11 @@ public class Consumer : MqBase
     public async Task<Int64> QueryOffset(MessageQueue mq, CancellationToken cancellationToken = default)
     {
         var bk = GetBroker(mq.BrokerName);
-        var rs = await bk.InvokeAsync(RequestCode.QUERY_CONSUMER_OFFSET, null, new
+        var rs = await bk.InvokeAsync(RequestCode.QUERY_CONSUMER_OFFSET, null, new Dictionary<String, Object>
         {
-            consumerGroup = Group,
-            topic = mq.Topic ?? Topic,
-            queueId = mq.QueueId,
+            ["consumerGroup"] = Group,
+            ["topic"] = mq.Topic ?? Topic,
+            ["queueId"] = mq.QueueId,
         }, true, cancellationToken).ConfigureAwait(false);
 
         var dic = rs.Header?.ExtFields;
@@ -314,11 +315,11 @@ public class Consumer : MqBase
     public async Task<Int64> QueryMaxOffset(MessageQueue mq, CancellationToken cancellationToken = default)
     {
         var bk = GetBroker(mq.BrokerName);
-        var rs = await bk.InvokeAsync(RequestCode.GET_MAX_OFFSET, null, new
+        var rs = await bk.InvokeAsync(RequestCode.GET_MAX_OFFSET, null, new Dictionary<String, Object>
         {
-            consumerGroup = Group,
-            topic = mq.Topic ?? Topic,
-            queueId = mq.QueueId,
+            ["consumerGroup"] = Group,
+            ["topic"] = mq.Topic ?? Topic,
+            ["queueId"] = mq.QueueId,
         }, true, cancellationToken).ConfigureAwait(false);
 
         var dic = rs.Header?.ExtFields;
@@ -336,11 +337,11 @@ public class Consumer : MqBase
     public async Task<Int64> QueryMinOffset(MessageQueue mq, CancellationToken cancellationToken = default)
     {
         var bk = GetBroker(mq.BrokerName);
-        var rs = await bk.InvokeAsync(RequestCode.GET_MIN_OFFSET, null, new
+        var rs = await bk.InvokeAsync(RequestCode.GET_MIN_OFFSET, null, new Dictionary<String, Object>
         {
-            consumerGroup = Group,
-            topic = mq.Topic ?? Topic,
-            queueId = mq.QueueId,
+            ["consumerGroup"] = Group,
+            ["topic"] = mq.Topic ?? Topic,
+            ["queueId"] = mq.QueueId,
         }, true, cancellationToken).ConfigureAwait(false);
 
         var dic = rs.Header?.ExtFields;
@@ -357,11 +358,11 @@ public class Consumer : MqBase
     public async Task<Int64> SearchOffset(MessageQueue mq, Int64 timestamp, CancellationToken cancellationToken = default)
     {
         var bk = GetBroker(mq.BrokerName);
-        var rs = await bk.InvokeAsync(RequestCode.SEARCH_OFFSET_BY_TIMESTAMP, null, new
+        var rs = await bk.InvokeAsync(RequestCode.SEARCH_OFFSET_BY_TIMESTAMP, null, new Dictionary<String, Object>
         {
-            topic = mq.Topic ?? Topic,
-            queueId = mq.QueueId,
-            timestamp,
+            ["topic"] = mq.Topic ?? Topic,
+            ["queueId"] = mq.QueueId,
+            ["timestamp"] = timestamp,
         }, true, cancellationToken).ConfigureAwait(false);
 
         var dic = rs.Header?.ExtFields;
@@ -378,12 +379,12 @@ public class Consumer : MqBase
     public async Task<Boolean> UpdateOffset(MessageQueue mq, Int64 commitOffset, CancellationToken cancellationToken = default)
     {
         var bk = GetBroker(mq.BrokerName);
-        var rs = await bk.InvokeAsync(RequestCode.UPDATE_CONSUMER_OFFSET, null, new
+        var rs = await bk.InvokeAsync(RequestCode.UPDATE_CONSUMER_OFFSET, null, new Dictionary<String, Object>
         {
-            commitOffset,
-            consumerGroup = Group,
-            queueId = mq.QueueId,
-            topic = mq.Topic ?? Topic,
+            ["commitOffset"] = commitOffset,
+            ["consumerGroup"] = Group,
+            ["queueId"] = mq.QueueId,
+            ["topic"] = mq.Topic ?? Topic,
         }, false, cancellationToken).ConfigureAwait(false);
 
         //var dic = rs?.Header?.ExtFields;
@@ -398,7 +399,7 @@ public class Consumer : MqBase
     {
         if (group.IsNullOrEmpty()) group = Group;
 
-        var header = new { consumerGroup = group, };
+        var header = new Dictionary<String, Object> { ["consumerGroup"] = group };
 
         var cs = new HashSet<String>();
 
@@ -459,7 +460,7 @@ public class Consumer : MqBase
             try
             {
                 var bk = GetBroker(item.Name);
-                var rs = await bk.InvokeAsync(RequestCode.GET_CONSUMER_CONNECTION_LIST, null, new { consumerGroup = group }).ConfigureAwait(false);
+                var rs = await bk.InvokeAsync(RequestCode.GET_CONSUMER_CONNECTION_LIST, null, new Dictionary<String, Object> { ["consumerGroup"] = group }).ConfigureAwait(false);
                 if (rs?.Payload != null) return rs.ReadBodyAsJson();
             }
             catch (Exception ex)
@@ -486,12 +487,12 @@ public class Consumer : MqBase
             foreach (var item in Brokers)
             {
                 var bk = GetBroker(item.Name);
-                await bk.InvokeAsync(RequestCode.INVOKE_BROKER_TO_RESET_OFFSET, null, new
+                await bk.InvokeAsync(RequestCode.INVOKE_BROKER_TO_RESET_OFFSET, null, new Dictionary<String, Object>
                 {
-                    topic = Topic,
-                    group,
-                    timestamp,
-                    isForce = false,
+                    ["topic"] = Topic,
+                    ["group"] = group,
+                    ["timestamp"] = timestamp,
+                    ["isForce"] = false,
                 }, true, cancellationToken).ConfigureAwait(false);
             }
 
@@ -527,11 +528,16 @@ public class Consumer : MqBase
                 var bk = GetBroker(g.Key);
                 if (bk == null) continue;
 
-                var body = new
+                var body = new Dictionary<String, Object>
                 {
-                    consumerGroup = Group,
-                    clientId = ClientId,
-                    mqSet = g.Select(e => new { topic = e.Topic, brokerName = e.BrokerName, queueId = e.QueueId }).ToArray(),
+                    ["consumerGroup"] = Group,
+                    ["clientId"] = ClientId,
+                    ["mqSet"] = g.Select(e => new Dictionary<String, Object>
+                    {
+                        ["topic"] = e.Topic,
+                        ["brokerName"] = e.BrokerName,
+                        ["queueId"] = e.QueueId,
+                    }).ToArray(),
                 };
 
                 var rs = await bk.InvokeAsync(RequestCode.LOCK_BATCH_MQ, body, null, true, cancellationToken).ConfigureAwait(false);
@@ -580,11 +586,16 @@ public class Consumer : MqBase
                 var bk = GetBroker(g.Key);
                 if (bk == null) continue;
 
-                var body = new
+                var body = new Dictionary<String, Object>
                 {
-                    consumerGroup = Group,
-                    clientId = ClientId,
-                    mqSet = g.Select(e => new { topic = e.Topic, brokerName = e.BrokerName, queueId = e.QueueId }).ToArray(),
+                    ["consumerGroup"] = Group,
+                    ["clientId"] = ClientId,
+                    ["mqSet"] = g.Select(e => new Dictionary<String, Object>
+                    {
+                        ["topic"] = e.Topic,
+                        ["brokerName"] = e.BrokerName,
+                        ["queueId"] = e.QueueId,
+                    }).ToArray(),
                 };
 
                 await bk.InvokeAsync(RequestCode.UNLOCK_BATCH_MQ, body, null, false, cancellationToken).ConfigureAwait(false);
@@ -1183,10 +1194,10 @@ public class Consumer : MqBase
             foreach (var tb in topicGroup)
             {
                 var broker = GetBroker(tb.BrokerName);
-                var command = await broker.InvokeAsync(RequestCode.GET_CONSUME_STATS, null, new
+                var command = await broker.InvokeAsync(RequestCode.GET_CONSUME_STATS, null, new Dictionary<String, Object>
                 {
-                    consumerGroup = Group,
-                    topic = queryTopic
+                    ["consumerGroup"] = Group,
+                    ["topic"] = queryTopic
                 }, true, cancellationToken).ConfigureAwait(false);
                 var consumerStates = ConsumerStatesSpecialJsonHandler(command.Payload);
                 //foreach (var (key, value) in consumerStates.OffsetTable) offsetTables.Add(key, value);
@@ -1423,11 +1434,15 @@ public class Consumer : MqBase
 
     private void GetConsumeStatus(Command cmd) { }
 
+    /// <summary>运行信息所用的配置类型。显式标注要保留的成员，避免反射在 NativeAOT 裁剪后丢失属性</summary>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+    private static readonly Type _configType = typeof(Consumer);
+
     private Command GetConsumerRunningInfo(Command cmd)
     {
         var ci = new ConsumerRunningInfo();
         var dic = new Dictionary<String, String>();
-        foreach (var pi in GetType().GetProperties())
+        foreach (var pi in _configType.GetProperties())
         {
             if (pi.DeclaringType == typeof(DisposeBase)) continue;
             if (pi.PropertyType.GetTypeCode() == TypeCode.Object) continue;
@@ -1462,7 +1477,11 @@ public class Consumer : MqBase
 
                 sb.Append(JsonHost.Write(item.Queue, false, false, true));
                 sb.Append(':');
-                sb.Append(JsonHost.Write(item, false, false, true));
+                sb.Append(JsonHost.Write(new Dictionary<String, Object>
+                {
+                    ["offset"] = item.Offset,
+                    ["commitOffset"] = item.CommitOffset,
+                }, false, false, true));
             }
 
             sb.Append('}');
@@ -1510,15 +1529,15 @@ public class Consumer : MqBase
             }
             if (bk == null) return false;
 
-            var header = new
+            var header = new Dictionary<String, Object>
             {
-                group = Group,
-                offset = msg.CommitLogOffset,
-                delayLevel = delayLevel > 0 ? delayLevel : RetryDelayLevel,
-                originMsgId = msg.MsgId ?? "",
-                originTopic = msg.Topic ?? Topic,
-                unitMode = UnitMode,
-                maxReconsumeTimes = maxReconsumeTimes >= 0 ? maxReconsumeTimes : MaxReconsumeTimes,
+                ["group"] = Group,
+                ["offset"] = msg.CommitLogOffset,
+                ["delayLevel"] = delayLevel > 0 ? delayLevel : RetryDelayLevel,
+                ["originMsgId"] = msg.MsgId ?? "",
+                ["originTopic"] = msg.Topic ?? Topic,
+                ["unitMode"] = UnitMode,
+                ["maxReconsumeTimes"] = maxReconsumeTimes >= 0 ? maxReconsumeTimes : MaxReconsumeTimes,
             };
 
             await bk.InvokeAsync(RequestCode.CONSUMER_SEND_MSG_BACK, null, header, true, cancellationToken).ConfigureAwait(false);
@@ -1560,18 +1579,18 @@ public class Consumer : MqBase
             var bk = GetBroker(brokerName);
             if (bk == null) return null;
 
-            var header = new
+            var header = new Dictionary<String, Object>
             {
-                consumerGroup = Group,
-                topic = Topic,
-                queueId,
-                maxMsgNums = maxNums,
-                invisibleTime,
-                pollTime,
-                bornTime = DateTime.Now.ToLong(),
-                initMode = FromLastOffset ? 1 : 0,
-                expType = ExpressionType,
-                exp = Subscription,
+                ["consumerGroup"] = Group,
+                ["topic"] = Topic,
+                ["queueId"] = queueId,
+                ["maxMsgNums"] = maxNums,
+                ["invisibleTime"] = invisibleTime,
+                ["pollTime"] = pollTime,
+                ["bornTime"] = DateTime.Now.ToLong(),
+                ["initMode"] = FromLastOffset ? 1 : 0,
+                ["expType"] = ExpressionType,
+                ["exp"] = Subscription,
             };
 
             var rs = await bk.InvokeAsync(RequestCode.POP_MESSAGE, null, header, true, cancellationToken).ConfigureAwait(false);
@@ -1613,13 +1632,13 @@ public class Consumer : MqBase
             var bk = GetBroker(brokerName);
             if (bk == null) return false;
 
-            var header = new
+            var header = new Dictionary<String, Object>
             {
-                consumerGroup = Group,
-                topic = Topic,
-                extraInfo,
-                offset,
-                queueId,
+                ["consumerGroup"] = Group,
+                ["topic"] = Topic,
+                ["extraInfo"] = extraInfo,
+                ["offset"] = offset,
+                ["queueId"] = queueId,
             };
 
             await bk.InvokeAsync(RequestCode.ACK_MESSAGE, null, header, true, cancellationToken).ConfigureAwait(false);
@@ -1668,27 +1687,27 @@ public class Consumer : MqBase
             Object header;
             if (incrementReconsumeTimes)
             {
-                header = new
+                header = new Dictionary<String, Object>
                 {
-                    consumerGroup = Group,
-                    topic = Topic,
-                    extraInfo,
-                    offset,
-                    invisibleTime,
-                    queueId,
+                    ["consumerGroup"] = Group,
+                    ["topic"] = Topic,
+                    ["extraInfo"] = extraInfo,
+                    ["offset"] = offset,
+                    ["invisibleTime"] = invisibleTime,
+                    ["queueId"] = queueId,
                 };
             }
             else
             {
-                header = new
+                header = new Dictionary<String, Object>
                 {
-                    consumerGroup = Group,
-                    topic = Topic,
-                    extraInfo,
-                    offset,
-                    invisibleTime,
-                    queueId,
-                    reconsumeTimes = -1,
+                    ["consumerGroup"] = Group,
+                    ["topic"] = Topic,
+                    ["extraInfo"] = extraInfo,
+                    ["offset"] = offset,
+                    ["invisibleTime"] = invisibleTime,
+                    ["queueId"] = queueId,
+                    ["reconsumeTimes"] = -1,
                 };
             }
 
@@ -1735,13 +1754,17 @@ public class Consumer : MqBase
             if (bk == null) return 0;
 
             // 构造批量确认请求体：JSON数组格式
-            var entries = ackEntries.Select(e => new { extraInfo = e.extraInfo, offset = e.offset }).ToArray();
+            var entries = ackEntries.Select(e => new Dictionary<String, Object>
+            {
+                ["extraInfo"] = e.extraInfo,
+                ["offset"] = e.offset,
+            }).ToArray();
             var body = JsonHost.Write(entries, false, false, false).GetBytes();
 
-            var header = new
+            var header = new Dictionary<String, Object>
             {
-                consumerGroup = Group,
-                topic = Topic,
+                ["consumerGroup"] = Group,
+                ["topic"] = Topic,
             };
 
             await bk.InvokeAsync(RequestCode.BATCH_ACK_MESSAGE, body, header, true, cancellationToken).ConfigureAwait(false);
@@ -1756,7 +1779,7 @@ public class Consumer : MqBase
     }
     #endregion
 
-#if NETSTANDARD2_1_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
     #region gRPC消费模式
     /// <summary>通过gRPC协议接收消息。需要先设置GrpcProxyAddress</summary>
     /// <param name="queue">gRPC消息队列</param>

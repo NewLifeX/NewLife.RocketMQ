@@ -101,6 +101,16 @@ jobs:
       run: |
         dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --no-build -v n
 
+    # NativeAOT 冒烟：裁剪环境下验证帧编解码、请求头字典、JSON 序列化与端到端收发
+    - name: AOT publish & smoke
+      env:
+        ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq clang zlib1g-dev
+        dotnet publish AotSmoke/AotSmoke.csproj -c Release -r linux-x64
+        ./AotSmoke/bin/Release/net10.0/linux-x64/publish/AotSmoke
+
     - name: Stop RocketMQ
       if: always()
       run: |

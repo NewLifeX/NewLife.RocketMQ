@@ -38,22 +38,66 @@ public class Command : IAccessor, IMessage
     /// <summary>是否单向</summary>
     public Boolean OneWay { get; set; }
 
-    /// <summary>是否异常。当响应码不为 SUCCESS(0) 时为 true</summary>
-    Boolean IMessage.Error
+    /// <summary>消息体。帧层流式绑定时的限长读取器，整帧模式下为空（体在 Payload）</summary>
+    [XmlIgnore, IgnoreDataMember]
+    public LimitedReader Body { get; private set; }
+
+    /// <summary>消息种类。请求/单向/响应/响应+错误，与 Reply/OneWay 双向同步</summary>
+    [XmlIgnore, IgnoreDataMember]
+    public MessageKinds Kind
     {
-        get => Header != null && Header.Code != (Int32)ResponseCode.SUCCESS;
+        get => Reply
+            ? (Header != null && Header.Code != (Int32)ResponseCode.SUCCESS ? MessageKinds.Error : MessageKinds.Response)
+            : OneWay ? MessageKinds.OneWay : MessageKinds.Request;
         set
         {
-            if (Header != null)
-                Header.Code = value ? (Int32)ResponseCode.SYSTEM_ERROR : (Int32)ResponseCode.SUCCESS;
+            Reply = value is MessageKinds.Response or MessageKinds.Error;
+            OneWay = value == MessageKinds.OneWay;
         }
+    }
+    #endregion
+
+    #region 负载
+    /// <summary>设置消息体。拥有句柄所有权随消息，Dispose 时归还</summary>
+    /// <param name="packet">消息体数据包；置 null 表示放弃持有（所有权已转移给调用方或构建结果），不归还</param>
+    public void SetBody(IPacket packet)
+    {
+        // 置 null 表示放弃持有：负载已随调用方交付，消息不再持有，也不能归还
+        if (packet == null)
+        {
+            Payload = null;
+            Body = null;
+            return;
+        }
+
+        var old = Payload;
+        Payload = packet;
+        Body = null;
+
+        // 替换旧体时归还其拥有帧
+        if (old != null && !ReferenceEquals(old, packet)) old.TryDispose();
+    }
+
+    /// <summary>绑定流式消息体（帧层专用）。头部先行解析后由帧泵调用</summary>
+    /// <param name="body">限长读取器；null 表示清除流式体绑定</param>
+    public void BindBody(LimitedReader body)
+    {
+        var old = Payload;
+        Payload = null;
+        Body = body;
+        old?.TryDispose();
     }
     #endregion
 
     #region 构造
 
     /// <summary>销毁。回收内存</summary>
-    public void Dispose() => Payload.TryDispose();
+    public void Dispose()
+    {
+        Payload.TryDispose();
+        Payload = null;
+        Body = null;
+    }
 
     #endregion
 
@@ -83,72 +127,81 @@ public class Command : IAccessor, IMessage
             var dataBuf = new Byte[headerLen + (bodyLen > 0 ? bodyLen : 0)];
             if (!ReadFull(stream, dataBuf, 0, dataBuf.Length)) return false;
 
-            // 读取序列化类型
+            // 解析头部
             var type = (SerializeType)((oriHeaderLen >> 24) & 0xFF);
-            if (type == SerializeType.JSON)
-            {
-                var json = dataBuf.ToStr(null, 0, headerLen);
-                RawJson = json;
+            if (!TryReadHeader(dataBuf, 0, headerLen, type)) throw new NotSupportedException($"不支持[{type}]序列化");
 
-                var header = json.ToJsonEntity<Header>();
-                if (header.SerializeTypeCurrentRPC.IsNullOrEmpty()) header.SerializeTypeCurrentRPC = type + "";
-
-                Header = header;
-                Reply = (header.Flag & 0b01) == 0b01;
-                OneWay = (header.Flag & 0b10) == 0b10;
-
-                // 读取主体
-                if (bodyLen > 0)
-                    Payload = new ArrayPacket(dataBuf, headerLen, bodyLen);
-            }
-            else if (type == SerializeType.ROCKETMQ)
-            {
-                var rd = new SpanReader(dataBuf, 0, headerLen) { IsLittleEndian = false };
-
-                var header = new Header
-                {
-                    SerializeTypeCurrentRPC = type + "",
-                    Code = rd.ReadUInt16(),
-                    Language = ((LanguageCode)rd.ReadByte()) + "",
-                    Version = (MQVersion)rd.ReadUInt16(),
-                    Opaque = rd.ReadInt32(),
-                    Flag = rd.ReadInt32(),
-                    Remark = ReadStr(ref rd, false, headerLen),
-                };
-
-                Reply = (header.Flag & 0b01) == 0b01;
-                OneWay = (header.Flag & 0b10) == 0b10;
-
-                // 读取扩展字段
-                var extFieldsLength = rd.ReadInt32();
-                if (extFieldsLength > 0)
-                {
-                    if (extFieldsLength > headerLen) throw new Exception($"扩展字段长度[{extFieldsLength}]超过头部长度[{headerLen}]");
-
-                    var extFields = header.GetExtFields();
-                    var endPos = rd.Position + extFieldsLength;
-                    while (rd.Position < endPos)
-                    {
-                        var k = ReadStr(ref rd, true, extFieldsLength);
-                        var v = ReadStr(ref rd, false, extFieldsLength);
-                        extFields[k + ""] = v;
-                    }
-                }
-
-                Header = header;
-
-                // 读取主体
-                if (bodyLen > 0)
-                    Payload = new ArrayPacket(dataBuf, headerLen, bodyLen);
-            }
-            else
-                throw new NotSupportedException($"不支持[{type}]序列化");
+            // 读取主体
+            if (bodyLen > 0)
+                Payload = new ArrayPacket(dataBuf, headerLen, bodyLen);
         }
         catch (Exception ex)
         {
             XTrace.WriteLine("序列化错误！{0}", ex.Message);
             return false;
         }
+
+        return true;
+    }
+
+    /// <summary>解析头部数据（不含帧头）</summary>
+    /// <param name="buffer">数据缓冲区</param>
+    /// <param name="offset">头部起始偏移</param>
+    /// <param name="headerLength">头部数据长度</param>
+    /// <param name="type">序列化类型</param>
+    /// <returns>是否支持该序列化类型并解析成功</returns>
+    internal Boolean TryReadHeader(Byte[] buffer, Int32 offset, Int32 headerLength, SerializeType type)
+    {
+        if (type == SerializeType.JSON)
+        {
+            var json = buffer.ToStr(null, offset, headerLength);
+            RawJson = json;
+
+            var header = json.ToJsonEntity<Header>();
+            if (header.SerializeTypeCurrentRPC.IsNullOrEmpty()) header.SerializeTypeCurrentRPC = type + "";
+
+            Header = header;
+            Reply = (header.Flag & 0b01) == 0b01;
+            OneWay = (header.Flag & 0b10) == 0b10;
+        }
+        else if (type == SerializeType.ROCKETMQ)
+        {
+            var rd = new SpanReader(buffer, offset, headerLength) { IsLittleEndian = false };
+
+            var header = new Header
+            {
+                SerializeTypeCurrentRPC = type + "",
+                Code = rd.ReadUInt16(),
+                Language = ((LanguageCode)rd.ReadByte()) + "",
+                Version = (MQVersion)rd.ReadUInt16(),
+                Opaque = rd.ReadInt32(),
+                Flag = rd.ReadInt32(),
+                Remark = ReadStr(ref rd, false, headerLength),
+            };
+
+            Reply = (header.Flag & 0b01) == 0b01;
+            OneWay = (header.Flag & 0b10) == 0b10;
+
+            // 读取扩展字段
+            var extFieldsLength = rd.ReadInt32();
+            if (extFieldsLength > 0)
+            {
+                if (extFieldsLength > headerLength) throw new Exception($"扩展字段长度[{extFieldsLength}]超过头部长度[{headerLength}]");
+
+                var extFields = header.GetExtFields();
+                var endPos = rd.Position + extFieldsLength;
+                while (rd.Position < endPos)
+                {
+                    var k = ReadStr(ref rd, true, extFieldsLength);
+                    var v = ReadStr(ref rd, false, extFieldsLength);
+                    extFields[k + ""] = v;
+                }
+            }
+
+            Header = header;
+        }
+        else
+            return false;
 
         return true;
     }
@@ -214,10 +267,25 @@ public class Command : IAccessor, IMessage
     /// <returns></returns>
     public Boolean Write(Stream stream, Object context = null)
     {
+        var pk = Payload;
+
+        // 帧头 + 头部
+        WriteHeader(stream, pk?.Total ?? 0);
+
+        // 写入主体
+        if (pk != null && pk.Total > 0) pk.CopyTo(stream);
+
+        return true;
+    }
+
+    /// <summary>写入帧头与头部数据（不含主体）</summary>
+    /// <param name="stream">数据流</param>
+    /// <param name="bodyLength">主体长度</param>
+    internal void WriteHeader(Stream stream, Int64 bodyLength)
+    {
         var header = Header;
         if (Reply) header.Flag |= 0b01;
         if (OneWay) header.Flag |= 0b10;
-        var pk = Payload;
 
         // 区分不同的序列化类型
         var type = header.SerializeTypeCurrentRPC.ToEnum(SerializeType.JSON);
@@ -230,8 +298,7 @@ public class Command : IAccessor, IMessage
             var hs = json.GetBytes();
 
             // 计算长度
-            var len = 4 + hs.Length;
-            if (pk != null) len += pk.Total;
+            var len = (Int32)(4 + hs.Length + bodyLength);
 
             // 使用SpanWriter写入8字节帧头（TotalLength + HeaderLength）
             var prefix = new Byte[8];
@@ -307,8 +374,7 @@ public class Command : IAccessor, IMessage
             // 计算长度
             var oriHeaderLen = (hsLen & 0xFFFFFF) | ((Byte)type << 24);
 
-            var len = 4 + hsLen;
-            if (pk != null) len += pk.Total;
+            var len = (Int32)(4 + hsLen + bodyLength);
 
             // 使用SpanWriter写入帧头
             var prefix = new Byte[8];
@@ -322,11 +388,6 @@ public class Command : IAccessor, IMessage
         }
         else
             throw new NotSupportedException($"不支持[{type}]序列化");
-
-        // 写入主体
-        if (pk != null && pk.Total > 0) pk.CopyTo(stream);
-
-        return true;
     }
 
     /// <summary>命令转字节数组</summary>
@@ -361,8 +422,6 @@ public class Command : IAccessor, IMessage
 
         return cmd;
     }
-
-    Boolean IMessage.Read(IPacket pk) => Read(pk.GetStream());
     #endregion
 
     #region 辅助

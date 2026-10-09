@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Reflection;
@@ -139,7 +139,7 @@ public abstract class MqBase : DisposeBase
     /// <summary>是否启用消息轨迹</summary>
     public Boolean EnableMessageTrace { get; set; }
 
-#if NETSTANDARD2_1_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
     /// <summary>gRPC Proxy地址。设置后使用gRPC协议连接RocketMQ 5.x</summary>
     /// <remarks>
     /// 格式如 http://host:8081 或 https://host:8081。
@@ -195,7 +195,7 @@ public abstract class MqBase : DisposeBase
     {
         base.Dispose(disposing);
 
-#if NETSTANDARD2_1_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
         _GrpcService.TryDispose();
 #endif
         _NameServer.TryDispose();
@@ -298,7 +298,7 @@ public abstract class MqBase : DisposeBase
     /// <summary>开始</summary>
     protected virtual void OnStart()
     {
-#if NETSTANDARD2_1_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
         // 使用gRPC协议时，初始化gRPC客户端
         if (!GrpcProxyAddress.IsNullOrEmpty())
         {
@@ -511,17 +511,17 @@ public abstract class MqBase : DisposeBase
         // Lite 类型需要 RocketMQ 5.5.0+ (RIP-83)，旧版 Broker 忽略该字段
         var topicMessageTypeStr = topicMessageType.ToString();
 
-        var header = new
+        var header = new Dictionary<String, Object>
         {
-            topic,
-            defaultTopic = Topic,
-            readQueueNums = queueNum,
-            writeQueueNums = queueNum,
-            perm = 7,
-            topicFilterType = "SINGLE_TAG",
-            topicSysFlag,
-            order = false,
-            topicMessageType = topicMessageTypeStr,
+            ["topic"] = topic,
+            ["defaultTopic"] = Topic,
+            ["readQueueNums"] = queueNum,
+            ["writeQueueNums"] = queueNum,
+            ["perm"] = 7,
+            ["topicFilterType"] = "SINGLE_TAG",
+            ["topicSysFlag"] = topicSysFlag,
+            ["order"] = false,
+            ["topicMessageType"] = topicMessageTypeStr,
         };
 
         var count = 0;
@@ -569,7 +569,7 @@ public abstract class MqBase : DisposeBase
                 try
                 {
                     var bk = GetBroker(item.Name);
-                    var rs = bk.Invoke(RequestCode.DELETE_TOPIC_IN_BROKER, null, new { topic });
+                    var rs = bk.Invoke(RequestCode.DELETE_TOPIC_IN_BROKER, null, new Dictionary<String, Object> { ["topic"] = topic });
                     if (rs != null && rs.Header.Code == (Int32)ResponseCode.SUCCESS) count++;
                 }
                 catch (Exception ex)
@@ -581,7 +581,7 @@ public abstract class MqBase : DisposeBase
             // 从NameServer上删除
             try
             {
-                _NameServer?.Invoke(RequestCode.DELETE_TOPIC_IN_NAMESRV, null, new { topic });
+                _NameServer?.Invoke(RequestCode.DELETE_TOPIC_IN_NAMESRV, null, new Dictionary<String, Object> { ["topic"] = topic });
             }
             catch (Exception ex)
             {
@@ -608,13 +608,13 @@ public abstract class MqBase : DisposeBase
         using var span = Tracer?.NewSpan($"mq:{Name}:CreateSubscriptionGroup", groupName);
         try
         {
-            var header = new
+            var header = new Dictionary<String, Object>
             {
-                groupName,
-                consumeBroadcastEnable,
-                consumeEnable = true,
-                retryMaxTimes,
-                retryQueueNums,
+                ["groupName"] = groupName,
+                ["consumeBroadcastEnable"] = consumeBroadcastEnable,
+                ["consumeEnable"] = true,
+                ["retryMaxTimes"] = retryMaxTimes,
+                ["retryQueueNums"] = retryQueueNums,
             };
 
             foreach (var item in Brokers)
@@ -655,7 +655,7 @@ public abstract class MqBase : DisposeBase
                 try
                 {
                     var bk = GetBroker(item.Name);
-                    var rs = bk.Invoke(RequestCode.DELETE_SUBSCRIPTIONGROUP, null, new { groupName });
+                    var rs = bk.Invoke(RequestCode.DELETE_SUBSCRIPTIONGROUP, null, new Dictionary<String, Object> { ["groupName"] = groupName });
                     if (rs != null && rs.Header.Code == (Int32)ResponseCode.SUCCESS) count++;
                 }
                 catch (Exception ex)
@@ -686,7 +686,7 @@ public abstract class MqBase : DisposeBase
                 try
                 {
                     var bk = GetBroker(item.Name);
-                    var rs = bk.Invoke(RequestCode.VIEW_MESSAGE_BY_ID, null, new { offset = msgId }, true);
+                    var rs = bk.Invoke(RequestCode.VIEW_MESSAGE_BY_ID, null, new Dictionary<String, Object> { ["offset"] = msgId }, true);
                     if (rs?.Payload != null)
                     {
                         var msgs = MessageExt.ReadAll(rs.Payload);
@@ -741,10 +741,10 @@ public abstract class MqBase : DisposeBase
                 try
                 {
                     var bk = GetBroker(item.Name);
-                    var rs = bk.Invoke(RequestCode.GET_CONSUME_STATS, null, new
+                    var rs = bk.Invoke(RequestCode.GET_CONSUME_STATS, null, new Dictionary<String, Object>
                     {
-                        consumerGroup = group,
-                        topic,
+                        ["consumerGroup"] = group,
+                        ["topic"] = topic,
                     }, true);
                     if (rs?.Payload != null) return rs.ReadBodyAsJson();
                 }
@@ -775,7 +775,7 @@ public abstract class MqBase : DisposeBase
                 try
                 {
                     var bk = GetBroker(item.Name);
-                    var rs = bk.Invoke(RequestCode.GET_TOPIC_STATS_INFO, null, new { topic }, true);
+                    var rs = bk.Invoke(RequestCode.GET_TOPIC_STATS_INFO, null, new Dictionary<String, Object> { ["topic"] = topic }, true);
                     if (rs?.Payload != null) return rs.ReadBodyAsJson();
                 }
                 catch { }
@@ -810,13 +810,13 @@ public abstract class MqBase : DisposeBase
                 try
                 {
                     var bk = GetBroker(item.Name);
-                    var rs = bk.Invoke(RequestCode.QUERY_MESSAGE, null, new
+                    var rs = bk.Invoke(RequestCode.QUERY_MESSAGE, null, new Dictionary<String, Object>
                     {
-                        topic,
-                        key,
-                        maxNum,
-                        beginTimestamp,
-                        endTimestamp,
+                        ["topic"] = topic,
+                        ["key"] = key,
+                        ["maxNum"] = maxNum,
+                        ["beginTimestamp"] = beginTimestamp,
+                        ["endTimestamp"] = endTimestamp,
                     }, true);
                     if (rs?.Payload != null)
                     {
@@ -853,7 +853,7 @@ public abstract class MqBase : DisposeBase
                 try
                 {
                     var bk = GetBroker(item.Name);
-                    var rs = bk.Invoke(RequestCode.REGISTER_FILTER_SERVER, null, new { filterServerAddr }, true);
+                    var rs = bk.Invoke(RequestCode.REGISTER_FILTER_SERVER, null, new Dictionary<String, Object> { ["filterServerAddr"] = filterServerAddr }, true);
                     if (rs != null) count++;
                 }
                 catch (Exception ex)
@@ -872,7 +872,7 @@ public abstract class MqBase : DisposeBase
     }
     #endregion
 
-#if NETSTANDARD2_1_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
     #region gRPC公共方法
     /// <summary>通过gRPC协议查询主题路由</summary>
     /// <param name="topic">主题。默认使用当前Topic</param>

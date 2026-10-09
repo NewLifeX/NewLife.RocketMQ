@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net45;net461;netstandard2.0;netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>net45;net461;netstandard2.0;netstandard2.1;net10.0</TargetFrameworks>
     <AssemblyTitle>RocketMQ纯托管客户端</AssemblyTitle>
     <Description>企业级纯托管 RocketMQ 客户端，双协议支持 Remoting 4.x/5.x 和 gRPC 5.x Proxy，零外部依赖，无需 Java、gRPC、Protobuf 第三方库，统一适配阿里云、华为云、腾讯云及 Apache ACL，完整企业级特性（消费重试、死信队列、事务消息、顺序消费、Pop 消费），十亿级项目验证</Description>
     <Company>新生命开发团队</Company>
@@ -20,6 +20,11 @@
     <AssemblyOriginatorKeyFile>..\Doc\newlife.snk</AssemblyOriginatorKeyFile>
     <AnalysisLevel>latest</AnalysisLevel>
     <WarningsAsErrors>CA2007</WarningsAsErrors>
+    <!-- AOT/裁剪兼容分析仅对现代目标启用；上游 NewLife.Core 亦仅 net10.0 提供 IsAotCompatible 资产 -->
+    <IsAotCompatible Condition="'$(TargetFramework)' == 'net10.0'">true</IsAotCompatible>
+    <!-- Command 的成员图含 ReadOnlySequence（IPacket 相关），STJ 源生成器不支持该成员类型，仅影响 STJ 自身的生成代码，
+         不影响 NewLife 源生成器为本库生成的成员访问器（MqJsonContext 的用途） -->
+    <NoWarn Condition="'$(TargetFramework)' == 'net10.0'">$(NoWarn);SYSLIB1225</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -40,7 +45,7 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.301">
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.401">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -62,7 +67,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="11.18.2026.801" />
+    <PackageReference Include="NewLife.Core" Version="12.0.2026.1009-beta0916" />
   </ItemGroup>
 
 </Project>

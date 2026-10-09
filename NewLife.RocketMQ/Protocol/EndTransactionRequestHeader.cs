@@ -1,7 +1,4 @@
-﻿using System.Reflection;
-using NewLife.Reflection;
-
-namespace NewLife.RocketMQ.Protocol;
+﻿namespace NewLife.RocketMQ.Protocol;
 
 /// <summary>结束事务请求头</summary>
 public class EndTransactionRequestHeader
@@ -30,26 +27,17 @@ public class EndTransactionRequestHeader
     #endregion
 
     #region 方法
-    /// <summary>属性元数据缓存。避免事务操作时重复反射</summary>
-    private static readonly PropertyInfo[] _props = typeof(EndTransactionRequestHeader).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-
-    /// <summary>camelCase 属性名缓存</summary>
-    private static readonly String[] _names = _props.Select(e => Char.ToLowerInvariant(e.Name[0]) + e.Name.Substring(1)).ToArray();
-
-    /// <summary>获取属性字典</summary>
+    /// <summary>获取属性字典。显式列出属性，避免反射在 NativeAOT 裁剪后失效</summary>
     /// <returns></returns>
-    public IDictionary<String, Object> GetProperties()
+    public IDictionary<String, Object> GetProperties() => new Dictionary<String, Object>
     {
-        var dic = new Dictionary<String, Object>();
-        for (var i = 0; i < _props.Length; i++)
-        {
-            var pi = _props[i];
-            if (pi.GetIndexParameters().Length > 0) continue;
-
-            dic[_names[i]] = this.GetValue(pi);
-        }
-
-        return dic;
-    }
+        ["producerGroup"] = ProducerGroup,
+        ["tranStateTableOffset"] = TranStateTableOffset,
+        ["commitLogOffset"] = CommitLogOffset,
+        ["commitOrRollback"] = CommitOrRollback,
+        ["fromTransactionCheck"] = FromTransactionCheck,
+        ["msgId"] = MsgId,
+        ["transactionId"] = TransactionId,
+    };
     #endregion
 }

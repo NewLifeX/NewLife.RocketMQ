@@ -132,7 +132,7 @@ public class NameClient : ClusterClient
         try
         {
             // 发送命令
-            var rs = Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new { topic });
+            var rs = Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, new Dictionary<String, Object> { ["topic"] = topic });
             span?.AppendTag(rs.Payload?.ToStr());
             var js = rs.ReadBodyAsJson();
 

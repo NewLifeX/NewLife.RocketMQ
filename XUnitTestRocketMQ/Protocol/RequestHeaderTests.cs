@@ -1,6 +1,8 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
+using NewLife;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
@@ -168,6 +170,59 @@ public class RequestHeaderTests
         Assert.True(dic.ContainsKey("fromTransactionCheck"));
         var fromTransactionCheck = Assert.IsType<Boolean>(dic["fromTransactionCheck"]);
         Assert.True(fromTransactionCheck);
+    }
+    #endregion
+
+    #region 显式属性字典与类型定义一致性
+    // GetProperties 已改为显式构建（兼容 NativeAOT 裁剪），下列用例以反射比对，防止新增属性时漏改
+
+    [Fact]
+    [DisplayName("SendMessageRequestHeader_显式字典覆盖全部属性")]
+    public void SendMessageRequestHeader_DictionaryCoversAllProperties()
+    {
+        var props = typeof(SendMessageRequestHeader).GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        var dic = new SendMessageRequestHeader().GetProperties();
+
+        Assert.Equal(props.Length, dic.Count);
+        foreach (var pi in props)
+        {
+            var name = pi.GetCustomAttribute<System.Xml.Serialization.XmlElementAttribute>()?.ElementName;
+            if (name.IsNullOrEmpty()) name = pi.Name;
+
+            Assert.True(dic.ContainsKey(name), $"缺少属性 {pi.Name} → {name}");
+        }
+    }
+
+    [Fact]
+    [DisplayName("PullMessageRequestHeader_显式字典覆盖全部属性")]
+    public void PullMessageRequestHeader_DictionaryCoversAllProperties()
+    {
+        var props = typeof(PullMessageRequestHeader).GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        var dic = new PullMessageRequestHeader().GetProperties();
+
+        Assert.Equal(props.Length, dic.Count);
+        foreach (var pi in props)
+        {
+            var name = Char.ToLowerInvariant(pi.Name[0]) + pi.Name.Substring(1);
+
+            Assert.True(dic.ContainsKey(name), $"缺少属性 {pi.Name} → {name}");
+        }
+    }
+
+    [Fact]
+    [DisplayName("EndTransactionRequestHeader_显式字典覆盖全部属性")]
+    public void EndTransactionRequestHeader_DictionaryCoversAllProperties()
+    {
+        var props = typeof(EndTransactionRequestHeader).GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        var dic = new EndTransactionRequestHeader().GetProperties();
+
+        Assert.Equal(props.Length, dic.Count);
+        foreach (var pi in props)
+        {
+            var name = Char.ToLowerInvariant(pi.Name[0]) + pi.Name.Substring(1);
+
+            Assert.True(dic.ContainsKey(name), $"缺少属性 {pi.Name} → {name}");
+        }
     }
     #endregion
 }

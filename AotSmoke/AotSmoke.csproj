@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyTitle>RocketMQ AOT 冒烟测试</AssemblyTitle>
+    <Description>NativeAOT 冒烟测试：发布为原生可执行文件后运行，验证裁剪环境下帧编解码、请求头字典、JSON 序列化与端到端收发仍然可用</Description>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Nullable>annotations</Nullable>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NewLife.RocketMQ\NewLife.RocketMQ.csproj" />
+  </ItemGroup>
+
+</Project>

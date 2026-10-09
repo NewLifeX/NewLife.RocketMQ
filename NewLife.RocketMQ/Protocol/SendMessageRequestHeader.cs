@@ -1,6 +1,4 @@
-﻿using System.Reflection;
-using System.Xml.Serialization;
-using NewLife.Reflection;
+﻿using System.Xml.Serialization;
 
 namespace NewLife.RocketMQ.Protocol;
 
@@ -66,40 +64,24 @@ public class SendMessageRequestHeader
     #endregion
 
     #region 方法
-    /// <summary>属性元数据缓存。避免每条消息发送时重复反射</summary>
-    private static readonly PropertyInfo[] _props = typeof(SendMessageRequestHeader).GetProperties();
-
-    /// <summary>XmlElement 短名映射（V2 协议单字母 key）</summary>
-    private static readonly Dictionary<String, String> _names = BuildNames();
-
-    private static Dictionary<String, String> BuildNames()
-    {
-        var dic = new Dictionary<String, String>();
-        foreach (var pi in _props)
-        {
-            var att = pi.GetCustomAttribute<XmlElementAttribute>();
-            if (att != null && !att.ElementName.IsNullOrEmpty()) dic[pi.Name] = att.ElementName;
-        }
-        return dic;
-    }
-
-    /// <summary>获取属性字典</summary>
+    /// <summary>获取属性字典。显式列出属性（V2 协议单字母 key），避免反射在 NativeAOT 裁剪后失效</summary>
     /// <returns></returns>
-    public IDictionary<String, Object> GetProperties()
+    public IDictionary<String, Object> GetProperties() => new Dictionary<String, Object>
     {
-        var dic = new Dictionary<String, Object>();
-
-        foreach (var pi in _props)
-        {
-            if (pi.GetIndexParameters().Length > 0) continue;
-            if (pi.GetCustomAttribute<XmlIgnoreAttribute>() != null) continue;
-
-            var name = _names.TryGetValue(pi.Name, out var shortName) ? shortName : pi.Name;
-
-            dic[name] = this.GetValue(pi);
-        }
-
-        return dic;
-    }
+        ["a"] = ProducerGroup,
+        ["b"] = Topic,
+        ["c"] = DefaultTopic,
+        ["d"] = DefaultTopicQueueNums,
+        ["e"] = QueueId,
+        ["f"] = SysFlag,
+        ["g"] = BornTimestamp,
+        ["h"] = Flag,
+        ["i"] = Properties,
+        ["j"] = ReconsumeTimes,
+        ["k"] = UnitMode,
+        ["l"] = ConsumeRetryTimes,
+        ["m"] = Batch,
+        ["n"] = BrokerName,
+    };
     #endregion
 }

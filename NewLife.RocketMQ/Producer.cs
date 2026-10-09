@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Globalization;
 using NewLife.Buffers;
 using NewLife.Log;
@@ -296,7 +296,7 @@ public class Producer : MqBase
     {
         if (message is null) throw new ArgumentNullException(nameof(message));
 
-#if NETSTANDARD2_1_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
         // gRPC模式
         if (_GrpcService != null)
             return await PublishViaGrpcAsync(message, cancellationToken).ConfigureAwait(false);
@@ -415,7 +415,7 @@ public class Producer : MqBase
         return PublishAsync(message, null);
     }
 
-#if NETSTANDARD2_1_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
     /// <summary>通过gRPC协议发送消息</summary>
     /// <param name="message">消息</param>
     /// <param name="cancellationToken">取消通知</param>
@@ -695,7 +695,7 @@ public class Producer : MqBase
             header.QueueId = mq.QueueId;
 
             // 性能埋点
-            using var span = Tracer?.NewSpan($"mq:{Name}:PublishDelay", new { level, message.BodyString });
+            using var span = Tracer?.NewSpan($"mq:{Name}:PublishDelay", new Dictionary<String, Object> { ["level"] = level, ["BodyString"] = message.BodyString });
             try
             {
                 // 根据队列获取Broker客户端
@@ -1133,7 +1133,7 @@ public class Producer : MqBase
     }
     #endregion
 
-#if NETSTANDARD2_1_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
     #region gRPC扩展方法
     /// <summary>通过gRPC协议发送延迟消息（任意时间）。RocketMQ 5.x新特性</summary>
     /// <param name="body">消息体</param>
@@ -1152,7 +1152,7 @@ public class Producer : MqBase
         if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
 
         var message = CreateMessage(body);
-        using var span = Tracer?.NewSpan($"mq:{Name}:PublishDelay:grpc", new { deliveryTimestamp, body = message.BodyString });
+        using var span = Tracer?.NewSpan($"mq:{Name}:PublishDelay:grpc", new Dictionary<String, Object> { ["deliveryTimestamp"] = deliveryTimestamp, ["body"] = message.BodyString });
         try
         {
             var rs = await _GrpcService.SendMessageAsync(

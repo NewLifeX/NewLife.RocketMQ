@@ -53,11 +53,11 @@ public class BrokerClient : ClusterClient
     {
         if (group.IsNullOrEmpty()) group = "CLIENT_INNER_PRODUCER";
 
-        return Invoke(RequestCode.UNREGISTER_CLIENT, new
+        return Invoke(RequestCode.UNREGISTER_CLIENT, new Dictionary<String, Object>
         {
-            ClientId = Id,
-            ProducerGroup = group,
-            ConsumerGroup = group,
+            ["ClientId"] = Id,
+            ["ProducerGroup"] = group,
+            ["ConsumerGroup"] = group,
         });
     }
 
