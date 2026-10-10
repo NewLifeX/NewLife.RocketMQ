@@ -59,6 +59,35 @@ void Assert(Boolean condition, String message)
     if (!condition) throw new Exception(message);
 }
 
+// 主题不存在时先创建，再等待 NameServer 路由注册与客户端路由缓存生效（全新 Broker 上首次运行必需）
+async Task<Boolean> EnsureTopicReadyAsync(String nameServer, String topic, Int32 seconds = 45)
+{
+    using (var warm = new Producer { Topic = topic, NameServerAddress = nameServer })
+    {
+        warm.Start();
+        warm.CreateTopic(topic, 4);
+    }
+
+    for (var i = 0; i < seconds; i++)
+    {
+        try
+        {
+            using var probe = new Producer { Topic = topic, NameServerAddress = nameServer };
+            probe.Start();
+            var sent = await probe.PublishAsync("aot-smoke-warm");
+            if (sent.Status == NewLife.RocketMQ.Protocol.SendStatus.SendOK) return true;
+        }
+        catch
+        {
+            // 路由尚未就绪，重试
+        }
+
+        await Task.Delay(1000);
+    }
+
+    return false;
+}
+
 // 基准模式：--probe 打印版本后立即退出（供外部测量启动开销），--bench 运行 CPU 微基准并输出 BENCH|名称|ops/s|毫秒
 void Benchmark(String name, Int32 iterations, Action action)
 {
@@ -380,6 +409,8 @@ else
 
     try
     {
+        if (!await EnsureTopicReadyAsync(nameserver, topic)) throw new Exception($"主题 {topic} 路由未在 45 秒内就绪");
+
         using var producer = new Producer
         {
             Topic = topic,
@@ -499,11 +530,12 @@ else
 
     try
     {
+        if (!await EnsureTopicReadyAsync(nameserver, grpcTopic)) throw new Exception($"主题 {grpcTopic} 路由未在 45 秒内就绪");
+
         // gRPC 不提供建主题接口，主题先由 Remoting 创建
         using (var warm = new Producer { Topic = grpcTopic, NameServerAddress = nameserver })
         {
             warm.Start();
-            warm.CreateTopic(grpcTopic, 4);
             await warm.PublishAsync("aot-grpc-warm");
         }
 

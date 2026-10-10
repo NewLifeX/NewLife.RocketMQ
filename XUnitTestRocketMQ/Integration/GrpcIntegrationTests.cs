@@ -133,27 +133,29 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
         Assert.Equal(GrpcCode.OK, route.Status?.Code);
 
         // 资源上报长连接需要片刻完成 Proxy 侧注册，接收路径也会等待就绪
+        // 主题被多个用例共用，需持续轮询直到出现目标消息而非收到任意消息就停
         var messages = new System.Collections.Generic.List<GrpcMessage>();
-        for (var i = 0; i < 5 && messages.Count == 0; i++)
+        for (var i = 0; i < 8 && !messages.Any(m => m.Body?.ToStr() == body); i++)
         {
             foreach (var queue in route.MessageQueues)
             {
                 var list = await consumer.ReceiveMessageViaGrpcAsync(queue, batchSize: 8, longPollingTimeout: TimeSpan.FromSeconds(2));
-                if (list.Count > 0) { messages.AddRange(list); break; }
+                messages.AddRange(list);
             }
 
-            if (messages.Count == 0) await Task.Delay(1000);
+            if (!messages.Any(m => m.Body?.ToStr() == body)) await Task.Delay(1000);
         }
 
         Assert.Contains(messages, m => m.Body?.ToStr() == body);
 
+        var target = messages.First(m => m.Body?.ToStr() == body);
         var ack = await consumer.AckMessageViaGrpcAsync(_topic,
         [
-            .. messages.Select(m => new AckMessageEntry
+            new AckMessageEntry
             {
-                ReceiptHandle = m.SystemProperties?.ReceiptHandle,
-                MessageId = m.SystemProperties?.MessageId,
-            }),
+                ReceiptHandle = target.SystemProperties?.ReceiptHandle,
+                MessageId = target.SystemProperties?.MessageId,
+            },
         ]);
 
         Assert.Equal(GrpcCode.OK, ack.Status?.Code);
@@ -311,5 +313,120 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
 
         Assert.True(done == completed.Task, "90 秒内未收到重投消息");
         Assert.True(attempts[1] > attempts[0], $"投递次数未递增：{attempts[0]} → {attempts[1]}");
+    }
+
+    [SkippableFact]
+    [DisplayName("gRPC_并发消费失败_批量转入死信队列")]
+    public async Task PushConsumer_BulkFailure_ForwardsToDlq()
+    {
+        Skip.IfNot(ProxyAvailable(), "未配置或无法连接 gRPC Proxy（ROCKETMQ_GRPC_PROXY）");
+        fixture.EnsureAvailable();
+
+        const Int32 total = 30;
+        var tag = "bulk-dlq-" + DateTime.Now.Ticks;
+        var group = "grpc-bulk-dlq-" + Guid.NewGuid().ToString("N")[..8];
+
+        // 使用独立主题，避免失败消息残留影响其他用例
+        var bulkTopic = "grpc-bulk-dlq-topic";
+
+        // 并发投递，模拟高并发失败场景
+        using (var warm = new Producer { Topic = bulkTopic, NameServerAddress = fixture.NameServerAddress })
+        {
+            warm.Start();
+            warm.CreateTopic(bulkTopic, 4);
+
+            var tasks = new System.Collections.Generic.List<Task>();
+            for (var i = 0; i < total; i++)
+            {
+                var body = $"{tag}-{i}";
+                tasks.Add(Task.Run(async () =>
+                {
+                    var sent = await warm.PublishAsync(body);
+                    Assert.Equal(SendStatus.SendOK, sent.Status);
+                }));
+            }
+
+            await Task.WhenAll(tasks);
+        }
+
+        // 推送消费一律失败：投递次数达到上限即转发死信
+        var handled = new System.Collections.Generic.List<String>();
+        using (var push = new GrpcPushConsumer
+        {
+            Topic = bulkTopic,
+            Group = group,
+            Endpoints = ProxyAddress,
+            BatchSize = 32,
+            InvisibleDuration = TimeSpan.FromSeconds(10),
+            MaxDeliveryAttempts = 1,
+            OnMessage = msg =>
+            {
+                var body = msg.Body?.ToStr() ?? "";
+                if (body.StartsWith(tag, StringComparison.Ordinal))
+                {
+                    lock (handled) handled.Add(body);
+                }
+
+                return Task.FromResult(false);
+            },
+        })
+        {
+            await push.StartAsync();
+
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            while (watch.Elapsed < TimeSpan.FromSeconds(60) && handled.Count < total) await Task.Delay(500);
+
+            await push.StopAsync();
+        }
+
+        Assert.True(handled.Count >= total, $"仅消费 {handled.Count}/{total} 条");
+
+        // 死信队列：同一消费组可读取全部失败消息
+        using var dlqConsumer = new Consumer
+        {
+            Topic = $"%DLQ%{group}",
+            Group = group,
+            NameServerAddress = fixture.NameServerAddress,
+            GrpcProxyAddress = ProxyAddress,
+        };
+        dlqConsumer.Start();
+        await Task.Delay(3000);
+
+        var dlqRoute = await dlqConsumer.QueryRouteViaGrpcAsync($"%DLQ%{group}");
+        Assert.Equal(GrpcCode.OK, dlqRoute.Status?.Code);
+
+        var found = new System.Collections.Generic.List<String>();
+        var ackEntries = new System.Collections.Generic.List<AckMessageEntry>();
+        for (var round = 0; round < 8 && found.Count < total; round++)
+        {
+            foreach (var queue in dlqRoute.MessageQueues)
+            {
+                var messages = await dlqConsumer.ReceiveMessageViaGrpcAsync(queue, batchSize: 32,
+                    invisibleDuration: TimeSpan.FromSeconds(30), longPollingTimeout: TimeSpan.FromSeconds(2));
+                foreach (var m in messages)
+                {
+                    var body = m.Body?.ToStr() ?? "";
+                    if (!body.StartsWith(tag, StringComparison.Ordinal) || found.Contains(body)) continue;
+
+                    found.Add(body);
+                    ackEntries.Add(new AckMessageEntry
+                    {
+                        ReceiptHandle = m.SystemProperties?.ReceiptHandle,
+                        MessageId = m.SystemProperties?.MessageId,
+                    });
+                }
+            }
+
+            if (found.Count < total) await Task.Delay(1500);
+        }
+
+        Assert.Equal(total, found.Count);
+
+        // 确认死信消息，避免残留影响后续运行
+        if (ackEntries.Count > 0)
+        {
+            var ack = await dlqConsumer.AckMessageViaGrpcAsync($"%DLQ%{group}", ackEntries);
+            Assert.Equal(GrpcCode.OK, ack.Status?.Code);
+        }
     }
 }

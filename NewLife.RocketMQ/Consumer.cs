@@ -1828,6 +1828,14 @@ public class Consumer : MqBase
     /// <returns>重试主题名</returns>
     public String GetGrpcRetryTopic(String topic = null) => $"%RETRY%{Group}_{topic ?? Topic}";
 
+    /// <summary>获取gRPC死信主题名</summary>
+    /// <remarks>
+    /// 消费失败且投递次数达到上限后，消息被转发到 %DLQ%{消费组}。查询或重投死信消息时需要用同一消费组消费该主题，
+    /// 拉取方式与普通主题一致（<see cref="QueryRouteViaGrpcAsync"/> + <see cref="ReceiveMessageViaGrpcAsync"/>）。
+    /// </remarks>
+    /// <returns>死信主题名</returns>
+    public String GetGrpcDlqTopic() => $"%DLQ%{Group}";
+
     /// <summary>通过gRPC协议接收消息。需要先设置GrpcProxyAddress</summary>
     /// <param name="queue">gRPC消息队列</param>
     /// <param name="filterExpression">过滤表达式。默认Tag=*</param>
