@@ -36,7 +36,11 @@ public class GrpcTelemetrySession : DisposeBase
     /// <summary>客户端设置</summary>
     public GrpcSettings Settings { get; set; }
 
-    /// <summary>重发设置的间隔。默认60秒，设置为零时不重发</summary>
+    /// <summary>重建间隔。到期后重建长连接并重新上报设置，默认60秒；设置为零时不重建</summary>
+    /// <remarks>
+    /// 请求体保持打开时，连接断开无法从发送侧感知（HttpClient 不会结束挂起的 SendAsync），
+    /// 因此无法通过探活判断 Proxy 是否重启；改为周期性重建连接，由重建时的设置上报恢复注册关系。
+    /// </remarks>
     public TimeSpan RefreshInterval { get; set; } = TimeSpan.FromSeconds(60);
 
     /// <summary>断线重连间隔。默认5秒</summary>
@@ -44,6 +48,9 @@ public class GrpcTelemetrySession : DisposeBase
 
     /// <summary>连接确认时长。连接被拒绝或不可达会在此期间暴露，默认1秒</summary>
     public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>注册生效等待。连接建立后等待片刻再视为就绪，默认1.5秒，避免设置帧尚未被 Proxy 处理</summary>
+    public TimeSpan RegistrationDelay { get; set; } = TimeSpan.FromMilliseconds(1500);
 
     /// <summary>是否已建立连接</summary>
     public Boolean Active { get; private set; }
@@ -125,24 +132,15 @@ public class GrpcTelemetrySession : DisposeBase
                 var connected = await Task.WhenAny(stream.Connected, stream.Completion, Task.Delay(ConnectTimeout, cancellationToken)).ConfigureAwait(false);
                 if (connected != stream.Connected) throw new InvalidOperationException($"Telemetry长连接失败：{stream.Error?.Message}");
 
+                // 等待设置帧被 Proxy 处理，避免紧随其后的接收请求取不到订阅关系
+                if (RegistrationDelay > TimeSpan.Zero) await Task.Delay(RegistrationDelay, cancellationToken).ConfigureAwait(false);
+
                 Active = true;
                 span?.AppendTag($"Active={Active}");
 
-                // 保持连接：周期性重发设置；连接结束则退出重建
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    if (RefreshInterval <= TimeSpan.Zero)
-                    {
-                        await Task.WhenAny(stream.Completion, Task.Delay(Timeout.Infinite, cancellationToken)).ConfigureAwait(false);
-                        break;
-                    }
-
-                    var delay = Task.Delay(RefreshInterval, cancellationToken);
-                    var finished = await Task.WhenAny(stream.Completion, delay).ConfigureAwait(false);
-                    if (finished == stream.Completion) break;
-
-                    await stream.WriteFrameAsync(ProtoExtensions.Serialize(new TelemetryCommand { Settings = Settings }), cancellationToken).ConfigureAwait(false);
-                }
+                // 保持到重建周期：到期后重建连接并重新上报设置，覆盖 Proxy 重启、注册失效与连接断开未被感知等情况
+                var keep = RefreshInterval > TimeSpan.Zero ? Task.Delay(RefreshInterval, cancellationToken) : Task.Delay(Timeout.Infinite, cancellationToken);
+                await Task.WhenAny(stream.Completion, keep).ConfigureAwait(false);
             }
             catch (OperationCanceledException) { break; }
             catch (Exception ex)

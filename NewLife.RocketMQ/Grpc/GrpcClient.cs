@@ -655,6 +655,7 @@ internal class PipeStream : Stream
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly SemaphoreSlim _signal = new(0, Int32.MaxValue);
     private Boolean _completed;
+    private Boolean _disposed;
 
     private readonly TaskCompletionSource<Boolean> _connected = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -727,6 +728,8 @@ internal class PipeStream : Stream
     /// <summary>写入数据块</summary>
     public override void Write(Byte[] buffer, Int32 offset, Int32 count)
     {
+        if (_disposed) return;
+
         var chunk = new Byte[count];
         Buffer.BlockCopy(buffer, offset, chunk, 0, count);
 
@@ -746,6 +749,8 @@ internal class PipeStream : Stream
     /// <summary>通知写入结束</summary>
     public void Complete()
     {
+        if (_disposed) return;
+
         _completed = true;
         _signal.Release();
     }
@@ -753,13 +758,18 @@ internal class PipeStream : Stream
     /// <summary>释放资源</summary>
     protected override void Dispose(Boolean disposing)
     {
-        if (disposing)
+        // 请求内容与调用方都会释放该流，需保证重复释放安全
+        if (disposing && !_disposed)
         {
+            _disposed = true;
             _completed = true;
+
+            // 先唤醒阻塞中的读取方，再释放信号量
             _signal.Release();
             _lock.Dispose();
             _signal.Dispose();
         }
+
         base.Dispose(disposing);
     }
 }

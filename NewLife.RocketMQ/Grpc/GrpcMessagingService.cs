@@ -226,26 +226,51 @@ public class GrpcMessagingService : IDisposable
         // 服务端长轮询可能持续到 longPollingTimeout，截止时间必须更宽，否则会被服务端提前中断
         var timeout = longPollingTimeout ?? TimeSpan.FromSeconds(20);
 
-        await foreach (var data in Client.ServerStreamingCallAsync(ServiceName, "ReceiveMessage", requestData, cancellationToken, timeout + TimeSpan.FromSeconds(10)).ConfigureAwait(false))
+        // 长轮询期间 Proxy 可能重置流（客户端注销、内部超时等），重试一次避免把瞬时抖动抛给调用方
+        for (var attempt = 0; ; attempt++)
         {
-            var response = new ReceiveMessageResponse();
-            var reader = new SpanReader(data);
-            response.Read(ref reader);
-
-            // 检查状态
-            if (response.Status != null && response.Status.Code != GrpcCode.OK)
+            try
             {
-                // 消息未找到不算错误
-                if (response.Status.Code == GrpcCode.MESSAGE_NOT_FOUND) break;
-                throw new InvalidOperationException($"ReceiveMessage error: {response.Status}");
+                await foreach (var data in Client.ServerStreamingCallAsync(ServiceName, "ReceiveMessage", requestData, cancellationToken, timeout + TimeSpan.FromSeconds(10)).ConfigureAwait(false))
+                {
+                    var response = new ReceiveMessageResponse();
+                    var reader = new SpanReader(data);
+                    response.Read(ref reader);
+
+                    // 检查状态
+                    if (response.Status != null && response.Status.Code != GrpcCode.OK)
+                    {
+                        // 消息未找到不算错误
+                        if (response.Status.Code == GrpcCode.MESSAGE_NOT_FOUND) break;
+                        throw new InvalidOperationException($"ReceiveMessage error: {response.Status}");
+                    }
+
+                    if (response.Message != null)
+                        messages.Add(response.Message);
+                }
+
+                return messages;
             }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                // 已收到消息时以结果为先，避免丢弃已投递消息（确认句柄在不可见时间内仍然有效）
+                if (messages.Count > 0)
+                {
+                    Log.Warn("gRPC接收中断，返回已收到的 {0} 条：{1}", messages.Count, ex.Message);
+                    return messages;
+                }
 
-            if (response.Message != null)
-                messages.Add(response.Message);
+                if (attempt > 0) throw;
+
+                Log.Warn("gRPC接收失败，稍后重试：{0}", ex.Message);
+                await Task.Delay(RetryDelay, cancellationToken).ConfigureAwait(false);
+            }
         }
-
-        return messages;
     }
+
+    /// <summary>接收失败重试间隔。默认200毫秒</summary>
+    public TimeSpan RetryDelay { get; set; } = TimeSpan.FromMilliseconds(200);
     #endregion
 
     #region 确认消息
