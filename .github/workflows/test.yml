@@ -115,6 +115,7 @@ jobs:
     - name: Test
       env:
         ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
+        ROCKETMQ_GRPC_PROXY: "http://127.0.0.1:8081"
       run: |
         dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --no-build -v n
 
