@@ -92,6 +92,8 @@ jobs:
         fi
 
         echo "=== 启动 Proxy ==="
+        # Proxy 会订阅内部主题 DefaultHeartBeatSyncerTopic，提前创建，避免其无效拉取刷满 Broker 日志并抢占拉取线程
+        /tmp/rocketmq/bin/mqadmin updateTopic -n 127.0.0.1:9876 -c DefaultCluster -t DefaultHeartBeatSyncerTopic -r 1 -w 1 > /dev/null 2>&1 || true
         # runserver.sh 固定 -Xms4g -Xmx4g，JAVA_OPT_EXT 最后追加，用较小堆覆盖
         export JAVA_OPT_EXT="-Xms256m -Xmx512m"
         nohup /tmp/rocketmq/bin/mqproxy -n 127.0.0.1:9876 > /tmp/proxy.log 2>&1 &

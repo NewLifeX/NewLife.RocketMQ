@@ -97,6 +97,13 @@ public class Message
         set => Properties["REQUEST_TIMEOUT"] = value.ToString();
     }
 
+    /// <summary>消息分组。gRPC 模式下用于 FIFO 顺序消息，同一分组内保证投递顺序（主题类型需为 Fifo）</summary>
+    public String MessageGroup
+    {
+        get => Properties.TryGetValue("MESSAGE_GROUP", out var str) ? str : null;
+        set => Properties["MESSAGE_GROUP"] = value;
+    }
+
     /// <summary>附加属性</summary>
     public IDictionary<String, String> Properties { get; set; }
     #endregion

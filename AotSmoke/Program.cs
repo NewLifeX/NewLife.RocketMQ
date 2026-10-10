@@ -4,7 +4,7 @@
 //   帧编解码、请求头属性字典、JSON 序列化（含源生成成员访问器）、云厂商适配、双协议消息转换、
 //   消息体对象序列化、埋点标签序列化，以及端到端收发（普通/对象体/批量/延迟、消费、偏移查询、顺序锁、POP 消费）。
 // 环境变量 ROCKETMQ_NAMESERVER（如 127.0.0.1:9876）可选；设置后追加真实收发用例，未设置时跳过。
-// 环境变量 ROCKETMQ_GRPC_PROXY（如 http://127.0.0.1:8081）可选；设置后追加 gRPC 5.x 链路用例（路由/收发/确认/推送消费/死信转发）。
+// 环境变量 ROCKETMQ_GRPC_PROXY（如 http://127.0.0.1:8081）可选；设置后追加 gRPC 5.x 链路用例（路由/收发/确认/推送消费/死信转发/FIFO 顺序消费）。
 //
 // 本地：dotnet publish AotSmoke -c Release -r win-x64 -p:PublishAot=true && ./AotSmoke/bin/Release/net10.0/win-x64/publish/AotSmoke.exe
 // CI  ：dotnet publish AotSmoke -c Release -r linux-x64 -p:PublishAot=true && ./AotSmoke/bin/Release/net10.0/linux-x64/publish/AotSmoke
@@ -642,6 +642,89 @@ else
             var dlq = await grpcConsumer.ForwardToDeadLetterQueueViaGrpcAsync(grpcTopic,
                 dlqMsg.SystemProperties!.ReceiptHandle, dlqMsg.SystemProperties.MessageId, attempt, attempt);
             Check("gRPC·转发死信队列", () => Assert(dlq?.Status?.Code == GrpcCode.OK, $"转发状态 {dlq?.Status?.Code}"));
+        }
+
+        // FIFO 顺序消费：单队列 FIFO 主题 + 顺序处理，验证接收顺序与发送顺序一致
+        var fifoTopic = "aot-smoke-fifo-topic";
+        using (var warm = new Producer { Topic = fifoTopic, NameServerAddress = nameserver })
+        {
+            warm.Start();
+            warm.CreateTopic(fifoTopic, 1, 0, TopicMessageType.Fifo);
+        }
+
+        var fifoReady = false;
+        for (var i = 0; i < 45 && !fifoReady; i++)
+        {
+            try
+            {
+                using var probe = new Producer { Topic = fifoTopic, NameServerAddress = nameserver };
+                probe.Start();
+                var r = await probe.PublishAsync(new Message { Topic = fifoTopic, Body = "fifo-warm".GetBytes(), MessageGroup = "warm" }, null);
+                fifoReady = r.Status == SendStatus.SendOK;
+            }
+            catch { }
+
+            if (!fifoReady) await Task.Delay(1000);
+        }
+
+        if (!fifoReady) Check("gRPC·FIFO 顺序消费", () => throw new Exception($"主题 {fifoTopic} 路由未就绪"));
+        else
+        {
+            const Int32 fifoTotal = 20;
+            var fifoGroup = "aot-fifo-" + Guid.NewGuid().ToString("N")[..8];
+            using (var fifoProducer = new Producer
+            {
+                Topic = fifoTopic,
+                Group = "aot-fifo-producer",
+                NameServerAddress = nameserver,
+                GrpcProxyAddress = proxy,
+            })
+            {
+                fifoProducer.Start();
+                for (var i = 0; i < fifoTotal; i++)
+                {
+                    await fifoProducer.PublishAsync(new Message
+                    {
+                        Topic = fifoTopic,
+                        Body = $"seq-{i:d3}".GetBytes(),
+                        MessageGroup = fifoGroup,
+                    }, null);
+                }
+            }
+
+            var fifoReceived = new List<Int32>();
+            using var fifoPush = new GrpcPushConsumer
+            {
+                Topic = fifoTopic,
+                Group = "aot-fifo-consumer-" + Guid.NewGuid().ToString("N")[..8],
+                Endpoints = proxy,
+                Orderly = true,
+                InvisibleDuration = TimeSpan.FromSeconds(30),
+                OnMessage = m =>
+                {
+                    var body = m.Body.ToStr();
+                    if (body.StartsWith("seq-"))
+                    {
+                        lock (fifoReceived) fifoReceived.Add(Int32.Parse(body[4..]));
+                    }
+
+                    return Task.FromResult(true);
+                },
+            };
+            await fifoPush.StartAsync();
+
+            var fifoWatch = Stopwatch.StartNew();
+            while (fifoWatch.ElapsedMilliseconds < 30_000 && fifoReceived.Count < fifoTotal) await Task.Delay(200);
+            await fifoPush.StopAsync();
+
+            lock (fifoReceived)
+            {
+                Check("gRPC·FIFO 顺序消费", () =>
+                {
+                    Assert(fifoReceived.Count == fifoTotal, $"仅收到 {fifoReceived.Count}/{fifoTotal} 条");
+                    for (var i = 0; i < fifoTotal; i++) Assert(fifoReceived[i] == i, $"顺序错误：第 {i} 条为 {fifoReceived[i]}");
+                });
+            }
         }
     }
     catch (Exception ex)

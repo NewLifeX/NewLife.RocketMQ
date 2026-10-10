@@ -432,6 +432,7 @@ public class Producer : MqBase
                 tag: message.Tags,
                 keys: keys,
                 properties: message.Properties.Count > 0 ? message.Properties : null,
+                messageGroup: message.MessageGroup,
                 cancellationToken: cancellationToken
             ).ConfigureAwait(false);
 

@@ -334,6 +334,60 @@ static class RocketMqSetup
 
         PrintStep("  等待 Topic 路由注册...");
         await Task.Delay(5000);
+
+        // Proxy 会订阅内部主题 DefaultHeartBeatSyncerTopic，Broker 清库后该主题消失，
+        // 其无效拉取会刷满 Broker 日志并抢占拉取线程，导致消费类请求超时，故提前创建
+        PrepareProxyInternalTopic(java, env);
+    }
+
+    /// <summary>创建 Proxy 依赖的内部主题（失败不影响启动）</summary>
+    static void PrepareProxyInternalTopic(String java, Dictionary<String, String> env)
+    {
+        try
+        {
+            var admin = Path.Combine(RmqHome, "bin", "mqadmin.cmd");
+            if (!File.Exists(admin)) admin = Path.Combine(RmqHome, "bin", "mqadmin");
+
+            PrintStep("  准备 Proxy 内部主题...");
+            var log = Path.Combine(Path.GetDirectoryName(BrokerLog)!, "mqadmin.log");
+            var isWindows = OperatingSystem.IsWindows();
+            var psi = new ProcessStartInfo(isWindows ? "cmd.exe" : "/bin/sh")
+            {
+                Arguments             = isWindows
+                    ? $"/c \"\"{admin}\" updateTopic -n 127.0.0.1:9876 -c DefaultCluster -t DefaultHeartBeatSyncerTopic -r 1 -w 1\""
+                    : $"\"{admin}\" updateTopic -n 127.0.0.1:9876 -c DefaultCluster -t DefaultHeartBeatSyncerTopic -r 1 -w 1",
+                UseShellExecute       = false,
+                CreateNoWindow        = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError  = true,
+            };
+            foreach (var kv in env)
+            {
+                psi.Environment[kv.Key] = kv.Value;
+            }
+
+            // mqadmin 需要 JAVA_HOME 才能定位 java
+            psi.Environment["JAVA_HOME"] = Path.GetDirectoryName(Path.GetDirectoryName(java))!;
+
+            var proc = Process.Start(psi)!;
+            proc.OutputDataReceived += (_, e) => { if (e.Data != null) SafeAppendLog(log, e.Data); };
+            proc.ErrorDataReceived += (_, e) => { if (e.Data != null) SafeAppendLog(log, e.Data); };
+            proc.BeginOutputReadLine();
+            proc.BeginErrorReadLine();
+
+            if (!proc.WaitForExit(60000))
+            {
+                try { proc.Kill(true); } catch { }
+                PrintWarn("  内部主题创建超时，可忽略");
+                return;
+            }
+
+            PrintOk("  DefaultHeartBeatSyncerTopic 就绪");
+        }
+        catch (Exception ex)
+        {
+            PrintWarn($"  内部主题创建失败（可忽略）：{ex.Message}");
+        }
     }
 
     #endregion

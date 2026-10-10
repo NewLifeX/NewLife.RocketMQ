@@ -519,12 +519,14 @@ public abstract class MqBase : DisposeBase
     /// <param name="topic">主题</param>
     /// <param name="queueNum">队列数</param>
     /// <param name="topicSysFlag">系统标志位，默认0</param>
-    /// <param name="topicMessageType">Topic消息类型，默认Normal。指定Lite可创建轻量动态Topic（需RocketMQ 5.5.0+，RIP-83）</param>
+    /// <param name="topicMessageType">Topic消息类型，默认Normal。发送FIFO或事务消息时主题类型必须匹配，否则 Broker 拒绝；Lite 需 RocketMQ 5.5.0+（RIP-83）</param>
     public virtual Int32 CreateTopic(String topic, Int32 queueNum, Int32 topicSysFlag = 0, TopicMessageType topicMessageType = TopicMessageType.Normal)
     {
-        // topicMessageType 字段在 RocketMQ 5.x Broker 中作为字符串传递
-        // Lite 类型需要 RocketMQ 5.5.0+ (RIP-83)，旧版 Broker 忽略该字段
-        var topicMessageTypeStr = topicMessageType.ToString();
+        // 5.x Broker 把主题类型存在 attributes 的 message.type（取值 NORMAL/FIFO/TRANSACTION/DELAY），
+        // 单独的同名字段会被忽略；Lite Topic（RIP-83，5.5.0+）仍按 topicMessageType 字段识别，
+        // 且低版本 Broker 不认识 message.type=LITE 会直接拒绝整个请求，故 Lite 不下发 attributes
+        var messageType = topicMessageType.ToString().ToUpperInvariant();
+        var attributes = topicMessageType == TopicMessageType.Lite ? null : $"+message.type={messageType}";
 
         var header = new Dictionary<String, Object>
         {
@@ -536,8 +538,9 @@ public abstract class MqBase : DisposeBase
             ["topicFilterType"] = "SINGLE_TAG",
             ["topicSysFlag"] = topicSysFlag,
             ["order"] = false,
-            ["topicMessageType"] = topicMessageTypeStr,
+            ["topicMessageType"] = topicMessageType.ToString(),
         };
+        if (attributes != null) header["attributes"] = attributes;
 
         var count = 0;
         using var span = Tracer?.NewSpan($"mq:{Name}:CreateTopic", header);

@@ -18,7 +18,7 @@ namespace XUnitTest.Protocol;
 /// - SystemProperties.message_type = field 6，body_encoding = field 5，priority = field 22
 /// - MessageQueue.permission = field 3，accept_message_types = field 5（packed）
 /// - Endpoints.scheme = field 1，Digest.type = field 1
-/// - EndTransactionRequest.source = field 4，resolution = field 5
+/// - EndTransactionRequest.source = field 5，resolution = field 4（官方 service.proto：topic=1, message_id=2, transaction_id=3, resolution=4, source=5, trace_context=6）
 /// - Settings.request_timeout = field 4，publishing = field 5，subscription = field 6
 /// </remarks>
 public class GrpcGoldenBytesTests
@@ -138,8 +138,8 @@ public class GrpcGoldenBytesTests
     [DisplayName("TransactionSource_官方字节流_解析正确")]
     public void TransactionSource_OfficialBytes(Byte raw, GrpcTransactionSource expected)
     {
-        // field 4，tag=0x20
-        var req = Decode<GrpcEndTransactionRequest>(0x20, raw);
+        // field 5，tag=0x28
+        var req = Decode<GrpcEndTransactionRequest>(0x28, raw);
         Assert.Equal(expected, req.Source);
     }
 
@@ -149,8 +149,8 @@ public class GrpcGoldenBytesTests
     [DisplayName("TransactionResolution_官方字节流_解析正确")]
     public void TransactionResolution_OfficialBytes(Byte raw, GrpcTransactionResolution expected)
     {
-        // field 5，tag=0x28
-        var req = Decode<GrpcEndTransactionRequest>(0x28, raw);
+        // field 4，tag=0x20
+        var req = Decode<GrpcEndTransactionRequest>(0x20, raw);
         Assert.Equal(expected, req.Resolution);
     }
     #endregion

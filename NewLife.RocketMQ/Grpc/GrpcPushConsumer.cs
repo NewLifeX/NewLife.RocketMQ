@@ -71,8 +71,15 @@ public class GrpcPushConsumer : IDisposable
     /// <summary>消费失败后重新变为可见的延迟（默认5秒）</summary>
     public TimeSpan RetryInvisibleDuration { get; set; } = TimeSpan.FromSeconds(5);
 
-    /// <summary>最大并发消费数（默认20）</summary>
+    /// <summary>最大并发消费数（默认20）。顺序消费（<see cref="Orderly"/>）时忽略该值</summary>
     public Int32 MaxConcurrentConsume { get; set; } = 20;
+
+    /// <summary>顺序消费。默认false，消息并发处理；true 时逐条串行处理，保证同一队列内的处理顺序与投递顺序一致，适用于 FIFO 主题</summary>
+    /// <remarks>
+    /// gRPC 的 FIFO 消息由 Broker 按 message_group 保证投递顺序，但客户端并发处理会打乱完成顺序。
+    /// 顺序消费会牺牲吞吐，FIFO 主题通常为单队列，如需多队列并行请自行按整体队列拆分消费者。
+    /// </remarks>
+    public Boolean Orderly { get; set; }
 
     /// <summary>心跳间隔。默认15秒，保持 Proxy 侧会话注册，防止会话被回收</summary>
     public TimeSpan HeartbeatInterval { get; set; } = TimeSpan.FromSeconds(15);
@@ -254,6 +261,13 @@ public class GrpcPushConsumer : IDisposable
                 foreach (var msg in messages)
                 {
                     if (cancellationToken.IsCancellationRequested) break;
+
+                    // 顺序消费：逐条串行处理，保证同一队列内的处理顺序与投递顺序一致
+                    if (Orderly)
+                    {
+                        await HandleMessageAsync(msg, cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
 
                     // 等待并发槽位
                     await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);

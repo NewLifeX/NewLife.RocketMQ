@@ -605,8 +605,8 @@ public class GrpcEndTransactionRequest : ISpanSerializable
         writer.WriteMessage(1, Topic);
         writer.WriteString(2, MessageId);
         writer.WriteString(3, TransactionId);
-        writer.WriteEnum(4, (Int32)Source);
-        writer.WriteEnum(5, (Int32)Resolution);
+        writer.WriteEnum(4, (Int32)Resolution);
+        writer.WriteEnum(5, (Int32)Source);
     }
 
     /// <summary>读取</summary>
@@ -622,8 +622,8 @@ public class GrpcEndTransactionRequest : ISpanSerializable
                 case 1: Topic = reader.ReadProtoMessage<GrpcResource>(); break;
                 case 2: MessageId = reader.ReadProtoString(); break;
                 case 3: TransactionId = reader.ReadProtoString(); break;
-                case 4: Source = (GrpcTransactionSource)reader.ReadEnum(); break;
-                case 5: Resolution = (GrpcTransactionResolution)reader.ReadEnum(); break;
+                case 4: Resolution = (GrpcTransactionResolution)reader.ReadEnum(); break;
+                case 5: Source = (GrpcTransactionSource)reader.ReadEnum(); break;
                 default: reader.SkipField(wt); break;
             }
         }

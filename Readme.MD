@@ -136,6 +136,8 @@ await consumer.AckMessageViaGrpcAsync("test_topic",
 > **5.x POP 重试与死信**：消费失败的消息由 Broker 写入 `%RETRY%{group}_{topic}` 并按 `popFromRetryProbability` 概率并回原主题的拉取响应，客户端只需消费原主题；投递次数达到 `GrpcPushConsumer.MaxDeliveryAttempts`（默认 16）时转入 `%DLQ%{group}`，手工接收场景调用 `Consumer.ForwardToDeadLetterQueueViaGrpcAsync`（`GetGrpcDlqTopic()` 返回死信主题名）。不可见时间下限 10 秒（库内自动收敛），小于该值会被 Broker 拒绝。
 >
 > 死信消息需一次处理完成：`dotnet run --file scripts/DlqTool.cs -- --group <消费组> --to <原主题>` 会把死信队列中的消息重投到指定主题，仅确认重投成功的消息。死信被拉取即推进消费位点、未确认的消息会被 Broker 移入 `%RETRY%{group}_%DLQ%{group}`，因此不支持只读浏览死信队列。
+>
+> **FIFO 顺序消息与事务消息**：主题类型须与消息类型匹配，用 `CreateTopic(topic, queueNum, 0, TopicMessageType.Fifo/Transaction)` 创建。FIFO 发送时设置 `Message.MessageGroup`，消费时设置 `GrpcPushConsumer.Orderly = true` 以串行处理并保持顺序；事务消息用 `PublishTransactionViaGrpcAsync` 发送半消息、`EndTransactionViaGrpcAsync` 提交或回滚（不提交则超时后被 Broker 回滚）。
 
 ### 延迟消息
 
@@ -446,9 +448,9 @@ MqBase (业务基类)
 
 ## 测试覆盖
 
-84 个测试文件，628 个测试用例（xUnit），覆盖核心功能、高级特性、协议兼容、云厂商适配、E2E 集成测试（gRPC 集成用例在未配置 Proxy 时自动跳过）。
+84 个测试文件，631 个测试用例（xUnit），覆盖核心功能、高级特性、协议兼容、云厂商适配、E2E 集成测试（gRPC 集成用例在未配置 Proxy 时自动跳过）。
 
-另有 NativeAOT 冒烟（`AotSmoke`，25 个用例，含 gRPC 链路与死信转发）、发布基线采集（`scripts/AotBaseline.cs`，输出体积/启动开销/吞吐并支持阈值判定，CI 写入流水线摘要）、死信运维工具（`scripts/DlqTool.cs`，把 `%DLQ%{group}` 消息重投到指定主题）与 gRPC 长稳验收脚本（`scripts/GrpcStability.cs`，CI 夜间运行并注入一次 Proxy 重启）。
+另有 NativeAOT 冒烟（`AotSmoke`，26 个用例，含 gRPC 链路、死信转发与 FIFO 顺序消费）、发布基线采集（`scripts/AotBaseline.cs`，输出体积/启动开销/吞吐并支持阈值判定，CI 写入流水线摘要）、死信运维工具（`scripts/DlqTool.cs`，把 `%DLQ%{group}` 消息重投到指定主题）与 gRPC 长稳验收脚本（`scripts/GrpcStability.cs`，CI 夜间运行并注入一次 Proxy 重启）。
 
 ---
 

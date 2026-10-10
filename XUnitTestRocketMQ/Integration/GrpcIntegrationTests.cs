@@ -429,4 +429,171 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
             Assert.Equal(GrpcCode.OK, ack.Status?.Code);
         }
     }
+
+    /// <summary>建主题并等待路由就绪（新建主题的 NameServer 路由注册有延迟）</summary>
+    private async Task EnsureTopicAsync(String topic, Int32 queueNum, TopicMessageType messageType)
+    {
+        using (var warm = new Producer { Topic = topic, NameServerAddress = fixture.NameServerAddress })
+        {
+            warm.Start();
+            warm.CreateTopic(topic, queueNum, 0, messageType);
+        }
+
+        for (var i = 0; i < 45; i++)
+        {
+            try
+            {
+                using var probe = new Producer { Topic = topic, NameServerAddress = fixture.NameServerAddress };
+                probe.Start();
+                var sent = await probe.PublishAsync(new Message { Topic = topic, Body = "warm".GetBytes() }, null);
+                if (sent.Status == SendStatus.SendOK) return;
+            }
+            catch
+            {
+                // 路由尚未就绪，重试
+            }
+
+            await Task.Delay(1000);
+        }
+
+        throw new Exception($"主题 {topic} 路由未在 45 秒内就绪");
+    }
+
+    [SkippableFact]
+    [DisplayName("gRPC_事务消息_提交可见回滚不可见")]
+    public async Task Transaction_CommitVisibleRollbackInvisible()
+    {
+        Skip.IfNot(ProxyAvailable(), "未配置或无法连接 gRPC Proxy（ROCKETMQ_GRPC_PROXY）");
+        fixture.EnsureAvailable();
+
+        var topic = "grpc-tx-integration-topic";
+        var commitBody = "tx-commit-" + DateTime.Now.Ticks;
+        var rollbackBody = "tx-rollback-" + DateTime.Now.Ticks;
+
+        // 事务消息要求主题类型为 TRANSACTION
+        await EnsureTopicAsync(topic, 4, TopicMessageType.Transaction);
+
+        using var producer = new Producer
+        {
+            Topic = topic,
+            Group = "grpc-tx-producer",
+            NameServerAddress = fixture.NameServerAddress,
+            GrpcProxyAddress = ProxyAddress,
+        };
+        producer.Start();
+
+        var commit = await producer.PublishTransactionViaGrpcAsync(commitBody);
+        var commitResult = await producer.EndTransactionViaGrpcAsync(commit.MsgId, commit.TransactionId, true);
+        Assert.Equal(GrpcCode.OK, commitResult.Status?.Code);
+
+        var rollback = await producer.PublishTransactionViaGrpcAsync(rollbackBody);
+        var rollbackResult = await producer.EndTransactionViaGrpcAsync(rollback.MsgId, rollback.TransactionId, false);
+        Assert.Equal(GrpcCode.OK, rollbackResult.Status?.Code);
+
+        using var consumer = new Consumer
+        {
+            Topic = topic,
+            Group = "grpc-tx-" + Guid.NewGuid().ToString("N")[..8],
+            NameServerAddress = fixture.NameServerAddress,
+            GrpcProxyAddress = ProxyAddress,
+        };
+        consumer.Start();
+        await Task.Delay(3000);
+
+        var route = await consumer.QueryRouteViaGrpcAsync(topic);
+        var found = new System.Collections.Generic.List<String>();
+        for (var i = 0; i < 8 && !found.Contains(commitBody); i++)
+        {
+            foreach (var queue in route.MessageQueues)
+            {
+                var messages = await consumer.ReceiveMessageViaGrpcAsync(queue, batchSize: 16,
+                    invisibleDuration: TimeSpan.FromSeconds(10), longPollingTimeout: TimeSpan.FromSeconds(2));
+                foreach (var m in messages)
+                {
+                    var body = m.Body?.ToStr() ?? "";
+                    if (body.StartsWith("tx-", StringComparison.Ordinal) && !found.Contains(body)) found.Add(body);
+                }
+            }
+
+            if (!found.Contains(commitBody)) await Task.Delay(1500);
+        }
+
+        Assert.Contains(commitBody, found);
+        Assert.DoesNotContain(rollbackBody, found);
+    }
+
+    [SkippableFact]
+    [DisplayName("gRPC_FIFO主题_顺序消费保持发送顺序")]
+    public async Task Fifo_OrderlyConsume_PreservesOrder()
+    {
+        Skip.IfNot(ProxyAvailable(), "未配置或无法连接 gRPC Proxy（ROCKETMQ_GRPC_PROXY）");
+        fixture.EnsureAvailable();
+
+        const Int32 total = 20;
+        var topic = "grpc-fifo-integration-topic";
+        var messageGroup = "fifo-" + Guid.NewGuid().ToString("N")[..8];
+
+        // FIFO 主题用单队列保证全局顺序
+        await EnsureTopicAsync(topic, 1, TopicMessageType.Fifo);
+
+        using (var producer = new Producer
+        {
+            Topic = topic,
+            Group = "grpc-fifo-producer",
+            NameServerAddress = fixture.NameServerAddress,
+            GrpcProxyAddress = ProxyAddress,
+        })
+        {
+            producer.Start();
+            for (var i = 0; i < total; i++)
+            {
+                var sent = await producer.PublishAsync(new Message
+                {
+                    Topic = topic,
+                    Body = $"seq-{i:d3}".GetBytes(),
+                    MessageGroup = messageGroup,
+                }, null);
+                Assert.Equal(SendStatus.SendOK, sent.Status);
+            }
+        }
+
+        var received = new System.Collections.Generic.List<Int32>();
+        var completed = new TaskCompletionSource<Boolean>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using (var push = new GrpcPushConsumer
+        {
+            Topic = topic,
+            Group = "grpc-fifo-consumer-" + Guid.NewGuid().ToString("N")[..8],
+            Endpoints = ProxyAddress,
+            Orderly = true,
+            InvisibleDuration = TimeSpan.FromSeconds(30),
+            OnMessage = msg =>
+            {
+                var body = msg.Body?.ToStr() ?? "";
+                if (body.StartsWith("seq-", StringComparison.Ordinal))
+                {
+                    lock (received)
+                    {
+                        received.Add(Int32.Parse(body[4..]));
+                        if (received.Count >= total) completed.TrySetResult(true);
+                    }
+                }
+
+                return Task.FromResult(true);
+            },
+        })
+        {
+            await push.StartAsync();
+
+            var done = await Task.WhenAny(completed.Task, Task.Delay(TimeSpan.FromSeconds(60)));
+            await push.StopAsync();
+
+            Assert.True(done == completed.Task, $"60 秒内仅收到 {received.Count}/{total} 条");
+        }
+
+        // 顺序消费下应按发送顺序逐条到达
+        for (var i = 0; i < total; i++)
+        {
+            Assert.Equal(i, received[i]);
+        }
+    }
 }
