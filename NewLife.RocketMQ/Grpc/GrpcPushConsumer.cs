@@ -13,8 +13,11 @@ namespace NewLife.RocketMQ.Grpc;
 /// 基于 RocketMQ 5.x gRPC 的 Push 消费语义：
 /// 内部使用长轮询线程循环拉取消息，触发 <see cref="OnMessage"/> 回调。
 /// - 回调返回 true  → 自动 Ack
-/// - 回调返回 false → 自动 ChangeInvisibleDuration（延迟重投）
-/// - 回调抛出异常  → 同样触发 ChangeInvisibleDuration
+/// - 回调返回 false → 自动 ChangeInvisibleDuration（延迟重投），投递次数达到 <see cref="MaxDeliveryAttempts"/> 时转发死信队列
+/// - 回调抛出异常  → 同上
+/// 
+/// 消费失败的消息由 Broker 写入 %RETRY%{group}_{topic} 重试主题，并按 popFromRetryProbability 概率并回原主题的拉取响应，
+/// 因此只需轮询原主题队列即可继续消费重试消息，无需订阅重试主题。
 /// 
 /// 通过 <see cref="MaxConcurrentConsume"/> 信号量控制并发处理数，
 /// 适合消费延迟较高的场景，避免无限积压。
@@ -73,6 +76,13 @@ public class GrpcPushConsumer : IDisposable
 
     /// <summary>心跳间隔。默认15秒，保持 Proxy 侧会话注册，防止会话被回收</summary>
     public TimeSpan HeartbeatInterval { get; set; } = TimeSpan.FromSeconds(15);
+
+    /// <summary>最大投递次数。默认16，达到后把消息转发到死信队列；0 表示不转发，由 Broker 按重试策略持续重投</summary>
+    /// <remarks>
+    /// Proxy 下发的最大投递次数为消费组的 retryMaxTimes+1；本地默认值与 Broker 默认组配置（16）保持一致。
+    /// 达到上限仍消费失败时若不转发死信，消息会在重试主题中反复重投。
+    /// </remarks>
+    public Int32 MaxDeliveryAttempts { get; set; } = 16;
 
     /// <summary>消息处理回调。返回 true 则 Ack，返回 false 或抛出异常则 ChangeInvisibleDuration</summary>
     public Func<GrpcMessage, Task<Boolean>> OnMessage { get; set; }
@@ -143,7 +153,10 @@ public class GrpcPushConsumer : IDisposable
                 Subscription = new GrpcSubscriptionSettings
                 {
                     Group = new GrpcResource { Name = Group },
-                    Subscriptions = [new GrpcSubscriptionEntry { Topic = new GrpcResource { Name = Topic }, Expression = new GrpcFilterExpression { Type = GrpcFilterType.TAG, Expression = "*" } }],
+                    Subscriptions =
+                    [
+                        new GrpcSubscriptionEntry { Topic = new GrpcResource { Name = Topic }, Expression = new GrpcFilterExpression { Type = GrpcFilterType.TAG, Expression = "*" } },
+                    ],
                 },
             },
             Log = Log,
@@ -218,7 +231,7 @@ public class GrpcPushConsumer : IDisposable
 
     #region 消费循环
 
-    private async Task ConsumeLoopAsync(IList<GrpcMessageQueue> queues, CancellationToken cancellationToken)
+    private async Task ConsumeLoopAsync(IReadOnlyList<GrpcMessageQueue> queues, CancellationToken cancellationToken)
     {
         var queueIndex = 0;
 
@@ -281,6 +294,10 @@ public class GrpcPushConsumer : IDisposable
         var receiptHandle = msg.SystemProperties?.ReceiptHandle;
         var messageId = msg.SystemProperties?.MessageId ?? "(unknown)";
 
+        // 重试主题的消息必须回它自己的主题，确认/延期才有效
+        var topic = msg.Topic?.Name;
+        if (topic.IsNullOrEmpty()) topic = Topic;
+
         var success = false;
         // 处理期间续租：防止 OnMessage 处理时间超过不可见时间导致消息被重投（重复消费）
         using var renewalCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -295,7 +312,7 @@ public class GrpcPushConsumer : IDisposable
                     while (!renewalCts.IsCancellationRequested)
                     {
                         await Task.Delay(interval, renewalCts.Token).ConfigureAwait(false);
-                        await _service.ChangeInvisibleDurationAsync(Topic, Group, receiptHandle, messageId, InvisibleDuration, renewalCts.Token).ConfigureAwait(false);
+                        await _service.ChangeInvisibleDurationAsync(topic, Group, receiptHandle, messageId, InvisibleDuration, renewalCts.Token).ConfigureAwait(false);
                     }
                 }
                 catch
@@ -331,7 +348,7 @@ public class GrpcPushConsumer : IDisposable
                 try
                 {
                     await _service.AckMessageAsync(
-                        Topic,
+                        topic,
                         Group,
                         [new AckMessageEntry { MessageId = messageId, ReceiptHandle = receiptHandle }],
                         cancellationToken).ConfigureAwait(false);
@@ -344,22 +361,39 @@ public class GrpcPushConsumer : IDisposable
         }
         else
         {
-            // 消费失败 → 修改可见时间（延迟重投）
+            // 消费失败 → 达到最大投递次数则转发死信队列，否则修改可见时间（延迟重投）
             if (!receiptHandle.IsNullOrEmpty())
             {
+                var attempt = msg.SystemProperties?.DeliveryAttempt ?? 0;
                 try
                 {
-                    await _service.ChangeInvisibleDurationAsync(
-                        Topic,
-                        Group,
-                        receiptHandle,
-                        messageId,
-                        RetryInvisibleDuration,
-                        cancellationToken).ConfigureAwait(false);
+                    if (MaxDeliveryAttempts > 0 && attempt >= MaxDeliveryAttempts)
+                    {
+                        // Broker 把消息写入 %DLQ%{group}，不再重投
+                        await _service.ForwardToDeadLetterQueueAsync(
+                            topic,
+                            Group,
+                            receiptHandle,
+                            messageId,
+                            attempt,
+                            MaxDeliveryAttempts,
+                            cancellationToken).ConfigureAwait(false);
+                        Log.Warn($"[GrpcPushConsumer] 消息 {messageId} 已达最大投递次数 {attempt}，转入死信队列");
+                    }
+                    else
+                    {
+                        await _service.ChangeInvisibleDurationAsync(
+                            topic,
+                            Group,
+                            receiptHandle,
+                            messageId,
+                            RetryInvisibleDuration,
+                            cancellationToken).ConfigureAwait(false);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Log.Warn($"[GrpcPushConsumer] ChangeInvisibleDuration 消息 {messageId} 失败: {ex.Message}");
+                    Log.Warn($"[GrpcPushConsumer] 消息 {messageId} 重投处理失败: {ex.Message}");
                 }
             }
         }

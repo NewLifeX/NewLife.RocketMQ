@@ -1818,6 +1818,16 @@ public class Consumer : MqBase
         return settings;
     }
 
+    /// <summary>获取gRPC重试主题名，仅用于运维诊断，无需订阅</summary>
+    /// <remarks>
+    /// 5.x POP 模式的重试主题命名为 %RETRY%{消费组}_{主题}（v1）或 %RETRY%{消费组}+{主题}（v2，Broker 开启 enableRetryTopicV2 时），
+    /// 与 4.x 的 %RETRY%{消费组} 不同。消费失败的消息被 Broker 写入该主题后，由 Broker 按 popFromRetryProbability 概率
+    /// 并回原主题的 POP 响应，因此客户端只要消费原主题即可，无需订阅或轮询重试主题。
+    /// </remarks>
+    /// <param name="topic">主题。默认当前Topic</param>
+    /// <returns>重试主题名</returns>
+    public String GetGrpcRetryTopic(String topic = null) => $"%RETRY%{Group}_{topic ?? Topic}";
+
     /// <summary>通过gRPC协议接收消息。需要先设置GrpcProxyAddress</summary>
     /// <param name="queue">gRPC消息队列</param>
     /// <param name="filterExpression">过滤表达式。默认Tag=*</param>
@@ -1892,6 +1902,44 @@ public class Consumer : MqBase
         if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
 
         return await _GrpcService.QueryAssignmentAsync(topic ?? Topic, Group, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>通过gRPC协议把消息转发到死信队列</summary>
+    /// <remarks>消费失败且投递次数达到上限时调用，Broker 会把消息写入 %DLQ%{消费组}。不调用则消息会持续重投。</remarks>
+    /// <param name="topic">消息所在主题（重试消息需传其自身主题）</param>
+    /// <param name="receiptHandle">收据句柄</param>
+    /// <param name="messageId">消息ID</param>
+    /// <param name="deliveryAttempt">当前投递次数</param>
+    /// <param name="maxDeliveryAttempts">最大投递次数</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>转发结果</returns>
+    public async Task<Grpc.ForwardMessageToDeadLetterQueueResponse> ForwardToDeadLetterQueueViaGrpcAsync(
+        String topic,
+        String receiptHandle,
+        String messageId,
+        Int32 deliveryAttempt,
+        Int32 maxDeliveryAttempts,
+        CancellationToken cancellationToken = default)
+    {
+        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        using var span = Tracer?.NewSpan($"mq:{Name}:ForwardDlq:grpc");
+        try
+        {
+            return await _GrpcService.ForwardToDeadLetterQueueAsync(
+                topic ?? Topic,
+                Group,
+                receiptHandle,
+                messageId,
+                deliveryAttempt,
+                maxDeliveryAttempts,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
 
     /// <summary>通过gRPC协议修改消息不可见时间</summary>

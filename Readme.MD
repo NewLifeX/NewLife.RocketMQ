@@ -132,6 +132,8 @@ await consumer.AckMessageViaGrpcAsync("test_topic",
 ```
 
 > 长轮询消费也可直接用 `GrpcPushConsumer`（PUSH_CONSUMER 语义，内置自动 Ack 与重试）。
+>
+> **5.x POP 重试与死信**：消费失败的消息由 Broker 写入 `%RETRY%{group}_{topic}` 并按 `popFromRetryProbability` 概率并回原主题的拉取响应，客户端只需消费原主题；投递次数达到 `GrpcPushConsumer.MaxDeliveryAttempts`（默认 16）时转入 `%DLQ%{group}`，手工接收场景调用 `Consumer.ForwardToDeadLetterQueueViaGrpcAsync`。不可见时间下限 10 秒（库内自动收敛），小于该值会被 Broker 拒绝。
 
 ### 延迟消息
 

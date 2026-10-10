@@ -305,6 +305,9 @@ static class RocketMqSetup
         var jars    = Directory.GetFiles(Path.Combine(RmqHome, "lib"), "*.jar");
         var cp      = confDir + ";" + String.Join(";", jars);
         var jvmOpts = "-server -Xms256m -Xmx512m -XX:+UseG1GC -Dfile.encoding=UTF-8";
+        // Broker 的 POP 消费大量占用直接内存，默认上限与堆相同（512m），长时间压测后会 OutOfMemoryError 导致 POP 失败，
+        // 表现为重试消息不再投递、消费进度停滞，故单独放大直接内存
+        var brokerJvmOpts = jvmOpts + " -XX:MaxDirectMemorySize=1g";
 
         var env = new Dictionary<String, String> { ["ROCKETMQ_HOME"] = RmqHome };
 
@@ -318,7 +321,7 @@ static class RocketMqSetup
         PrintOk($"NameServer 已启动 (PID={nsProc.Id})");
 
         PrintStep("  启动 Broker (127.0.0.1:10911)...");
-        var bkProc = StartJava(java, $"{jvmOpts} -cp \"{cp}\" org.apache.rocketmq.broker.BrokerStartup -n 127.0.0.1:9876 -c \"{BrokerConf}\"", env, BrokerLog);
+        var bkProc = StartJava(java, $"{brokerJvmOpts} -cp \"{cp}\" org.apache.rocketmq.broker.BrokerStartup -n 127.0.0.1:9876 -c \"{BrokerConf}\"", env, BrokerLog);
         if (!await WaitForKeyword(BrokerLog, "boot success", 40))
         {
             TryKill(bkProc);

@@ -158,4 +158,158 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
 
         Assert.Equal(GrpcCode.OK, ack.Status?.Code);
     }
+
+    /// <summary>在所有队列中轮询，直到收到匹配消息或轮次耗尽</summary>
+    private static async Task<GrpcMessage?> ReceiveUntilAsync(
+        Consumer consumer,
+        System.Collections.Generic.IList<GrpcMessageQueue> queues,
+        Func<GrpcMessage, Boolean> match,
+        Int32 rounds,
+        TimeSpan invisibleDuration)
+    {
+        for (var i = 0; i < rounds; i++)
+        {
+            foreach (var queue in queues)
+            {
+                var list = await consumer.ReceiveMessageViaGrpcAsync(queue, batchSize: 8,
+                    invisibleDuration: invisibleDuration, longPollingTimeout: TimeSpan.FromSeconds(2));
+                foreach (var m in list)
+                {
+                    if (match(m)) return m;
+                }
+            }
+
+            await Task.Delay(1000);
+        }
+
+        return null;
+    }
+
+    [SkippableFact]
+    [DisplayName("gRPC_不可见时间到期_消息重投且投递次数递增")]
+    public async Task InvisibleTimeout_RedeliversMessage()
+    {
+        Skip.IfNot(ProxyAvailable(), "未配置或无法连接 gRPC Proxy（ROCKETMQ_GRPC_PROXY）");
+        fixture.EnsureAvailable();
+
+        var body = "gRPC 重投 " + DateTime.Now.Ticks;
+        using (var warm = CreateTopic())
+        {
+            var sent = await warm.PublishAsync(body);
+            Assert.Equal(SendStatus.SendOK, sent.Status);
+        }
+
+        using var consumer = new Consumer
+        {
+            Topic = _topic,
+            Group = "grpc-redeliver-" + Guid.NewGuid().ToString("N")[..8],
+            NameServerAddress = fixture.NameServerAddress,
+            GrpcProxyAddress = ProxyAddress,
+        };
+        consumer.Start();
+
+        var route = await consumer.QueryRouteViaGrpcAsync(_topic);
+        Assert.Equal(GrpcCode.OK, route.Status?.Code);
+
+        // 接收后不确认，等待不可见时间（Broker 最小 10 秒）到期后由 Broker 重投
+        var invisible = TimeSpan.FromSeconds(10);
+        var first = await ReceiveUntilAsync(consumer, route.MessageQueues, m => m.Body?.ToStr() == body, rounds: 5, invisible);
+        Assert.NotNull(first);
+        var firstAttempt = first!.SystemProperties?.DeliveryAttempt ?? 0;
+
+        // 重投可能换队列，需继续轮询全部队列
+        var second = await ReceiveUntilAsync(consumer, route.MessageQueues, m => m.Body?.ToStr() == body, rounds: 20, invisible);
+        Assert.NotNull(second);
+
+        var secondAttempt = second!.SystemProperties?.DeliveryAttempt ?? 0;
+        Assert.True(secondAttempt > firstAttempt, $"投递次数未递增：{firstAttempt} → {secondAttempt}");
+    }
+
+    [SkippableFact]
+    [DisplayName("gRPC_达到最大投递次数_转发死信队列")]
+    public async Task ForwardToDeadLetterQueue_ReturnsOk()
+    {
+        Skip.IfNot(ProxyAvailable(), "未配置或无法连接 gRPC Proxy（ROCKETMQ_GRPC_PROXY）");
+        fixture.EnsureAvailable();
+
+        var body = "gRPC 死信 " + DateTime.Now.Ticks;
+        using (var warm = CreateTopic())
+        {
+            var sent = await warm.PublishAsync(body);
+            Assert.Equal(SendStatus.SendOK, sent.Status);
+        }
+
+        var group = "grpc-dlq-" + Guid.NewGuid().ToString("N")[..8];
+        using var consumer = new Consumer
+        {
+            Topic = _topic,
+            Group = group,
+            NameServerAddress = fixture.NameServerAddress,
+            GrpcProxyAddress = ProxyAddress,
+        };
+        consumer.Start();
+
+        var route = await consumer.QueryRouteViaGrpcAsync(_topic);
+        var message = await ReceiveUntilAsync(consumer, route.MessageQueues, m => m.Body?.ToStr() == body, rounds: 5, TimeSpan.FromSeconds(10));
+        Assert.NotNull(message);
+
+        var attempt = message!.SystemProperties?.DeliveryAttempt ?? 1;
+        var response = await consumer.ForwardToDeadLetterQueueViaGrpcAsync(
+            _topic,
+            message.SystemProperties!.ReceiptHandle,
+            message.SystemProperties.MessageId,
+            attempt,
+            attempt);
+
+        Assert.Equal(GrpcCode.OK, response.Status?.Code);
+    }
+
+    [SkippableFact]
+    [DisplayName("gRPC_推送消费失败_自动重投")]
+    public async Task PushConsumer_RetryOnFailure()
+    {
+        Skip.IfNot(ProxyAvailable(), "未配置或无法连接 gRPC Proxy（ROCKETMQ_GRPC_PROXY）");
+        fixture.EnsureAvailable();
+
+        var body = "gRPC 推送重投 " + DateTime.Now.Ticks;
+        using (var warm = CreateTopic())
+        {
+            var sent = await warm.PublishAsync(body);
+            Assert.Equal(SendStatus.SendOK, sent.Status);
+        }
+
+        var attempts = new System.Collections.Generic.List<Int32>();
+        var completed = new TaskCompletionSource<Boolean>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        using var consumer = new GrpcPushConsumer
+        {
+            Topic = _topic,
+            Group = "grpc-push-retry-" + Guid.NewGuid().ToString("N")[..8],
+            Endpoints = ProxyAddress,
+            InvisibleDuration = TimeSpan.FromSeconds(10),
+            RetryInvisibleDuration = TimeSpan.FromSeconds(10),
+            MaxDeliveryAttempts = 0,
+            OnMessage = msg =>
+            {
+                if (msg.Body?.ToStr() == body)
+                {
+                    lock (attempts)
+                    {
+                        attempts.Add(msg.SystemProperties?.DeliveryAttempt ?? 0);
+                        if (attempts.Count >= 2) completed.TrySetResult(true);
+                    }
+                }
+
+                // 一律失败，触发延迟重投
+                return Task.FromResult(false);
+            },
+        };
+        await consumer.StartAsync();
+
+        var done = await Task.WhenAny(completed.Task, Task.Delay(TimeSpan.FromSeconds(90)));
+        await consumer.StopAsync();
+
+        Assert.True(done == completed.Task, "90 秒内未收到重投消息");
+        Assert.True(attempts[1] > attempts[0], $"投递次数未递增：{attempts[0]} → {attempts[1]}");
+    }
 }

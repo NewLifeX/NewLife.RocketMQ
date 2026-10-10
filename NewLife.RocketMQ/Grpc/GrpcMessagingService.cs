@@ -25,6 +25,9 @@ public class GrpcMessagingService : IDisposable
     /// <summary>命名空间</summary>
     public String Namespace { get; set; }
 
+    /// <summary>最小不可见时间。默认10秒，Broker 拒绝更小的值（ILLEGAL_INVISIBLE_TIME），小于该值时按此值发送</summary>
+    public TimeSpan MinimumInvisibleTime { get; set; } = TimeSpan.FromSeconds(10);
+
     /// <summary>日志</summary>
     public ILog Log { get; set; } = Logger.Null;
 
@@ -196,7 +199,7 @@ public class GrpcMessagingService : IDisposable
     /// <param name="queue">消息队列</param>
     /// <param name="filterExpression">过滤表达式</param>
     /// <param name="batchSize">批量大小</param>
-    /// <param name="invisibleDuration">不可见时间</param>
+    /// <param name="invisibleDuration">不可见时间。小于 <see cref="MinimumInvisibleTime"/> 时按最小值发送（Broker 拒绝更小的值）</param>
     /// <param name="longPollingTimeout">长轮询超时</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns>消息列表</returns>
@@ -209,13 +212,20 @@ public class GrpcMessagingService : IDisposable
         TimeSpan? longPollingTimeout = null,
         CancellationToken cancellationToken = default)
     {
+        var invisible = invisibleDuration ?? TimeSpan.FromSeconds(30);
+        if (invisible < MinimumInvisibleTime)
+        {
+            Log.Warn("不可见时间 {0} 小于 Broker 下限 {1}，按 {1} 发送", invisible, MinimumInvisibleTime);
+            invisible = MinimumInvisibleTime;
+        }
+
         var request = new ReceiveMessageRequest
         {
             Group = new GrpcResource { ResourceNamespace = Namespace, Name = group },
             MessageQueue = queue,
             FilterExpression = filterExpression ?? new GrpcFilterExpression { Type = GrpcFilterType.TAG, Expression = "*" },
             BatchSize = batchSize,
-            InvisibleDuration = invisibleDuration ?? TimeSpan.FromSeconds(30),
+            InvisibleDuration = invisible,
             LongPollingTimeout = longPollingTimeout ?? TimeSpan.FromSeconds(20),
         };
 
@@ -383,7 +393,7 @@ public class GrpcMessagingService : IDisposable
     /// <param name="group">消费组</param>
     /// <param name="receiptHandle">收据句柄</param>
     /// <param name="messageId">消息ID</param>
-    /// <param name="invisibleDuration">新的不可见时间</param>
+    /// <param name="invisibleDuration">新的不可见时间。小于 <see cref="MinimumInvisibleTime"/> 时按最小值发送（Broker 拒绝更小的值）</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
     public async Task<ChangeInvisibleDurationResponse> ChangeInvisibleDurationAsync(
@@ -394,6 +404,12 @@ public class GrpcMessagingService : IDisposable
         TimeSpan invisibleDuration,
         CancellationToken cancellationToken = default)
     {
+        if (invisibleDuration < MinimumInvisibleTime)
+        {
+            Log.Warn("延长可见时间 {0} 小于 Broker 下限 {1}，按 {1} 发送", invisibleDuration, MinimumInvisibleTime);
+            invisibleDuration = MinimumInvisibleTime;
+        }
+
         var request = new ChangeInvisibleDurationRequest
         {
             Group = new GrpcResource { ResourceNamespace = Namespace, Name = group },
