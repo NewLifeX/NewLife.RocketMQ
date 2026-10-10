@@ -1,0 +1,117 @@
+name: stability
+
+# gRPC 长稳验收：夜间跑一次，验证 5.x Proxy 链路的连接重建、重新注册与持续收发
+# 说明：RocketMQ 与 Proxy 的启动步骤与 test.yml 保持一致（此处内联，避免改动既有流水线）
+
+on:
+  schedule:
+    - cron: '0 18 * * *'   # UTC 18:00（北京时间次日 02:00）
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: '长稳分钟数'
+        required: false
+        default: '10'
+
+jobs:
+  grpc-stability:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: |
+          6.x
+          7.x
+          8.x
+          9.x
+          10.x
+
+    - name: Download & Extract RocketMQ
+      run: |
+        RMQ_VERSION="5.3.1"
+        URL1="https://archive.apache.org/dist/rocketmq/${RMQ_VERSION}/rocketmq-all-${RMQ_VERSION}-bin-release.zip"
+        URL2="https://mirrors.tuna.tsinghua.edu.cn/apache/rocketmq/${RMQ_VERSION}/rocketmq-all-${RMQ_VERSION}-bin-release.zip"
+        curl -fsSL "$URL1" -o /tmp/rocketmq.zip || curl -fsSL "$URL2" -o /tmp/rocketmq.zip
+        unzip -q /tmp/rocketmq.zip -d /tmp/
+        mv /tmp/rocketmq-all-${RMQ_VERSION}-bin-release /tmp/rocketmq
+        chmod +x /tmp/rocketmq/bin/*.sh
+
+    - name: Start RocketMQ
+      run: |
+        RMQ_CONF=/tmp/rocketmq/conf/broker_test.conf
+        echo "brokerClusterName=DefaultCluster"  > $RMQ_CONF
+        echo "brokerName=broker-a"              >> $RMQ_CONF
+        echo "brokerId=0"                       >> $RMQ_CONF
+        echo "deleteWhen=04"                    >> $RMQ_CONF
+        echo "fileReservedTime=48"              >> $RMQ_CONF
+        echo "brokerRole=ASYNC_MASTER"          >> $RMQ_CONF
+        echo "flushDiskType=ASYNC_FLUSH"        >> $RMQ_CONF
+        echo "autoCreateTopicEnable=true"       >> $RMQ_CONF
+        echo "listenPort=10911"                 >> $RMQ_CONF
+        echo "storePathRootDir=/tmp/rocketmq/store" >> $RMQ_CONF
+        echo "brokerIP1=127.0.0.1"              >> $RMQ_CONF
+        echo "diskMaxUsedSpaceRatio=100"        >> $RMQ_CONF
+        echo "diskSpaceWarningLevelRatio=100"   >> $RMQ_CONF
+
+        export MAX_HEAP_SIZE="256m"
+        export HEAP_NEWSIZE="128m"
+
+        nohup /tmp/rocketmq/bin/mqnamesrv > /tmp/namesrv.log 2>&1 &
+        for i in $(seq 1 30); do
+          grep -q "boot success" /tmp/namesrv.log 2>/dev/null && break
+          sleep 1
+        done
+        grep -q "boot success" /tmp/namesrv.log || { cat /tmp/namesrv.log; exit 1; }
+
+        nohup /tmp/rocketmq/bin/mqbroker -c $RMQ_CONF -n 127.0.0.1:9876 > /tmp/broker.log 2>&1 &
+        for i in $(seq 1 40); do
+          grep -q "boot success" /tmp/broker.log 2>/dev/null && break
+          sleep 1
+        done
+        grep -q "boot success" /tmp/broker.log || { cat /tmp/broker.log; exit 1; }
+
+        # runserver.sh 固定 -Xms4g -Xmx4g，JAVA_OPT_EXT 最后追加，用较小堆覆盖
+        export JAVA_OPT_EXT="-Xms256m -Xmx512m"
+        nohup /tmp/rocketmq/bin/mqproxy -n 127.0.0.1:9876 > /tmp/proxy.log 2>&1 &
+        for i in $(seq 1 40); do
+          grep -q "rocketmq-proxy startup successfully" /tmp/proxy.log 2>/dev/null && break
+          sleep 1
+        done
+        grep -q "rocketmq-proxy startup successfully" /tmp/proxy.log || { cat /tmp/proxy.log; exit 1; }
+
+    - name: gRPC stability
+      env:
+        ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
+        ROCKETMQ_GRPC_PROXY: "http://127.0.0.1:8081"
+      run: |
+        MINUTES="${{ github.event.inputs.minutes || 10 }}"
+
+        # 后台注入一次 Proxy 重启（第 120 秒杀、第 130 秒拉起），验证长连接重建与重新注册
+        export JAVA_OPT_EXT="-Xms256m -Xmx512m"
+        (
+          sleep 120
+          echo "=== 注入 Proxy 重启 ==="
+          pkill -f ProxyStartup 2>/dev/null || true
+          sleep 10
+          nohup /tmp/rocketmq/bin/mqproxy -n 127.0.0.1:9876 > /tmp/proxy-restart.log 2>&1 &
+        ) &
+
+        dotnet run --file scripts/GrpcStability.cs -- --minutes "$MINUTES" --interval 15 --tolerate 5 --min-received 20
+
+    - name: Stop RocketMQ
+      if: always()
+      run: |
+        pkill -f BrokerStartup 2>/dev/null || true
+        pkill -f NamesrvStartup 2>/dev/null || true
+        pkill -f ProxyStartup 2>/dev/null || true
