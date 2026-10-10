@@ -1,6 +1,7 @@
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Log;
@@ -52,6 +53,9 @@ public class GrpcPushConsumer : IDisposable
     /// <summary>命名空间（可选）</summary>
     public String Namespace { get; set; }
 
+    /// <summary>客户端标识。Proxy 要求非空，默认使用 本机IP@进程号</summary>
+    public String ClientId { get; set; }
+
     /// <summary>每次拉取批量（默认32）</summary>
     public Int32 BatchSize { get; set; } = 32;
 
@@ -81,6 +85,7 @@ public class GrpcPushConsumer : IDisposable
     #region 私有字段
 
     private GrpcMessagingService _service;
+    private GrpcTelemetrySession _telemetry;
     private CancellationTokenSource _cts;
     private Task _consumeTask;
     private Task _heartbeatTask;
@@ -105,11 +110,17 @@ public class GrpcPushConsumer : IDisposable
         // 重复启动防护
         if (_consumeTask != null) throw new InvalidOperationException("Push Consumer 已启动");
 
-        var grpcClient = new GrpcClient { Address = Endpoints };
+        var grpcClient = new GrpcClient
+        {
+            Address = Endpoints,
+            // Proxy 要求客户端标识非空，否则路由查询等请求会被拒绝
+            ClientId = ClientId.IsNullOrEmpty() ? $"{NetHelper.MyIP()}@{Process.GetCurrentProcess().Id}" : ClientId,
+            Log = Log,
+        };
         _service = new GrpcMessagingService
         {
             Client = grpcClient,
-            Namespace = Namespace ?? String.Empty,
+            Namespace = Namespace,
             Log = Log,
         };
 
@@ -119,7 +130,29 @@ public class GrpcPushConsumer : IDisposable
         // 先查询路由，获取消息队列
         var routeResponse = await _service.QueryRouteAsync(Topic, _cts.Token).ConfigureAwait(false);
         if (routeResponse?.MessageQueues == null || routeResponse.MessageQueues.Count == 0)
-            throw new InvalidOperationException($"主题 [{Topic}] 未找到可用队列");
+            throw new InvalidOperationException($"主题 [{Topic}] 未找到可用队列：{routeResponse?.Status}");
+
+        // 资源上报长连接：Proxy 据此保持客户端注册与订阅关系，接收消息依赖它
+        _telemetry = new GrpcTelemetrySession(_service)
+        {
+            Settings = new GrpcSettings
+            {
+                ClientType = GrpcClientType.PUSH_CONSUMER,
+                AccessPoint = GrpcClient.ParseEndpoints(Endpoints),
+                RequestTimeout = TimeSpan.FromSeconds(10),
+                Subscription = new GrpcSubscriptionSettings
+                {
+                    Group = new GrpcResource { Name = Group },
+                    Subscriptions = [new GrpcSubscriptionEntry { Topic = new GrpcResource { Name = Topic }, Expression = new GrpcFilterExpression { Type = GrpcFilterType.TAG, Expression = "*" } }],
+                },
+            },
+            Log = Log,
+        };
+        _telemetry.Start();
+
+        // 等资源上报长连接就绪再开始拉取，避免 Proxy 侧尚未注册订阅关系时接收失败
+        if (!await _telemetry.WaitReadyAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false))
+            Log.Warn("[GrpcPushConsumer] 资源上报长连接未在 10 秒内就绪，接收可能失败");
 
         _consumeTask = Task.Run(() => ConsumeLoopAsync(routeResponse.MessageQueues, _cts.Token), _cts.Token);
 
@@ -134,6 +167,9 @@ public class GrpcPushConsumer : IDisposable
     public async Task StopAsync()
     {
         if (_cts == null) return;
+
+        _telemetry.TryDispose();
+        _telemetry = null;
 
         _cts.Cancel();
         try
@@ -338,6 +374,9 @@ public class GrpcPushConsumer : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+
+        _telemetry.TryDispose();
+        _telemetry = null;
 
         _cts?.Cancel();
         _cts?.Dispose();

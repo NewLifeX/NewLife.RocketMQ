@@ -4,11 +4,13 @@
 //   帧编解码、请求头属性字典、JSON 序列化（含源生成成员访问器）、云厂商适配、双协议消息转换、
 //   消息体对象序列化、埋点标签序列化，以及端到端收发（普通/对象体/批量/延迟、消费、偏移查询、顺序锁、POP 消费）。
 // 环境变量 ROCKETMQ_NAMESERVER（如 127.0.0.1:9876）可选；设置后追加真实收发用例，未设置时跳过。
+// 环境变量 ROCKETMQ_GRPC_PROXY（如 http://127.0.0.1:8081）可选；设置后追加 gRPC 5.x 链路用例（路由/收发/确认/推送消费）。
 //
 // 本地：dotnet publish AotSmoke -c Release -r win-x64 -p:PublishAot=true && ./AotSmoke/bin/Release/net10.0/win-x64/publish/AotSmoke.exe
 // CI  ：dotnet publish AotSmoke -c Release -r linux-x64 -p:PublishAot=true && ./AotSmoke/bin/Release/net10.0/linux-x64/publish/AotSmoke
 
 using System.Buffers;
+using System.Diagnostics;
 using NewLife;
 using NewLife.Data;
 using NewLife.Log;
@@ -283,6 +285,18 @@ Check("埋点·对象标签序列化", () =>
     Assert(span.Tag != null && span.Tag.Contains("\"Header\""), $"Command 标签序列化失败：{span.Tag}");
 });
 
+Check("gRPC·超时头与访问点解析", () =>
+{
+    Assert(GrpcClient.FormatTimeout(TimeSpan.FromSeconds(30)) == "30000m", "超时头格式错误");
+    Assert(GrpcClient.FormatTimeout(TimeSpan.FromDays(2)) == "172800S", "超时头升单位错误");
+
+    var endpoint = GrpcClient.ParseEndpoints("127.0.0.1:8081");
+    Assert(endpoint.Scheme == AddressScheme.IPv4, "访问点地址类型错误");
+    Assert(endpoint.Addresses[0].Host == "127.0.0.1" && endpoint.Addresses[0].Port == 8081, "访问点地址错误");
+
+    Assert(GrpcClient.ParseEndpoints("http://mq.example.com:8081").Scheme == AddressScheme.DOMAIN_NAME, "域名访问点解析错误");
+});
+
 // 端到端：需要 NameServer 可达
 var nameserver = Environment.GetEnvironmentVariable("ROCKETMQ_NAMESERVER");
 if (nameserver.IsNullOrEmpty())
@@ -396,6 +410,112 @@ else
     {
         failures.Add($"端到端异常 => {ex.Message}");
         Console.WriteLine($"[FAIL] 端到端异常 => {ex}");
+    }
+}
+
+// gRPC 链路：需要 Proxy 可达（ROCKETMQ_GRPC_PROXY，如 http://127.0.0.1:8081），并依赖 NameServer 建主题
+var proxy = Environment.GetEnvironmentVariable("ROCKETMQ_GRPC_PROXY");
+if (proxy.IsNullOrEmpty())
+{
+    Console.WriteLine("[SKIP] gRPC 链路：未设置 ROCKETMQ_GRPC_PROXY");
+}
+else if (nameserver.IsNullOrEmpty())
+{
+    Console.WriteLine("[SKIP] gRPC 链路：未设置 ROCKETMQ_NAMESERVER，无法创建主题");
+}
+else
+{
+    var grpcTopic = "aot-smoke-grpc-topic";
+    var grpcGroup = "aot-smoke-grpc-" + Guid.NewGuid().ToString("N")[..8];
+
+    try
+    {
+        // gRPC 不提供建主题接口，主题先由 Remoting 创建
+        using (var warm = new Producer { Topic = grpcTopic, NameServerAddress = nameserver })
+        {
+            warm.Start();
+            warm.CreateTopic(grpcTopic, 4);
+            await warm.PublishAsync("aot-grpc-warm");
+        }
+
+        using var grpcProducer = new Producer
+        {
+            Topic = grpcTopic,
+            Group = "aot-smoke-grpc-producer",
+            NameServerAddress = nameserver,
+            GrpcProxyAddress = proxy,
+        };
+        grpcProducer.Start();
+
+        var grpcResult = await grpcProducer.PublishAsync("aot-grpc-body-" + DateTime.Now.Ticks);
+        Check("gRPC·发送文本", () => Assert(grpcResult.Status == SendStatus.SendOK, $"发送状态 {grpcResult.Status}"));
+
+        using var grpcConsumer = new Consumer
+        {
+            Topic = grpcTopic,
+            Group = grpcGroup,
+            NameServerAddress = nameserver,
+            GrpcProxyAddress = proxy,
+        };
+        grpcConsumer.Start();
+
+        // 资源上报长连接需要片刻完成 Proxy 侧注册
+        await Task.Delay(1500);
+
+        var grpcRoute = await grpcConsumer.QueryRouteViaGrpcAsync(grpcTopic);
+        Check("gRPC·路由查询", () => Assert(grpcRoute.Status?.Code == GrpcCode.OK && grpcRoute.MessageQueues.Count > 0, $"路由状态 {grpcRoute.Status?.Code}"));
+
+        var grpcReceived = 0;
+        for (var i = 0; i < 3 && grpcReceived == 0; i++)
+        {
+            foreach (var q in grpcRoute.MessageQueues)
+            {
+                var msgs = await grpcConsumer.ReceiveMessageViaGrpcAsync(q, batchSize: 8, longPollingTimeout: TimeSpan.FromSeconds(3));
+                if (msgs.Count == 0) continue;
+
+                grpcReceived = msgs.Count;
+                var ack = await grpcConsumer.AckMessageViaGrpcAsync(grpcTopic,
+                [
+                    .. msgs.Select(m => new AckMessageEntry { ReceiptHandle = m.SystemProperties?.ReceiptHandle, MessageId = m.SystemProperties?.MessageId }),
+                ]);
+                Check("gRPC·接收与确认", () => Assert(ack?.Status?.Code == GrpcCode.OK, $"确认状态 {ack?.Status?.Code}"));
+                break;
+            }
+        }
+        if (grpcReceived == 0) Check("gRPC·接收与确认", () => throw new Exception("未收到消息"));
+
+        // 推送消费（PUSH_CONSUMER 语义，走长轮询与自动 Ack）
+        var pushReceived = new List<String>();
+        using var push = new GrpcPushConsumer
+        {
+            Topic = grpcTopic,
+            Group = grpcGroup + "-push",
+            Endpoints = proxy,
+            LongPollingTimeout = TimeSpan.FromSeconds(3),
+            OnMessage = m =>
+            {
+                lock (pushReceived) pushReceived.Add(m.Body?.ToStr());
+                return Task.FromResult(true);
+            },
+        };
+        await push.StartAsync();
+
+        using (var warm = new Producer { Topic = grpcTopic, NameServerAddress = nameserver })
+        {
+            warm.Start();
+            await warm.PublishAsync("aot-grpc-push");
+        }
+
+        var pushWatch = Stopwatch.StartNew();
+        while (pushWatch.ElapsedMilliseconds < 20_000 && pushReceived.Count == 0) await Task.Delay(500);
+        lock (pushReceived) Check("gRPC·推送消费", () => Assert(pushReceived.Count > 0, "20 秒内未收到推送消息"));
+
+        await push.StopAsync();
+    }
+    catch (Exception ex)
+    {
+        failures.Add($"gRPC 链路异常 => {ex.Message}");
+        Console.WriteLine($"[FAIL] gRPC 链路异常 => {ex}");
     }
 }
 

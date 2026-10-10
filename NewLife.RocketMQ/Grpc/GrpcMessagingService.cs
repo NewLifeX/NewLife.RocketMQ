@@ -90,6 +90,8 @@ public class GrpcMessagingService : IDisposable
         {
             Tag = tag,
             MessageType = GrpcMessageType.NORMAL,
+            // RocketMQ 5.x 协议由客户端生成消息编号，Proxy 校验其非空
+            MessageId = Guid.NewGuid().ToString("N"),
             BornTimestamp = DateTime.UtcNow,
             BornHost = Environment.MachineName,
             Priority = priority,
@@ -149,6 +151,8 @@ public class GrpcMessagingService : IDisposable
         {
             Tag = tag,
             MessageType = GrpcMessageType.TRANSACTION,
+            // RocketMQ 5.x 协议由客户端生成消息编号，Proxy 校验其非空
+            MessageId = Guid.NewGuid().ToString("N"),
             BornTimestamp = DateTime.UtcNow,
             BornHost = Environment.MachineName,
         };
@@ -219,7 +223,10 @@ public class GrpcMessagingService : IDisposable
 
         var messages = new List<GrpcMessage>();
 
-        await foreach (var data in Client.ServerStreamingCallAsync(ServiceName, "ReceiveMessage", requestData, cancellationToken).ConfigureAwait(false))
+        // 服务端长轮询可能持续到 longPollingTimeout，截止时间必须更宽，否则会被服务端提前中断
+        var timeout = longPollingTimeout ?? TimeSpan.FromSeconds(20);
+
+        await foreach (var data in Client.ServerStreamingCallAsync(ServiceName, "ReceiveMessage", requestData, cancellationToken, timeout + TimeSpan.FromSeconds(10)).ConfigureAwait(false))
         {
             var response = new ReceiveMessageResponse();
             var reader = new SpanReader(data);
@@ -396,7 +403,9 @@ public class GrpcMessagingService : IDisposable
     /// <summary>上报客户端设置（Telemetry）。向Proxy上报客户端资源信息，包括设置、主题订阅等</summary>
     /// <remarks>
     /// Telemetry 是双向流式 RPC（stream TelemetryCommand → stream TelemetryCommand）。
-    /// 打开双向流后发送 Settings 命令，读取服务端返回的第一帧命令后关闭。
+    /// 本方法为一次性上报：发送 Settings 后立即半关闭请求流并读取服务端首帧响应，随后连接关闭，
+    /// Proxy 也会随连接关闭注销该客户端，因此仅适合连通性验证。
+    /// 需要长期保持订阅关系时，请使用 <see cref="OpenTelemetryStreamAsync"/> 维持长连接会话。
     /// </remarks>
     /// <param name="settings">客户端设置</param>
     /// <param name="cancellationToken">取消通知</param>
@@ -406,8 +415,7 @@ public class GrpcMessagingService : IDisposable
         var request = new TelemetryCommand { Settings = settings };
         var requestData = ProtoExtensions.Serialize(request);
 
-        using var session = await Client.BidirectionalStreamingCallAsync(ServiceName, "Telemetry", requestData, cancellationToken).ConfigureAwait(false);
-        session.CompleteRequest();
+        using var session = await Client.BidirectionalStreamingCallAsync(ServiceName, "Telemetry", requestData, cancellationToken, completeRequest: true).ConfigureAwait(false);
 
         var responseData = await session.ReadFrameAsync(cancellationToken).ConfigureAwait(false);
         if (responseData == null || responseData.Length == 0) return null;
@@ -416,6 +424,18 @@ public class GrpcMessagingService : IDisposable
         var response = new TelemetryCommand();
         response.Read(ref reader);
         return response;
+    }
+
+    /// <summary>打开客户端设置长连接（Telemetry）。连接存续期间 Proxy 保持客户端注册与订阅关系</summary>
+    /// <param name="settings">客户端设置</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns>只写长连接流</returns>
+    public GrpcWriteStream OpenTelemetryStreamAsync(GrpcSettings settings, CancellationToken cancellationToken = default)
+    {
+        var request = new TelemetryCommand { Settings = settings };
+        var requestData = ProtoExtensions.Serialize(request);
+
+        return Client.OpenWriteStreamAsync(ServiceName, "Telemetry", requestData, cancellationToken);
     }
     #endregion
 

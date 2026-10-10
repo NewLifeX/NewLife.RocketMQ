@@ -94,6 +94,45 @@ consumer.OnConsume = (q, messages) =>
 consumer.Start();
 ```
 
+### gRPC（5.x Proxy）接入
+
+```csharp
+// 生产者：设置 GrpcProxyAddress 即走 5.x gRPC 链路（需 netstandard2.1+）
+var producer = new Producer
+{
+    Topic = "test_topic",
+    Group = "producer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    GrpcProxyAddress = "http://127.0.0.1:8081",
+};
+producer.Start();
+await producer.PublishAsync("gRPC 消息");
+
+// 消费者：启动时自动上报订阅关系（Telemetry 长连接），接收与确认走 gRPC
+var consumer = new Consumer
+{
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    GrpcProxyAddress = "http://127.0.0.1:8081",
+};
+consumer.Start();
+
+var route = await consumer.QueryRouteViaGrpcAsync();
+var messages = await consumer.ReceiveMessageViaGrpcAsync(route.MessageQueues[0], batchSize: 8);
+// ……业务处理……
+await consumer.AckMessageViaGrpcAsync("test_topic",
+[
+    .. messages.Select(m => new AckMessageEntry
+    {
+        ReceiptHandle = m.SystemProperties?.ReceiptHandle,
+        MessageId = m.SystemProperties?.MessageId,
+    }),
+]);
+```
+
+> 长轮询消费也可直接用 `GrpcPushConsumer`（PUSH_CONSUMER 语义，内置自动 Ack 与重试）。
+
 ### 延迟消息
 
 ```csharp
@@ -334,8 +373,9 @@ MqBase (业务基类)
 │   └── BrokerClient (心跳/注销)
 │
 └── gRPC 协议（5.x Proxy，netstandard2.1+）
-    ├── GrpcClient (HTTP/2，Unary + Server Streaming)
+    ├── GrpcClient (HTTP/2，Unary + Server Streaming + 只写长连接)
     ├── GrpcMessagingService (11 个 RPC 方法)
+    ├── GrpcTelemetrySession (资源上报长连接：周期重发 + 断线重连)
     ├── MessageConverter (Remoting ↔ gRPC 消息互转)
     └── ProtoWriter/ProtoReader (自研 Protobuf 编解码)
 

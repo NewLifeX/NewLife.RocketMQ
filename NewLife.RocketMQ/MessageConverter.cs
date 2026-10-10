@@ -86,6 +86,8 @@ public static class MessageConverter
             BornHost = NetHelper.MyIP() + "",
         };
 
+        // Remoting 协议以 UNIQ_KEY 承载客户端生成的消息编号
+        if (msg.Properties != null && msg.Properties.TryGetValue("UNIQ_KEY", out var uniqKey) && !uniqKey.IsNullOrEmpty()) sys.MessageId = uniqKey;
         if (!String.IsNullOrEmpty(msg.Tags)) sys.Tag = msg.Tags;
         if (!String.IsNullOrEmpty(msg.Keys)) sys.Keys = msg.Keys.Split(',').Where(e => !String.IsNullOrEmpty(e)).ToList();
 

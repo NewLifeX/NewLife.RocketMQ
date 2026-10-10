@@ -91,6 +91,23 @@ jobs:
           exit 1
         fi
 
+        echo "=== 启动 Proxy ==="
+        # runserver.sh 固定 -Xms4g -Xmx4g，JAVA_OPT_EXT 最后追加，用较小堆覆盖
+        export JAVA_OPT_EXT="-Xms256m -Xmx512m"
+        nohup /tmp/rocketmq/bin/mqproxy -n 127.0.0.1:9876 > /tmp/proxy.log 2>&1 &
+        for i in $(seq 1 40); do
+          if grep -q "rocketmq-proxy startup successfully" /tmp/proxy.log 2>/dev/null; then
+            echo "Proxy 已启动 (PID=$(pgrep -f ProxyStartup))"
+            break
+          fi
+          sleep 1
+        done
+        if ! grep -q "rocketmq-proxy startup successfully" /tmp/proxy.log 2>/dev/null; then
+          echo "=== Proxy 启动失败 ==="
+          cat /tmp/proxy.log
+          exit 1
+        fi
+
     - name: Build
       run: |
         dotnet build -c Release
@@ -101,10 +118,11 @@ jobs:
       run: |
         dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --no-build -v n
 
-    # NativeAOT 冒烟：裁剪环境下验证帧编解码、请求头字典、JSON 序列化与端到端收发
+    # NativeAOT 冒烟：裁剪环境下验证帧编解码、请求头字典、JSON 序列化、端到端收发与 gRPC 5.x 链路
     - name: AOT publish & smoke
       env:
         ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
+        ROCKETMQ_GRPC_PROXY: "http://127.0.0.1:8081"
       run: |
         sudo apt-get update -qq
         sudo apt-get install -y -qq clang zlib1g-dev
@@ -116,3 +134,4 @@ jobs:
       run: |
         pkill -f BrokerStartup 2>/dev/null || true
         pkill -f NamesrvStartup 2>/dev/null || true
+        pkill -f ProxyStartup 2>/dev/null || true

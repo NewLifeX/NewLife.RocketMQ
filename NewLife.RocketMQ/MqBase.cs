@@ -149,6 +149,12 @@ public abstract class MqBase : DisposeBase
 
     /// <summary>gRPC消息服务客户端</summary>
     protected Grpc.GrpcMessagingService _GrpcService;
+
+    /// <summary>gRPC客户端资源上报会话（Telemetry长连接）。Proxy 侧缓存客户端设置，ReceiveMessage 依赖它</summary>
+    protected Grpc.GrpcTelemetrySession _GrpcTelemetry;
+
+    /// <summary>客户端类型。用于gRPC资源上报，生产者默认PRODUCER，消费者覆写为消费类型</summary>
+    protected virtual Grpc.GrpcClientType GrpcClientType => Grpc.GrpcClientType.PRODUCER;
 #endif
 
     private String _group;
@@ -196,6 +202,7 @@ public abstract class MqBase : DisposeBase
         base.Dispose(disposing);
 
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+        StopGrpcTelemetry();
         _GrpcService.TryDispose();
 #endif
         _NameServer.TryDispose();
@@ -326,6 +333,9 @@ public abstract class MqBase : DisposeBase
 
             WriteLog("gRPC路由查询成功，发现[{0}]个队列", route.MessageQueues.Count);
             _GrpcService = svc;
+
+            // 建立资源上报长连接。Proxy 依据它缓存客户端设置并保持注册，消息接收等操作依赖该连接
+            StartGrpcTelemetry(svc);
             return;
         }
 #endif
@@ -402,6 +412,11 @@ public abstract class MqBase : DisposeBase
     /// <summary>停止</summary>
     protected virtual void OnStop()
     {
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+        // 先结束资源上报长连接，Proxy 随后注销客户端
+        StopGrpcTelemetry();
+#endif
+
         foreach (var item in _Brokers)
         {
             try
@@ -923,6 +938,44 @@ public abstract class MqBase : DisposeBase
             span?.SetError(ex, null);
             throw;
         }
+    }
+
+    /// <summary>构建gRPC客户端设置。包含客户端类型、访问点以及发布主题（生产者）或订阅关系（消费者）</summary>
+    /// <returns>客户端设置</returns>
+    protected virtual Grpc.GrpcSettings BuildGrpcSettings() => new()
+    {
+        ClientType = GrpcClientType,
+        AccessPoint = Grpc.GrpcClient.ParseEndpoints(GrpcProxyAddress),
+        RequestTimeout = TimeSpan.FromSeconds(10),
+        // 生产者上报发布主题，Proxy 据此校验主题并可路由到 Broker
+        Publishing = new Grpc.GrpcPublishingSettings { Topics = [new Grpc.GrpcResource { Name = Topic }] },
+    };
+
+    /// <summary>开始gRPC资源上报长连接</summary>
+    /// <param name="service">gRPC消息服务</param>
+    private void StartGrpcTelemetry(Grpc.GrpcMessagingService service)
+    {
+        StopGrpcTelemetry();
+
+        var settings = BuildGrpcSettings();
+        if (settings == null) return;
+
+        var telemetry = new Grpc.GrpcTelemetrySession(service)
+        {
+            Settings = settings,
+            Log = Log,
+            Tracer = Tracer,
+        };
+        telemetry.Start();
+
+        _GrpcTelemetry = telemetry;
+    }
+
+    /// <summary>停止gRPC资源上报长连接</summary>
+    private void StopGrpcTelemetry()
+    {
+        _GrpcTelemetry.TryDispose();
+        _GrpcTelemetry = null;
     }
     #endregion
 #endif

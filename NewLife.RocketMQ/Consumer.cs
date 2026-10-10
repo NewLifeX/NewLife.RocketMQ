@@ -1781,6 +1781,43 @@ public class Consumer : MqBase
 
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
     #region gRPC消费模式
+    /// <summary>客户端类型。gRPC消费模式下为简单消费者（POP 风格：按队列拉取并确认）</summary>
+    protected override Grpc.GrpcClientType GrpcClientType => Grpc.GrpcClientType.SIMPLE_CONSUMER;
+
+    /// <summary>构建gRPC客户端设置。消费者上报消费组与订阅关系，Proxy 据此完成消费组注册</summary>
+    /// <returns>客户端设置</returns>
+    protected override Grpc.GrpcSettings BuildGrpcSettings()
+    {
+        var expression = new Grpc.GrpcFilterExpression
+        {
+            Type = ExpressionType.EqualIgnoreCase("SQL92") ? Grpc.GrpcFilterType.SQL : Grpc.GrpcFilterType.TAG,
+            Expression = Subscription.IsNullOrEmpty() ? "*" : Subscription,
+        };
+
+        String[] topics = Topics != null && Topics.Length > 0 ? Topics : [Topic];
+        var settings = new Grpc.GrpcSettings
+        {
+            ClientType = GrpcClientType,
+            AccessPoint = Grpc.GrpcClient.ParseEndpoints(GrpcProxyAddress),
+            RequestTimeout = TimeSpan.FromSeconds(10),
+            Subscription = new Grpc.GrpcSubscriptionSettings
+            {
+                Group = new Grpc.GrpcResource { Name = Group },
+            },
+        };
+
+        foreach (var topic in topics)
+        {
+            settings.Subscription.Subscriptions.Add(new Grpc.GrpcSubscriptionEntry
+            {
+                Topic = new Grpc.GrpcResource { Name = topic },
+                Expression = expression,
+            });
+        }
+
+        return settings;
+    }
+
     /// <summary>通过gRPC协议接收消息。需要先设置GrpcProxyAddress</summary>
     /// <param name="queue">gRPC消息队列</param>
     /// <param name="filterExpression">过滤表达式。默认Tag=*</param>
@@ -1798,6 +1835,9 @@ public class Consumer : MqBase
         CancellationToken cancellationToken = default)
     {
         if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+
+        // Proxy 侧的订阅关系由资源上报长连接维护，等它就绪后再接收，避免启动后立即消费时失败
+        if (_GrpcTelemetry != null && !_GrpcTelemetry.Active) await _GrpcTelemetry.WaitReadyAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
 
         using var span = Tracer?.NewSpan($"mq:{Name}:ReceiveMessage:grpc");
         try
