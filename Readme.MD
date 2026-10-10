@@ -444,9 +444,9 @@ MqBase (业务基类)
 
 ## 测试覆盖
 
-84 个测试文件，625 个测试用例（xUnit），覆盖核心功能、高级特性、协议兼容、云厂商适配、E2E 集成测试（gRPC 集成用例在未配置 Proxy 时自动跳过）。
+84 个测试文件，628 个测试用例（xUnit），覆盖核心功能、高级特性、协议兼容、云厂商适配、E2E 集成测试（gRPC 集成用例在未配置 Proxy 时自动跳过）。
 
-另有 NativeAOT 冒烟（`AotSmoke`，25 个用例，含 gRPC 链路与死信转发）与 gRPC 长稳验收脚本（`scripts/GrpcStability.cs`，CI 夜间运行并注入一次 Proxy 重启）。
+另有 NativeAOT 冒烟（`AotSmoke`，25 个用例，含 gRPC 链路与死信转发）、发布基线采集（`scripts/AotBaseline.cs`，输出体积/启动开销/吞吐并支持阈值判定，CI 写入流水线摘要）与 gRPC 长稳验收脚本（`scripts/GrpcStability.cs`，CI 夜间运行并注入一次 Proxy 重启）。
 
 ---
 

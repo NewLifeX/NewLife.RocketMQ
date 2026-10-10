@@ -59,6 +59,75 @@ void Assert(Boolean condition, String message)
     if (!condition) throw new Exception(message);
 }
 
+// 基准模式：--probe 打印版本后立即退出（供外部测量启动开销），--bench 运行 CPU 微基准并输出 BENCH|名称|ops/s|毫秒
+void Benchmark(String name, Int32 iterations, Action action)
+{
+    // 预热，避免首次调用的一次性开销计入结果
+    for (var i = 0; i < iterations / 10; i++) action();
+
+    var watch = Stopwatch.StartNew();
+    for (var i = 0; i < iterations; i++) action();
+    watch.Stop();
+
+    var ops = iterations / watch.Elapsed.TotalSeconds;
+    Console.WriteLine($"BENCH|{name}|{ops:n0}|{watch.Elapsed.TotalMilliseconds:n0}");
+}
+
+if (args.Contains("--probe"))
+{
+    Console.WriteLine($"AOT PROBE {Environment.Version} {Environment.ProcessId}");
+    return 0;
+}
+
+if (args.Contains("--bench"))
+{
+    var benchCodec = new MqCodec();
+    var benchCommand = new Command
+    {
+        Header = new Header
+        {
+            Code = (Int32)RequestCode.SEND_MESSAGE_V2,
+            Opaque = 1234,
+            Language = LanguageCode.DOTNET + "",
+            Version = MQVersion.V4_8_0,
+            Remark = "bench",
+        },
+    };
+    benchCommand.SetBody(new ArrayPacket("hello aot benchmark".GetBytes()));
+
+    using (var built = benchCodec.Build(benchCommand)!) { }
+    var frameData = benchCodec.Build(benchCommand)!.ReadBytes();
+
+    Benchmark("帧编解码·构建", 200_000, () =>
+    {
+        using var f = benchCodec.Build(benchCommand)!;
+    });
+
+    Benchmark("帧编解码·解析", 200_000, () =>
+    {
+        var rs = benchCodec.TryParse(new ReadOnlySequence<Byte>(frameData));
+        if (rs == null || rs.Value.Invalid) throw new Exception("解析失败");
+    });
+
+    var benchExt = new MessageExt { Topic = "bench-topic", Body = "hello aot benchmark".GetBytes(), Tags = "tag" };
+
+    Benchmark("双协议·消息转换", 200_000, () =>
+    {
+        var g = benchExt.ToGrpcMessage();
+        _ = g.ToMessage();
+    });
+
+    var benchHeader = new Header { Code = 10, Opaque = 5, Language = "DOTNET" };
+    benchHeader.GetExtFields()["a"] = "pg";
+    var benchJson = benchHeader.ToJson();
+
+    Benchmark("JSON·序列化", 100_000, () => _ = benchHeader.ToJson());
+
+    Benchmark("JSON·反序列化", 100_000, () => _ = benchJson.ToJsonEntity<Header>());
+
+    return 0;
+}
+
 Console.WriteLine($"AOT 冒烟测试启动，运行时版本 {Environment.Version}");
 
 Check("帧编解码·整帧往返", () =>

@@ -130,6 +130,25 @@ jobs:
         dotnet publish AotSmoke/AotSmoke.csproj -c Release -r linux-x64
         ./AotSmoke/bin/Release/net10.0/linux-x64/publish/AotSmoke
 
+    # 发布体积/启动开销/吞吐基线：写入流水线摘要，并以宽松阈值防止意外膨胀
+    - name: AOT baseline
+      run: |
+        dotnet run --file scripts/AotBaseline.cs -- \
+          --publish AotSmoke/bin/Release/net10.0/linux-x64/publish \
+          --json /tmp/aot-baseline.json \
+          --max-exe-mb 20 \
+          --max-startup-ms 600 | tee /tmp/aot-baseline.md
+        echo "### AOT 基线原始数据" >> $GITHUB_STEP_SUMMARY
+        cat /tmp/aot-baseline.md >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload AOT baseline
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: aot-baseline
+        path: /tmp/aot-baseline.json
+        if-no-files-found: ignore
+
     - name: Stop RocketMQ
       if: always()
       run: |
