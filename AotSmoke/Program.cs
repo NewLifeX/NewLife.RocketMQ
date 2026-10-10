@@ -4,7 +4,7 @@
 //   帧编解码、请求头属性字典、JSON 序列化（含源生成成员访问器）、云厂商适配、双协议消息转换、
 //   消息体对象序列化、埋点标签序列化，以及端到端收发（普通/对象体/批量/延迟、消费、偏移查询、顺序锁、POP 消费）。
 // 环境变量 ROCKETMQ_NAMESERVER（如 127.0.0.1:9876）可选；设置后追加真实收发用例，未设置时跳过。
-// 环境变量 ROCKETMQ_GRPC_PROXY（如 http://127.0.0.1:8081）可选；设置后追加 gRPC 5.x 链路用例（路由/收发/确认/推送消费）。
+// 环境变量 ROCKETMQ_GRPC_PROXY（如 http://127.0.0.1:8081）可选；设置后追加 gRPC 5.x 链路用例（路由/收发/确认/推送消费/死信转发）。
 //
 // 本地：dotnet publish AotSmoke -c Release -r win-x64 -p:PublishAot=true && ./AotSmoke/bin/Release/net10.0/win-x64/publish/AotSmoke.exe
 // CI  ：dotnet publish AotSmoke -c Release -r linux-x64 -p:PublishAot=true && ./AotSmoke/bin/Release/net10.0/linux-x64/publish/AotSmoke
@@ -511,6 +511,37 @@ else
         lock (pushReceived) Check("gRPC·推送消费", () => Assert(pushReceived.Count > 0, "20 秒内未收到推送消息"));
 
         await push.StopAsync();
+
+        // 死信转发：接收后不确认，直接转发到 %DLQ%{group}
+        using (var warm = new Producer { Topic = grpcTopic, NameServerAddress = nameserver })
+        {
+            warm.Start();
+            await warm.PublishAsync("aot-grpc-dlq");
+        }
+
+        GrpcMessage dlqMsg = null;
+        for (var i = 0; i < 6 && dlqMsg == null; i++)
+        {
+            foreach (var q in grpcRoute.MessageQueues)
+            {
+                var msgs = await grpcConsumer.ReceiveMessageViaGrpcAsync(q, batchSize: 8,
+                    invisibleDuration: TimeSpan.FromSeconds(10), longPollingTimeout: TimeSpan.FromSeconds(3));
+                dlqMsg = msgs.FirstOrDefault(m => m.Body?.ToStr() == "aot-grpc-dlq");
+                if (dlqMsg != null) break;
+            }
+
+            if (dlqMsg == null) await Task.Delay(1000);
+        }
+
+        if (dlqMsg == null)
+            Check("gRPC·转发死信队列", () => throw new Exception("未收到待转发消息"));
+        else
+        {
+            var attempt = dlqMsg.SystemProperties?.DeliveryAttempt ?? 1;
+            var dlq = await grpcConsumer.ForwardToDeadLetterQueueViaGrpcAsync(grpcTopic,
+                dlqMsg.SystemProperties!.ReceiptHandle, dlqMsg.SystemProperties.MessageId, attempt, attempt);
+            Check("gRPC·转发死信队列", () => Assert(dlq?.Status?.Code == GrpcCode.OK, $"转发状态 {dlq?.Status?.Code}"));
+        }
     }
     catch (Exception ex)
     {
