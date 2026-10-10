@@ -107,7 +107,9 @@ jobs:
           nohup /tmp/rocketmq/bin/mqproxy -n 127.0.0.1:9876 > /tmp/proxy-restart.log 2>&1 &
         ) &
 
-        dotnet run --file scripts/GrpcStability.cs -- --minutes "$MINUTES" --interval 15 --tolerate 5 --min-received 20
+        dotnet run --file scripts/GrpcStability.cs -- --minutes "$MINUTES" --interval 15 \
+          --tolerate 5 --min-received 40 \
+          --topics "stability-a,stability-b" --consumers 2
 
     - name: Stop RocketMQ
       if: always()
