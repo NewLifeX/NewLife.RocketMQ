@@ -263,3 +263,6 @@ __pycache__/
 /BinTest - 副本/Config
 /生产
 /BinUnitTest
+
+# BenchmarkDotNet 临时产物
+BenchmarkDotNet.Artifacts/

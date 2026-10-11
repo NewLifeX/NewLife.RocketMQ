@@ -94,12 +94,22 @@ void Benchmark(String name, Int32 iterations, Action action)
     // 预热，避免首次调用的一次性开销计入结果
     for (var i = 0; i < iterations / 10; i++) action();
 
-    var watch = Stopwatch.StartNew();
-    for (var i = 0; i < iterations; i++) action();
-    watch.Stop();
+    // 多轮采样取中位数，抵消 AOT 下无法使用基准框架时的抖动
+    var results = new List<Double>();
+    var total = 0d;
+    for (var round = 0; round < 5; round++)
+    {
+        var watch = Stopwatch.StartNew();
+        for (var i = 0; i < iterations; i++) action();
+        watch.Stop();
 
-    var ops = iterations / watch.Elapsed.TotalSeconds;
-    Console.WriteLine($"BENCH|{name}|{ops:n0}|{watch.Elapsed.TotalMilliseconds:n0}");
+        total += watch.Elapsed.TotalMilliseconds;
+        results.Add(iterations / watch.Elapsed.TotalSeconds);
+    }
+
+    results.Sort();
+    var ops = results.Count / 2 < results.Count ? results[results.Count / 2] : 0;
+    Console.WriteLine($"BENCH|{name}|{ops:n0}|{total / results.Count:n0}");
 }
 
 if (args.Contains("--probe"))

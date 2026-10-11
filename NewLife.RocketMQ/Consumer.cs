@@ -1831,7 +1831,7 @@ public class Consumer : MqBase
     /// <summary>获取gRPC死信主题名</summary>
     /// <remarks>
     /// 消费失败且投递次数达到上限后，消息被转发到 %DLQ%{消费组}。查询或重投死信消息时需要用同一消费组消费该主题，
-    /// 拉取方式与普通主题一致（<see cref="QueryRouteViaGrpcAsync"/> + <see cref="ReceiveMessageViaGrpcAsync"/>）。
+    /// 拉取方式与普通主题一致（<see cref="MqBase.QueryRouteViaGrpcAsync"/> + <see cref="ReceiveMessageViaGrpcAsync"/>）。
     /// </remarks>
     /// <returns>死信主题名</returns>
     public String GetGrpcDlqTopic() => $"%DLQ%{Group}";

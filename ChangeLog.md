@@ -24,6 +24,28 @@
 - 重构 GitHub Actions RocketMQ 配置生成与下载方式，增强可读性和可维护性
 - 新增竞品分析文档，重构需求/功能清单/架构三件套文档体系并统一格式
 
+### 依赖升级与 NativeAOT 支持
+- **NewLife.Core v12 测试版**：升级到 12.0.2026.1009-beta0916，适配 v12 消息栈（IMessageCodec/MessagePump）与 JSON 源生成要求
+- **NativeAOT**：net10.0 目标开启 IsAotCompatible，库内序列化改走源生成成员访问器与元数据根，去除反射路径
+- **AOT 冒烟**：新增 AotSmoke 控制台工程（26 用例：帧编解码/请求头/JSON/云厂商适配/双协议转换/端到端收发/gRPC 链路含死信转发与 FIFO 顺序消费），CI 增加 linux-x64 发布运行步骤
+- **发布基线与监控**：新增 scripts/AotBaseline.cs 采集发布体积、启动开销与 CPU 吞吐并支持阈值判定，CI 输出流水线摘要并归档 JSON；win-x64 基线：可执行文件 9.97 MB、启动 46 ms
+- **版本策略**：AssemblyVersion 由 `3.2.*` 通配符改为 `3.2.0.0`（通配符与确定性构建冲突，且程序集版本宜只在发布时递增，FileVersion/PackageVersion 仍用完整日期版本）
+
+### RocketMQ 5.x gRPC 链路与消费语义
+- **Proxy 链路打通**：修复明文 h2c 未强制 HTTP/2、发送缺 MessageId、Telemetry 一次性上报后被注销、缺 grpc-timeout、PushConsumer 缺客户端标识等缺陷；新增 GrpcTelemetrySession 资源上报长连接（周期重建自愈，暴露 ConnectCount/ErrorCount）
+- **消费重试**：失败消息由 Broker 写入 %RETRY%{group}_{topic} 并按 popFromRetryProbability 概率并回原主题的拉取响应，客户端只需消费原主题；不可见时间下限收敛为 10 秒
+- **死信处理**：新增 GrpcPushConsumer.MaxDeliveryAttempts（默认16）达限转 %DLQ%{group}，以及 Consumer.ForwardToDeadLetterQueueViaGrpcAsync、GetGrpcDlqTopic 与死信重投工具 scripts/DlqTool.cs
+- **事务消息**：修正 EndTransaction 的 resolution/source 字段编号错位（此前回滚被当作提交处理），实测提交可见、回滚不可见
+- **FIFO 顺序消费**：新增 Message.MessageGroup 与 GrpcPushConsumer.Orderly，实测并发度 20 下仍严格按发送顺序消费
+- **主题类型**：CreateTopic 的 topicMessageType 改为写入 attributes 的 message.type，FIFO/事务主题可正常创建
+- **本地环境**：Broker 启动加 -XX:MaxDirectMemorySize=1g 避免 POP 直接内存耗尽导致重试停滞；启动脚本与 CI 自动创建 Proxy 内部主题 DefaultHeartBeatSyncerTopic
+
+### 测试与长稳
+- gRPC 集成用例增至 9 个（路由/发送/接收确认/不可见重投/死信转发/推送重投/并发批量转死信/事务提交回滚/FIFO 顺序）
+- 长稳脚本新增多主题多消费者与资源采样（句柄/线程/工作集/GC/长连接重建计数）：4 分钟 108 条、30 分钟 702 条均全确认零异常，长连接重建 405 次零异常、无泄漏
+- GitHub Actions 增加测试前预热步骤（规避冷启动时序）与夜间长稳流水线（注入 Proxy 重启）
+- 新增 AOT/JIT 性能对照基准（Benchmark 工程 + AotSmoke --bench）：AOT 吞吐约为 JIT 的 57%~74%，换取启动 46 ms 与自包含 9.97 MB
+
 ---
 
 ## v3.1.2026.0601 (2026-06-01)
