@@ -20,7 +20,7 @@ NewLife.RocketMQ 是新生命团队开发的**企业级纯托管 RocketMQ 客户
 | 特性 | 说明 |
 |------|------|
 | **双协议支持** | Remoting（4.x 成熟稳定）+ gRPC（5.x 面向未来），自动路由 |
-| **零外部依赖** | 内置 Protobuf 编解码器（ProtoWriter/ProtoReader），无需 Java 或 gRPC 运行时 |
+| **零外部依赖** | 内置 Protobuf 字段编解码（基于 NewLife.Core 的 SpanWriter/SpanReader 手写实现），无需 Java 或 gRPC 运行时 |
 | **多云适配** | 统一 `ICloudProvider` 接口，已内置阿里云/华为云/腾讯云/Apache ACL 四家适配器 |
 | **生产就绪** | 消费重试、死信队列、事务回查、顺序消费、Pop 消费等企业级特性完整支持 |
 | **最广框架覆盖** | .NET Framework 4.5+ 到 .NET 10，gRPC 功能在 .NET Standard 2.1+ 可用 |
@@ -383,7 +383,7 @@ MqBase (业务基类)
     ├── GrpcMessagingService (11 个 RPC 方法)
     ├── GrpcTelemetrySession (资源上报长连接：周期重发 + 断线重连)
     ├── MessageConverter (Remoting ↔ gRPC 消息互转)
-    └── ProtoWriter/ProtoReader (自研 Protobuf 编解码)
+    └── 字段编解码 (基于 SpanWriter/SpanReader 手写 Protobuf)
 
 云厂商适配层
 ├── AliyunProvider  (阿里云：实例ID路由 + HTTP NameServer)
@@ -450,7 +450,7 @@ MqBase (业务基类)
 
 84 个测试文件，631 个测试用例（xUnit），覆盖核心功能、高级特性、协议兼容、云厂商适配、E2E 集成测试（gRPC 集成用例在未配置 Proxy 时自动跳过）。
 
-另有 NativeAOT 冒烟（`AotSmoke`，26 个用例，含 gRPC 链路、死信转发与 FIFO 顺序消费）、发布基线采集（`scripts/AotBaseline.cs`，输出体积/启动开销/吞吐并支持阈值判定，CI 写入流水线摘要）、死信运维工具（`scripts/DlqTool.cs`，把 `%DLQ%{group}` 消息重投到指定主题）与 gRPC 长稳验收脚本（`scripts/GrpcStability.cs`，CI 夜间运行并注入一次 Proxy 重启）。
+另有 NativeAOT 冒烟（`AotSmoke`，26 个用例，含 gRPC 链路、死信转发与 FIFO 顺序消费）、发布基线采集（`scripts/AotBaseline.cs`，输出体积/启动开销/吞吐并支持阈值判定，CI 写入流水线摘要）、AOT/JIT 性能对照基准（`Benchmark` 工程基于 BenchmarkDotNet，含分配统计；AOT 侧由 `AotSmoke --bench` 多轮采样）、死信运维工具（`scripts/DlqTool.cs`，把 `%DLQ%{group}` 消息重投到指定主题）与 gRPC 长稳验收脚本（`scripts/GrpcStability.cs`，CI 夜间运行并注入一次 Proxy 重启）。
 
 ---
 
