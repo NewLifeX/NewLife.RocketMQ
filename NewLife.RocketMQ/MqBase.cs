@@ -515,6 +515,17 @@ public abstract class MqBase : DisposeBase
     #endregion
 
     #region 业务方法
+    /// <summary>校验当前连接方式支持管理类操作。管理接口只能直连 Broker（Remoting），gRPC Proxy 未提供对应 RPC</summary>
+    /// <param name="operation">操作名称，用于异常信息</param>
+    /// <exception cref="NotSupportedException">gRPC 模式下调用时抛出</exception>
+    private void ThrowIfGrpcMode(String operation)
+    {
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+        if (_GrpcService != null)
+            throw new NotSupportedException($"gRPC模式下不支持{operation}，请改用 NameServerAddress 直连 Broker，或先由 Remoting 客户端与控制台完成");
+#endif
+    }
+
     /// <summary>更新或创建主题。重复执行时为更新</summary>
     /// <param name="topic">主题</param>
     /// <param name="queueNum">队列数</param>
@@ -522,6 +533,8 @@ public abstract class MqBase : DisposeBase
     /// <param name="topicMessageType">Topic消息类型，默认Normal。发送FIFO或事务消息时主题类型必须匹配，否则 Broker 拒绝；Lite 需 RocketMQ 5.5.0+（RIP-83）</param>
     public virtual Int32 CreateTopic(String topic, Int32 queueNum, Int32 topicSysFlag = 0, TopicMessageType topicMessageType = TopicMessageType.Normal)
     {
+        ThrowIfGrpcMode("建主题");
+
         // 5.x Broker 把主题类型存在 attributes 的 message.type（取值 NORMAL/FIFO/TRANSACTION/DELAY），
         // 单独的同名字段会被忽略；Lite Topic（RIP-83，5.5.0+）仍按 topicMessageType 字段识别，
         // 且低版本 Broker 不认识 message.type=LITE 会直接拒绝整个请求，故 Lite 不下发 attributes
@@ -576,6 +589,8 @@ public abstract class MqBase : DisposeBase
     /// <param name="topic">主题</param>
     public virtual Int32 DeleteTopic(String topic)
     {
+        ThrowIfGrpcMode("删主题");
+
         var count = 0;
         using var span = Tracer?.NewSpan($"mq:{Name}:DeleteTopic", topic);
         try
@@ -622,9 +637,10 @@ public abstract class MqBase : DisposeBase
     /// <param name="retryQueueNums">重试队列数</param>
     public virtual Int32 CreateSubscriptionGroup(String groupName, Boolean consumeBroadcastEnable = true, Int32 retryMaxTimes = 16, Int32 retryQueueNums = 1)
     {
+        ThrowIfGrpcMode("建订阅组");
+
         var count = 0;
-        using var span = Tracer?.NewSpan($"mq:{Name}:CreateSubscriptionGroup", groupName);
-        try
+        using var span = Tracer?.NewSpan($"mq:{Name}:CreateSubscriptionGroup", groupName);        try
         {
             var header = new Dictionary<String, Object>
             {
@@ -663,6 +679,8 @@ public abstract class MqBase : DisposeBase
     /// <param name="groupName">消费组名</param>
     public virtual Int32 DeleteSubscriptionGroup(String groupName)
     {
+        ThrowIfGrpcMode("删订阅组");
+
         var count = 0;
         using var span = Tracer?.NewSpan($"mq:{Name}:DeleteSubscriptionGroup", groupName);
         try
@@ -696,6 +714,8 @@ public abstract class MqBase : DisposeBase
     /// <returns></returns>
     public virtual MessageExt ViewMessage(String msgId)
     {
+        ThrowIfGrpcMode("查看消息");
+
         using var span = Tracer?.NewSpan($"mq:{Name}:ViewMessage", msgId);
         try
         {
@@ -748,6 +768,8 @@ public abstract class MqBase : DisposeBase
     /// <returns>消费统计数据的JSON字典</returns>
     public virtual IDictionary<String, Object> GetConsumeStats(String group, String topic = null)
     {
+        ThrowIfGrpcMode("查询消费统计");
+
         if (String.IsNullOrEmpty(group)) group = Group;
         if (String.IsNullOrEmpty(topic)) topic = Topic;
 
@@ -783,6 +805,8 @@ public abstract class MqBase : DisposeBase
     /// <returns>主题统计数据的JSON字典</returns>
     public virtual IDictionary<String, Object> GetTopicStatsInfo(String topic = null)
     {
+        ThrowIfGrpcMode("查询主题统计");
+
         if (String.IsNullOrEmpty(topic)) topic = Topic;
 
         using var span = Tracer?.NewSpan($"mq:{Name}:GetTopicStatsInfo", topic);
@@ -817,6 +841,8 @@ public abstract class MqBase : DisposeBase
     /// <returns>匹配的消息列表</returns>
     public virtual IList<MessageExt> QueryMessageByKey(String topic, String key, Int32 maxNum = 32, Int64 beginTimestamp = 0, Int64 endTimestamp = 0)
     {
+        ThrowIfGrpcMode("按Key查询消息");
+
         if (String.IsNullOrEmpty(key)) throw new ArgumentNullException(nameof(key));
         if (String.IsNullOrEmpty(topic)) topic = Topic;
 
@@ -859,6 +885,8 @@ public abstract class MqBase : DisposeBase
     /// <returns>注册成功的Broker数量</returns>
     public virtual Int32 RegisterFilterServer(String filterServerAddr)
     {
+        ThrowIfGrpcMode("注册过滤服务器");
+
         if (String.IsNullOrEmpty(filterServerAddr)) throw new ArgumentNullException(nameof(filterServerAddr));
 
         var count = 0;
