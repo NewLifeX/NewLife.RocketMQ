@@ -114,6 +114,16 @@ jobs:
       run: |
         dotnet build -c Release
 
+    # Broker 冷启动后主题路由注册与消费组初始化需要时间，先跑一轮轻量集成用例预热，
+    # 避免紧随其后的全量测试出现偶发超时（预热本身允许失败）
+    - name: Warmup
+      env:
+        ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
+        ROCKETMQ_GRPC_PROXY: "http://127.0.0.1:8081"
+      run: |
+        dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --no-build --filter "FullyQualifiedName~GrpcIntegrationTests" || true
+        sleep 10
+
     - name: Test
       env:
         ROCKETMQ_NAMESERVER: "127.0.0.1:9876"

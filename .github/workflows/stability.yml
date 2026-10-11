@@ -99,6 +99,10 @@ jobs:
       run: |
         MINUTES="${{ github.event.inputs.minutes || 10 }}"
 
+        # Broker 冷启动后主题路由注册与消费组初始化需要时间，先预热再进入长稳
+        dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --filter "FullyQualifiedName~GrpcIntegrationTests" || true
+        sleep 10
+
         # 后台注入一次 Proxy 重启（第 120 秒杀、第 130 秒拉起），验证长连接重建与重新注册
         export JAVA_OPT_EXT="-Xms256m -Xmx512m"
         (
