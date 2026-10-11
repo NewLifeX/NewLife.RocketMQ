@@ -410,8 +410,9 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
         var tag = "bulk-dlq-" + DateTime.Now.Ticks;
         var group = "grpc-bulk-dlq-" + Guid.NewGuid().ToString("N")[..8];
 
-        // 使用独立主题，避免失败消息残留影响其他用例
-        var bulkTopic = "grpc-bulk-dlq-topic";
+        // 使用每次唯一的主题，避免历史失败消息挤占 BatchSize 的拉取配额
+        // （固定主题名时，上次运行留下的失败消息会占满首批拉取，导致本次统计不足）
+        var bulkTopic = "grpc-bulk-dlq-topic-" + DateTime.Now.Ticks;
 
         // 并发投递，模拟高并发失败场景
         using (var warm = new Producer { Topic = bulkTopic, NameServerAddress = fixture.NameServerAddress })
