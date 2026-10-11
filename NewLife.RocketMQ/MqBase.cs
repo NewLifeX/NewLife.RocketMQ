@@ -413,7 +413,22 @@ public abstract class MqBase : DisposeBase
     protected virtual void OnStop()
     {
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
-        // 先结束资源上报长连接，Proxy 随后注销客户端
+        // 主动告知 Proxy 本客户端已下线。若不通知，Proxy 要等会话超时才发现，
+        // 期间仍会把消息分配给已停止的消费者，导致消息滞留到超时后才被重新投递
+        if (_GrpcService != null && !Group.IsNullOrEmpty())
+        {
+            try
+            {
+                _GrpcService.NotifyClientTerminationAsync(Group).ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                // 下线通知失败不应阻断停止流程
+                if (Log.Enable) Log.Warn("通知Proxy客户端下线失败：{0}", ex.Message);
+            }
+        }
+
+        // 结束资源上报长连接
         StopGrpcTelemetry();
 #endif
 

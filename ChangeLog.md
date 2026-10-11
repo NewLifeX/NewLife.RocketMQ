@@ -43,6 +43,7 @@
 - **系统保留键**：发送时过滤 TAGS/KEYS/DELAY/TRAN_MSG/PGROUP，避免 Proxy 以 ILLEGAL_MESSAGE_PROPERTY_KEY 拒绝
 - **GrpcPushConsumer 凭据**：新增 AccessKey/SecretKey，Proxy 启用 ACL 时可直接传入
 - **管理操作防护**：gRPC 模式下 9 个管理方法（建/删主题、订阅组、消息查询等）改为抛出带指引的 NotSupportedException，此前会因本地 Broker 列表为空而抛空引用异常
+- **优雅下线**：Stop 时主动调用 notifyClientTermination 告知 Proxy。此前只能等会话超时，窗口期内 Proxy 仍会把消息分配给已停止的消费者；实测通知后 Proxy 立即注销客户端并移除 channel，Stop 开销约 11ms
 - **本地环境**：Broker 启动加 -XX:MaxDirectMemorySize=1g 避免 POP 直接内存耗尽导致重试停滞；启动脚本与 CI 自动创建 Proxy 内部主题 DefaultHeartBeatSyncerTopic
 
 ### 测试与长稳
