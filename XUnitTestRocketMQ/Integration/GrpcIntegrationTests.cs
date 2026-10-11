@@ -532,6 +532,8 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
         const Int32 total = 20;
         var topic = "grpc-fifo-integration-topic";
         var messageGroup = "fifo-" + Guid.NewGuid().ToString("N")[..8];
+        // 主题固定且单队列，消费组每次新建会重放历史消息，故用本次唯一标记区分
+        var mark = "seq-" + Guid.NewGuid().ToString("N")[..6] + "-";
 
         // FIFO 主题用单队列保证全局顺序
         await EnsureTopicAsync(topic, 1, TopicMessageType.Fifo);
@@ -550,7 +552,7 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
                 var sent = await producer.PublishAsync(new Message
                 {
                     Topic = topic,
-                    Body = $"seq-{i:d3}".GetBytes(),
+                    Body = $"{mark}{i:d3}".GetBytes(),
                     MessageGroup = messageGroup,
                 }, null);
                 Assert.Equal(SendStatus.SendOK, sent.Status);
@@ -569,11 +571,11 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
             OnMessage = msg =>
             {
                 var body = msg.Body?.ToStr() ?? "";
-                if (body.StartsWith("seq-", StringComparison.Ordinal))
+                if (body.StartsWith(mark, StringComparison.Ordinal))
                 {
                     lock (received)
                     {
-                        received.Add(Int32.Parse(body[4..]));
+                        received.Add(Int32.Parse(body[mark.Length..]));
                         if (received.Count >= total) completed.TrySetResult(true);
                     }
                 }

@@ -118,6 +118,9 @@ static class GrpcStability
         var failures = new List<String>();
         var perConsumer = new Int32[consumers.Count];
         var targets = new Dictionary<String, MessageQueue>();
+        var samples = new List<String>();
+        var sampleInterval = TimeSpan.FromMinutes(1);
+        var lastSample = TimeSpan.Zero;
 
         while (sw.Elapsed < TimeSpan.FromMinutes(minutes))
         {
@@ -184,6 +187,13 @@ static class GrpcStability
             var active = String.Join("/", consumers.Select(c => c.Telemetry?.Active ?? false));
             Console.WriteLine($"[{sw.Elapsed:mm\\:ss}] 第 {rounds} 轮：接收 {roundGot} 条（累计 {received}，确认 {acked}），异常 {failures.Count}，各消费者 [{String.Join(",", perConsumer)}]，Active=[{active}]");
 
+            // 周期性采样进程资源：句柄泄漏在长连接重建场景最容易出现，故随轮次记录趋势
+            if (sw.Elapsed - lastSample >= sampleInterval)
+            {
+                lastSample = sw.Elapsed;
+                samples.Add(CaptureSample(sw.Elapsed, consumers, failures.Count));
+            }
+
             await Task.Delay(TimeSpan.FromSeconds(interval));
         }
 
@@ -193,8 +203,14 @@ static class GrpcStability
         foreach (var item in failures.Take(10)) Console.WriteLine("  - " + item);
         if (failures.Count > 10) Console.WriteLine($"  …… 其余 {failures.Count - 10} 条略");
 
-        var proc = Process.GetCurrentProcess();
-        Console.WriteLine($"[长稳] 进程状态：线程 {proc.Threads.Count}，工作集 {proc.WorkingSet64 / 1024 / 1024} MB");
+        samples.Add(CaptureSample(sw.Elapsed, consumers, failures.Count));
+        Console.WriteLine();
+        Console.WriteLine("[长稳] 资源采样（耗时 / 句柄 / 线程 / 工作集MB / 私有MB / GC堆MB / G0G1G2 / Telemetry 连接-异常）：");
+        foreach (var s in samples) Console.WriteLine("  " + s);
+
+        var first = samples.First();
+        var last = samples.Last();
+        Console.WriteLine($"[长稳] 首末样本：\n  {first}\n  {last}");
 
         foreach (var consumer in consumers)
         {
@@ -210,6 +226,26 @@ static class GrpcStability
 
         return failures.Count > tolerate ? 1 : 0;
     }
+
+    /// <summary>采集一次进程资源样本</summary>
+    static String CaptureSample(TimeSpan elapsed, List<StabilityConsumer> consumers, Int32 failCount)
+    {
+        var proc = Process.GetCurrentProcess();
+        proc.Refresh();
+        var connects = consumers.Sum(c => c.Telemetry?.ConnectCount ?? 0);
+        var errors = consumers.Sum(c => c.Telemetry?.ErrorCount ?? 0);
+        _lastHandles = proc.HandleCount;
+        _lastThreads = proc.Threads.Count;
+        _lastWorkingSet = proc.WorkingSet64 / 1024 / 1024;
+        var priv = proc.PrivateMemorySize64 / 1024 / 1024;
+        var gcHeap = GC.GetTotalMemory(false) / 1024 / 1024;
+        return $"[{elapsed:mm\\:ss}] 句柄={_lastHandles} 线程={_lastThreads} 工作集={_lastWorkingSet}MB 私有={priv}MB GC堆={gcHeap}MB " +
+            $"G0={GC.CollectionCount(0)} G1={GC.CollectionCount(1)} G2={GC.CollectionCount(2)} Telemetry={connects}-{errors} 异常={failCount}";
+    }
+
+    static Int32 _lastHandles;
+    static Int32 _lastThreads;
+    static Int64 _lastWorkingSet;
 
     /// <summary>构造本轮接收队列顺序：优先本轮消息所在队列，再补齐其余队列以保证覆盖</summary>
     /// <param name="topic">主题</param>

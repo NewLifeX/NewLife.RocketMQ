@@ -672,6 +672,8 @@ else
         {
             const Int32 fifoTotal = 20;
             var fifoGroup = "aot-fifo-" + Guid.NewGuid().ToString("N")[..8];
+            // 主题固定且单队列，消费组是新建的，历史消息会被重放，故用本次唯一标记过滤
+            var fifoMark = "seq-" + Guid.NewGuid().ToString("N")[..6] + "-";
             using (var fifoProducer = new Producer
             {
                 Topic = fifoTopic,
@@ -686,7 +688,7 @@ else
                     await fifoProducer.PublishAsync(new Message
                     {
                         Topic = fifoTopic,
-                        Body = $"seq-{i:d3}".GetBytes(),
+                        Body = $"{fifoMark}{i:d3}".GetBytes(),
                         MessageGroup = fifoGroup,
                     }, null);
                 }
@@ -703,9 +705,9 @@ else
                 OnMessage = m =>
                 {
                     var body = m.Body.ToStr();
-                    if (body.StartsWith("seq-"))
+                    if (body.StartsWith(fifoMark))
                     {
-                        lock (fifoReceived) fifoReceived.Add(Int32.Parse(body[4..]));
+                        lock (fifoReceived) fifoReceived.Add(Int32.Parse(body[fifoMark.Length..]));
                     }
 
                     return Task.FromResult(true);
@@ -714,7 +716,15 @@ else
             await fifoPush.StartAsync();
 
             var fifoWatch = Stopwatch.StartNew();
-            while (fifoWatch.ElapsedMilliseconds < 30_000 && fifoReceived.Count < fifoTotal) await Task.Delay(200);
+            while (fifoWatch.ElapsedMilliseconds < 30_000)
+            {
+                lock (fifoReceived)
+                {
+                    if (fifoReceived.Count >= fifoTotal) break;
+                }
+
+                await Task.Delay(200);
+            }
             await fifoPush.StopAsync();
 
             lock (fifoReceived)

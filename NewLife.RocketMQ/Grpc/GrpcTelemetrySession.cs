@@ -55,6 +55,12 @@ public class GrpcTelemetrySession : DisposeBase
     /// <summary>是否已建立连接</summary>
     public Boolean Active { get; private set; }
 
+    /// <summary>已建立（或重建）长连接的次数，用于长稳观测重建稳定性</summary>
+    public Int32 ConnectCount { get; private set; }
+
+    /// <summary>建立或保持连接时出现异常的次数，用于观测 Proxy 侧抖动</summary>
+    public Int32 ErrorCount { get; private set; }
+
     /// <summary>日志</summary>
     public ILog Log { get; set; } = Logger.Null;
 
@@ -136,6 +142,7 @@ public class GrpcTelemetrySession : DisposeBase
                 if (RegistrationDelay > TimeSpan.Zero) await Task.Delay(RegistrationDelay, cancellationToken).ConfigureAwait(false);
 
                 Active = true;
+                ConnectCount++;
                 span?.AppendTag($"Active={Active}");
 
                 // 保持到重建周期：到期后重建连接并重新上报设置，覆盖 Proxy 重启、注册失效与连接断开未被感知等情况
@@ -145,6 +152,7 @@ public class GrpcTelemetrySession : DisposeBase
             catch (OperationCanceledException) { break; }
             catch (Exception ex)
             {
+                ErrorCount++;
                 span?.SetError(ex, null);
                 Log.Warn("Telemetry长连接异常[{0}]：{1}", Service.Client?.Address, ex.Message);
             }
