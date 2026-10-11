@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using NewLife;
 using NewLife.RocketMQ;
 using NewLife.RocketMQ.Grpc;
+using NewLife.RocketMQ.Models;
 using NewLife.RocketMQ.Protocol;
 using Xunit;
 
@@ -99,6 +100,89 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
         producer.Start();
 
         var result = await producer.PublishAsync("gRPC 发送 " + DateTime.Now.Ticks);
+
+        Assert.Equal(SendStatus.SendOK, result.Status);
+        Assert.NotEmpty(result.MsgId);
+    }
+
+    [SkippableFact]
+    [DisplayName("gRPC_同步发送_返回SendOK")]
+    public void SyncPublishViaGrpc_ReturnsSuccess()
+    {
+        Skip.IfNot(ProxyAvailable(), "未配置或无法连接 gRPC Proxy（ROCKETMQ_GRPC_PROXY）");
+        fixture.EnsureAvailable();
+
+        using var warm = CreateTopic();
+
+        using var producer = new Producer
+        {
+            Topic = _topic,
+            Group = "grpc-producer",
+            NameServerAddress = fixture.NameServerAddress,
+            GrpcProxyAddress = ProxyAddress,
+        };
+        producer.Start();
+
+        // 同步入口由 Proxy 选择队列，曾因本地队列选择而崩溃
+        var result = producer.Publish("gRPC 同步发送 " + DateTime.Now.Ticks);
+
+        Assert.Equal(SendStatus.SendOK, result.Status);
+        Assert.NotEmpty(result.MsgId);
+    }
+
+    [SkippableFact]
+    [DisplayName("gRPC_系统属性_不重复下发")]
+    public void SyncPublishViaGrpc_SystemPropertiesFiltered()
+    {
+        Skip.IfNot(ProxyAvailable(), "未配置或无法连接 gRPC Proxy（ROCKETMQ_GRPC_PROXY）");
+        fixture.EnsureAvailable();
+
+        using var warm = CreateTopic();
+
+        using var producer = new Producer
+        {
+            Topic = _topic,
+            Group = "grpc-producer",
+            NameServerAddress = fixture.NameServerAddress,
+            GrpcProxyAddress = ProxyAddress,
+        };
+        producer.Start();
+
+        // TAGS/KEYS 由独立字段传递，重复放入 properties 会被 Proxy 以保留键拒绝
+        var message = new Message { Tags = "grpc-tag", Keys = "grpc-key" };
+        message.SetBody("gRPC 系统属性 " + DateTime.Now.Ticks);
+        message.Properties["customKey"] = "customValue";
+
+        var result = producer.Publish(message, null);
+
+        Assert.Equal(SendStatus.SendOK, result.Status);
+        Assert.NotEmpty(result.MsgId);
+    }
+
+    [SkippableFact]
+    [DisplayName("gRPC_延迟消息_返回SendOK")]
+    public void DelayViaGrpc_ReturnsSuccess()
+    {
+        Skip.IfNot(ProxyAvailable(), "未配置或无法连接 gRPC Proxy（ROCKETMQ_GRPC_PROXY）");
+        fixture.EnsureAvailable();
+
+        const String delayTopic = "grpc-integration-delay-topic";
+        EnsureTopicAsync(delayTopic, 1, TopicMessageType.Delay).GetAwaiter().GetResult();
+
+        using var producer = new Producer
+        {
+            Topic = delayTopic,
+            Group = "grpc-producer",
+            NameServerAddress = fixture.NameServerAddress,
+            GrpcProxyAddress = ProxyAddress,
+        };
+        producer.Start();
+
+        // gRPC 用投递时间戳表达延迟，等级需换算为延迟时长
+        var message = new Message();
+        message.SetBody("gRPC 延迟消息 " + DateTime.Now.Ticks);
+
+        var result = producer.PublishDelay(message, null, DelayTimeLevels.S5);
 
         Assert.Equal(SendStatus.SendOK, result.Status);
         Assert.NotEmpty(result.MsgId);

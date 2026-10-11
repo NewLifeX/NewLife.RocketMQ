@@ -38,6 +38,10 @@
 - **事务消息**：修正 EndTransaction 的 resolution/source 字段编号错位（此前回滚被当作提交处理），实测提交可见、回滚不可见
 - **FIFO 顺序消费**：新增 Message.MessageGroup 与 GrpcPushConsumer.Orderly，实测并发度 20 下仍严格按发送顺序消费
 - **主题类型**：CreateTopic 的 topicMessageType 改为写入 attributes 的 message.type，FIFO/事务主题可正常创建
+- **ACL 2.0 鉴权**：修正 gRPC 签名输出为十六进制（Proxy 侧先 hex→base64 再比对）；实测无凭据、非管理员、错误密钥均被拒，管理员账户可正常收发。Proxy 需在 rmq-proxy.json 配置 `enableACL` 与 `enableAclRpcHookForClusterMode`，且开启前应预建内部主题 DefaultHeartBeatSyncerTopic（否则 Proxy 因无凭据建主题失败而启动不了）
+- **同步发送**：Producer.Publish/PublishDelay 在 gRPC 模式下直接经 Proxy 发送（此前会因本地队列选择抛异常），延迟等级按 Broker 默认 messageDelayLevel 换算为投递时间戳；PublishOneway 在 gRPC 下没有单向语义，改为抛出 NotSupportedException
+- **系统保留键**：发送时过滤 TAGS/KEYS/DELAY/TRAN_MSG/PGROUP，避免 Proxy 以 ILLEGAL_MESSAGE_PROPERTY_KEY 拒绝
+- **GrpcPushConsumer 凭据**：新增 AccessKey/SecretKey，Proxy 启用 ACL 时可直接传入
 - **本地环境**：Broker 启动加 -XX:MaxDirectMemorySize=1g 避免 POP 直接内存耗尽导致重试停滞；启动脚本与 CI 自动创建 Proxy 内部主题 DefaultHeartBeatSyncerTopic
 
 ### 测试与长稳

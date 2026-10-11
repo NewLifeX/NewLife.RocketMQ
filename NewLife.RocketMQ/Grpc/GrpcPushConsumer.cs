@@ -29,6 +29,9 @@ namespace NewLife.RocketMQ.Grpc;
 ///     Topic     = "your-topic",
 ///     Group     = "your-group",
 ///     Endpoints = "127.0.0.1:8081",
+///     // Proxy 启用 ACL 时必填，与 AclProvider 的凭据一致
+///     AccessKey = "your-access-key",
+///     SecretKey = "your-secret-key",
 ///     OnMessage = async (msg) =>
 ///     {
 ///         Console.WriteLine(msg.Body.ToStr());
@@ -58,6 +61,12 @@ public class GrpcPushConsumer : IDisposable
 
     /// <summary>客户端标识。Proxy 要求非空，默认使用 本机IP@进程号</summary>
     public String ClientId { get; set; }
+
+    /// <summary>访问密钥。Proxy 启用 ACL 时必填，取值与 <see cref="AclProvider.AccessKey"/> 一致</summary>
+    public String AccessKey { get; set; }
+
+    /// <summary>访问密钥对应的私钥。Proxy 启用 ACL 时必填</summary>
+    public String SecretKey { get; set; }
 
     /// <summary>每次拉取批量（默认32）</summary>
     public Int32 BatchSize { get; set; } = 32;
@@ -132,6 +141,8 @@ public class GrpcPushConsumer : IDisposable
             Address = Endpoints,
             // Proxy 要求客户端标识非空，否则路由查询等请求会被拒绝
             ClientId = ClientId.IsNullOrEmpty() ? $"{NetHelper.MyIP()}@{Process.GetCurrentProcess().Id}" : ClientId,
+            AccessKey = AccessKey,
+            SecretKey = SecretKey,
             Log = Log,
         };
         _service = new GrpcMessagingService

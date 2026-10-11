@@ -122,6 +122,12 @@ public class Producer : MqBase
     /// <returns></returns>
     public virtual SendResult Publish(Message message, MessageQueue queue, Int32 timeout = -1)
     {
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+        // gRPC模式。Proxy 负责选择队列，不参与本地队列选择
+        if (_GrpcService != null)
+            return PublishViaGrpcAsync(message, null, default).ConfigureAwait(false).GetAwaiter().GetResult();
+#endif
+
         // 构造请求头
         var header = CreateHeader(message);
 
@@ -299,7 +305,7 @@ public class Producer : MqBase
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
         // gRPC模式
         if (_GrpcService != null)
-            return await PublishViaGrpcAsync(message, cancellationToken).ConfigureAwait(false);
+            return await PublishViaGrpcAsync(message, null, cancellationToken).ConfigureAwait(false);
 #endif
 
         // 构造请求头
@@ -418,21 +424,29 @@ public class Producer : MqBase
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
     /// <summary>通过gRPC协议发送消息</summary>
     /// <param name="message">消息</param>
+    /// <param name="delay">延迟投递时间。null 表示立即投递</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    private async Task<SendResult> PublishViaGrpcAsync(Message message, CancellationToken cancellationToken)
+    private async Task<SendResult> PublishViaGrpcAsync(Message message, TimeSpan? delay, CancellationToken cancellationToken)
     {
         using var span = Tracer?.NewSpan($"mq:{Name}:PublishAsync:grpc", message.BodyString);
         try
         {
             var keys = message.Keys?.Split(',').Where(k => !String.IsNullOrEmpty(k)).ToList();
+
+            // TAGS/KEYS/DELAY 等由独立参数传递，Proxy 视为系统保留键，重复放入 properties 会被拒绝
+            var props = message.Properties
+                .Where(e => !e.Key.EqualIgnoreCase("TAGS", "KEYS", "DELAY", "TRAN_MSG", "PGROUP"))
+                .ToDictionary(e => e.Key, e => e.Value);
+
             var rs = await _GrpcService.SendMessageAsync(
                 Topic,
                 message.Body,
                 tag: message.Tags,
                 keys: keys,
-                properties: message.Properties.Count > 0 ? message.Properties : null,
+                properties: props.Count > 0 ? props : null,
                 messageGroup: message.MessageGroup,
+                deliveryTimestamp: delay != null ? DateTime.UtcNow.Add(delay.Value) : null,
                 cancellationToken: cancellationToken
             ).ConfigureAwait(false);
 
@@ -456,6 +470,24 @@ public class Producer : MqBase
             throw;
         }
     }
+
+    /// <summary>将延迟等级转换为延迟时间。等级取值见 <see cref="DelayTimeLevels"/></summary>
+    /// <param name="level">延迟等级，1~18</param>
+    /// <returns>延迟时间</returns>
+    private static TimeSpan LevelToDelay(Int32 level)
+    {
+        // 与 Broker 的 messageDelayLevel 默认配置保持一致
+        var seconds = level switch
+        {
+            1 => 1, 2 => 5, 3 => 10, 4 => 30,
+            5 => 60, 6 => 120, 7 => 180, 8 => 240, 9 => 300, 10 => 360,
+            11 => 420, 12 => 480, 13 => 540, 14 => 600, 15 => 1200, 16 => 1800,
+            17 => 3600, 18 => 7200,
+            _ => 0,
+        };
+
+        return TimeSpan.FromSeconds(seconds);
+    }
 #endif
     #endregion
 
@@ -466,6 +498,11 @@ public class Producer : MqBase
     /// <returns></returns>
     public virtual SendResult PublishOneway(Message message, MessageQueue queue)
     {
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+        // gRPC 协议没有单向发送语义，Proxy 下请使用 PublishAsync
+        if (_GrpcService != null) throw new NotSupportedException("gRPC模式下不支持单向发送，请改用 PublishAsync");
+#endif
+
         // 构造请求头
         var header = CreateHeader(message);
 
@@ -686,6 +723,14 @@ public class Producer : MqBase
     {
         // 构造请求头
         message.DelayTimeLevel = (Int32)level;
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+        // gRPC 模式用投递时间戳表达延迟，Proxy 不识别 Remoting 的延迟等级
+        if (_GrpcService != null)
+        {
+            var delay = LevelToDelay(message.DelayTimeLevel);
+            return PublishViaGrpcAsync(message, delay, default).ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+#endif
         var header = CreateHeader(message);
 
         for (var i = 0; i <= RetryTimesWhenSendFailed; i++)

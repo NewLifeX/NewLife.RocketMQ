@@ -28,10 +28,10 @@ public class GrpcClient : IDisposable
     /// <summary>超时时间（毫秒）。默认30000</summary>
     public Int32 Timeout { get; set; } = 30_000;
 
-    /// <summary>访问令牌。用于认证</summary>
+    /// <summary>访问密钥。Proxy 启用 ACL 时必填，取值与 AclProvider.AccessKey 一致</summary>
     public String AccessKey { get; set; }
 
-    /// <summary>访问密钥</summary>
+    /// <summary>访问密钥对应的私钥。Proxy 启用 ACL 时必填</summary>
     public String SecretKey { get; set; }
 
     /// <summary>客户端标识</summary>
@@ -407,7 +407,9 @@ public class GrpcClient : IDisposable
     {
         using var hmac = new System.Security.Cryptography.HMACSHA1(System.Text.Encoding.UTF8.GetBytes(SecretKey));
         var data = System.Text.Encoding.UTF8.GetBytes(dateTime);
-        return Convert.ToBase64String(hmac.ComputeHash(data));
+
+        // Proxy 侧先对客户端 Signature 做 hex→base64 再与本地 HMAC 结果比较，故必须输出十六进制字符串
+        return hmac.ComputeHash(data).ToHex();
     }
 
     /// <summary>gRPC帧编码。[1字节压缩标志][4字节大端序长度][数据]</summary>
