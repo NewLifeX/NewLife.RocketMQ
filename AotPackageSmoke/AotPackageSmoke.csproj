@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    包消费路径的 AOT 冒烟：与 AotSmoke（ProjectReference）互补，验证用户「装 NuGet 包后能否 AOT 发布」。
+    与 AotSmoke 的差别：这里消费的是打包产物，涵盖包内 lib 资产、依赖声明、传递的源生成器与裁剪元数据。
+
+    本地步骤：
+      1) dotnet pack NewLife.RocketMQ/NewLife.RocketMQ.csproj -c Release -p:Version=3.2.0-aotpackage -o out
+      2) dotnet restore AotPackageSmoke/AotPackageSmoke.csproj -r win-x64 且源指向 out 目录与 nuget.org
+      3) dotnet publish AotPackageSmoke/AotPackageSmoke.csproj -c Release -r win-x64 且 no-restore
+      4) 运行 publish 目录下的 AotPackageSmoke
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyTitle>RocketMQ 包消费 AOT 冒烟</AssemblyTitle>
+    <Description>以 PackageReference 消费本仓库打出的 nupkg，验证包内资产与源生成器在真实消费路径下可 NativeAOT 发布并运行</Description>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Nullable>annotations</Nullable>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- 消费端裁剪告警必须逐条可见，不聚合为单条摘要，避免 IL2104 掩盖具体告警 -->
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <!-- 被消费的包版本：打包步骤注入（本地冒烟用下方默认值） -->
+    <NewLifeRocketMQVersion Condition="'$(NewLifeRocketMQVersion)' == ''">3.2.0-aotpackage</NewLifeRocketMQVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NewLife.RocketMQ" Version="$(NewLifeRocketMQVersion)" />
+  </ItemGroup>
+
+</Project>

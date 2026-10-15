@@ -24,7 +24,7 @@ NewLife.RocketMQ 是新生命团队开发的**企业级纯托管 RocketMQ 客户
 | **多云适配** | 统一 `ICloudProvider` 接口，已内置阿里云/华为云/腾讯云/Apache ACL 四家适配器 |
 | **生产就绪** | 消费重试、死信队列、事务回查、顺序消费、Pop 消费等企业级特性完整支持 |
 | **最广框架覆盖** | .NET Framework 4.5+ 到 .NET 10，gRPC 功能在 .NET Standard 2.1+ 可用 |
-| **AOT 友好** | net10.0 目标支持 NativeAOT/裁剪：帧编解码与 JSON 序列化不依赖运行时反射，仓库内置 AOT 冒烟测试 |
+| **AOT 友好** | net10.0 目标支持 NativeAOT/裁剪：帧编解码、JSON 序列化与消息压缩不依赖运行时反射，仓库内置 AOT 冒烟与 NuGet 包消费 AOT 冒烟 |
 | **高性能** | 基于 NewLife.Net 高性能网络层，连接复用、VIP 通道、消息压缩、并发控制 |
 
 ---
@@ -365,6 +365,33 @@ var producer = new Producer
 
 ---
 
+## NativeAOT 发布
+
+仅 `net10.0` 目标支持 NativeAOT/裁剪（老目标框架无裁剪概念，行为不变）。包内已带源生成成员访问器与元数据根，接入时无需额外配置：
+
+```xml
+<PropertyGroup>
+  <PublishAot>true</PublishAot>
+</PropertyGroup>
+```
+
+```powershell
+dotnet publish -c Release -r linux-x64
+```
+
+已验证场景（原生可执行文件实测）：帧编解码、请求头属性字典、JSON 序列化、消息压缩（ZLIB 往返与解压上限）、LMQ 属性、ACL 签名、云厂商适配、双协议转换，以及端到端收发（普通/对象体/批量/延迟/大消息压缩、消费、偏移查询、顺序锁、POP）与 gRPC 5.x 链路（路由、收发确认、推送消费、死信转发、FIFO 顺序消费）。
+
+**自定义类型对象体需登记**：以自定义类型（POCO）作为消息体时，裁剪器默认会移除其公开属性，对象体将被静默序列化为空对象 `{}`。在应用启动处为每个用作消息体的类型调用一次登记即可：
+
+```csharp
+MqAot.RegisterBodyType<MyOrder>();
+MqAot.RegisterBodyType<MyEvent>();
+```
+
+`MqAot.RegisterBodyType<T>()` 仅 net10.0 带裁剪保留语义，其余目标为空实现，多目标工程可共用同一份启动代码；也可按库内同套路自行声明元数据根（`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`）。
+
+---
+
 ## 架构总览
 
 ```
@@ -450,7 +477,7 @@ MqBase (业务基类)
 
 84 个测试文件，634 个测试用例（xUnit），覆盖核心功能、高级特性、协议兼容、云厂商适配、E2E 集成测试（gRPC 集成用例在未配置 Proxy 时自动跳过）；另含 Apache ACL 2.0 在 Remoting 与 gRPC 两侧的鉴权语义验证（无凭据/非管理员/错误密钥被拒，管理员可正常收发）。
 
-另有 NativeAOT 冒烟（`AotSmoke`，26 个用例，含 gRPC 链路、死信转发与 FIFO 顺序消费）、发布基线采集（`scripts/AotBaseline.cs`，输出体积/启动开销/吞吐并支持阈值判定，CI 写入流水线摘要）、AOT/JIT 性能对照基准（`Benchmark` 工程基于 BenchmarkDotNet，含分配统计；AOT 侧由 `AotSmoke --bench` 多轮采样）、死信运维工具（`scripts/DlqTool.cs`，把 `%DLQ%{group}` 消息重投到指定主题）与 gRPC 长稳验收脚本（`scripts/GrpcStability.cs`，CI 夜间运行并注入一次 Proxy 重启）。
+另有 NativeAOT 冒烟（`AotSmoke`，33 个用例，含消息压缩、LMQ、ACL 签名、gRPC 链路、死信转发与 FIFO 顺序消费）、NuGet 包消费 AOT 冒烟（`AotPackageSmoke`，以 PackageReference 消费打包产物，覆盖包资产、源生成序列化、压缩与端到端收发）、发布基线采集（`scripts/AotBaseline.cs`，输出体积/启动开销/吞吐并支持阈值判定，CI 写入流水线摘要）、AOT/JIT 性能对照基准（`Benchmark` 工程基于 BenchmarkDotNet，含分配统计；AOT 侧由 `AotSmoke --bench` 多轮采样）、死信运维工具（`scripts/DlqTool.cs`，把 `%DLQ%{group}` 消息重投到指定主题）与 gRPC 长稳验收脚本（`scripts/GrpcStability.cs`，CI 夜间运行并注入一次 Proxy 重启）。
 
 ---
 

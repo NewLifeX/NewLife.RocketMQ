@@ -131,7 +131,9 @@ jobs:
       run: |
         dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --no-build -v n
 
-    # NativeAOT 冒烟：裁剪环境下验证帧编解码、请求头字典、JSON 序列化、端到端收发与 gRPC 5.x 链路
+    # NativeAOT 冒烟：裁剪环境下验证帧编解码、请求头字典、JSON 序列化、消息压缩（ZLIB 往返与上限）、
+    # LMQ 属性、ACL 签名、端到端收发与 gRPC 5.x 链路
+    # 裁剪告警视为错误（IL2026/IL3050/IL2104，%3B 为命令行分号转义）并关闭单告警聚合，避免回归被摘要掩盖
     - name: AOT publish & smoke
       env:
         ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
@@ -139,8 +141,21 @@ jobs:
       run: |
         sudo apt-get update -qq
         sudo apt-get install -y -qq clang zlib1g-dev
-        dotnet publish AotSmoke/AotSmoke.csproj -c Release -r linux-x64
+        dotnet publish AotSmoke/AotSmoke.csproj -c Release -r linux-x64 \
+          -p:TrimmerSingleWarn=false -p:WarningsAsErrors=IL2026%3BIL3050%3BIL2104
         ./AotSmoke/bin/Release/net10.0/linux-x64/publish/AotSmoke
+
+    # NuGet 包消费冒烟：消费的是打包产物而非工程引用，验证用户装包后同样能 AOT 发布并运行
+    - name: Package consumption AOT smoke
+      env:
+        ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
+      run: |
+        dotnet pack NewLife.RocketMQ/NewLife.RocketMQ.csproj -c Release -p:Version=3.2.0-aotpackage -o /tmp/rmqpack
+        dotnet restore AotPackageSmoke/AotPackageSmoke.csproj -r linux-x64 \
+          -p:RestoreSources="/tmp/rmqpack;https://api.nuget.org/v3/index.json"
+        dotnet publish AotPackageSmoke/AotPackageSmoke.csproj -c Release -r linux-x64 --no-restore \
+          -p:TrimmerSingleWarn=false -p:WarningsAsErrors=IL2026%3BIL3050%3BIL2104
+        ./AotPackageSmoke/bin/Release/net10.0/linux-x64/publish/AotPackageSmoke
 
     # 发布体积/启动开销/吞吐基线：写入流水线摘要，并以宽松阈值防止意外膨胀
     - name: AOT baseline

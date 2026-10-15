@@ -2,7 +2,8 @@
 //
 // 用途：以 NativeAOT（PublishAot=true）发布为原生可执行文件后运行，验证裁剪环境下以下链路仍然可用：
 //   帧编解码、请求头属性字典、JSON 序列化（含源生成成员访问器）、云厂商适配、双协议消息转换、
-//   消息体对象序列化、埋点标签序列化，以及端到端收发（普通/对象体/批量/延迟、消费、偏移查询、顺序锁、POP 消费）。
+//   消息体对象序列化、消息压缩（ZLIB 往返与其解压上限）、LMQ 属性、ACL 签名算法、埋点标签序列化，
+//   以及端到端收发（普通/对象体/批量/延迟/大消息压缩、消费、偏移查询、顺序锁、POP 消费）。
 // 环境变量 ROCKETMQ_NAMESERVER（如 127.0.0.1:9876）可选；设置后追加真实收发用例，未设置时跳过。
 // 环境变量 ROCKETMQ_GRPC_PROXY（如 http://127.0.0.1:8081）可选；设置后追加 gRPC 5.x 链路用例（路由/收发/确认/推送消费/死信转发/FIFO 顺序消费）。
 //
@@ -11,6 +12,7 @@
 
 using System.Buffers;
 using System.Diagnostics;
+using System.Security.Cryptography;
 using NewLife;
 using NewLife.Data;
 using NewLife.Log;
@@ -316,6 +318,86 @@ Check("消息体·对象体序列化", () =>
     Assert(msg.BodyString == "plain", "字符串体应原样使用");
 });
 
+Check("压缩·ZLIB 往返与格式兼容", () =>
+{
+    var compressor = MessageCompressorRegistry.GetOrThrow(0);
+    Assert(compressor != null, "默认 ZLIB 压缩器未注册");
+    Assert(ReferenceEquals(compressor, MessageCompressorRegistry.GetOrThrow(3)), "0x300 别名应指向同一 ZLIB 实现");
+
+    var raw = new Byte[64 * 1024];
+    for (var i = 0; i < raw.Length; i++) raw[i] = (Byte)(i % 251);
+
+    var packed = compressor.Compress(raw);
+    Assert(packed.Length > 0 && packed.Length < raw.Length, $"压缩后长度异常：{packed.Length}");
+    Assert(packed[0] == 0x78 && packed[1] == 0x9C, $"RFC1950 ZLIB 头部不符：{packed[0]:X2}{packed[1]:X2}");
+
+    var back = compressor.Decompress(packed);
+    Assert(back.Length == raw.Length, $"解压长度不一致：{back.Length}");
+    for (var i = 0; i < raw.Length; i++)
+    {
+        if (back[i] != raw[i]) throw new Exception($"解压数据在 {i} 处不一致");
+    }
+
+    // 剥离 2 字节头与 4 字节 Adler-32 尾的 RAW DEFLATE 也要能解
+    var rawDeflate = packed[2..(packed.Length - 4)];
+    var back2 = compressor.Decompress(rawDeflate);
+    Assert(back2.Length == raw.Length, $"RAW DEFLATE 解压长度不一致：{back2.Length}");
+});
+
+Check("压缩·解压输出上限", () =>
+{
+    // 10MB 全零数据压缩后仅数十 KB，解压时应被 4MB 上限拦截，避免 zip bomb 撑爆内存
+    var bomb = MessageCompressorRegistry.GetOrThrow(0).Compress(new Byte[10 * 1024 * 1024]);
+    Assert(bomb.Length < 1024 * 1024, $"全零数据压缩率异常：{bomb.Length}");
+
+    var caught = false;
+    try
+    {
+        MessageCompressorRegistry.GetOrThrow(0).Decompress(bomb);
+    }
+    catch (InvalidDataException ex)
+    {
+        caught = ex.Message.Contains("上限");
+    }
+
+    Assert(caught, "超出解压上限未按预期拦截");
+});
+
+Check("压缩·未注册类型提示", () =>
+{
+    Assert(MessageCompressorRegistry.Get(5) == null, "压缩类型 5 不应已注册");
+
+    var caught = false;
+    try
+    {
+        MessageCompressorRegistry.GetOrThrow(1);
+    }
+    catch (NotSupportedException ex)
+    {
+        caught = ex.Message.Contains("Extensions");
+    }
+
+    Assert(caught, "未注册 LZ4 时应提示安装扩展包");
+});
+
+Check("LMQ·多分发目标属性", () =>
+{
+    var msg = new Message { Topic = "tp" };
+    Assert(msg.GetLmqDestination() == null, "未设置时 LMQ 目标应为 null");
+
+    msg.SetLmqDestination("lmq_a%lmq_b");
+    Assert(msg.GetLmqDestination() == "lmq_a%lmq_b", "LMQ 目标读取失败");
+    Assert(msg.Properties[Message.PROPERTY_INNER_MULTI_DISPATCH] == "lmq_a%lmq_b", "LMQ 属性键不符");
+});
+
+Check("ACL·HMAC-SHA1 签名可用", () =>
+{
+    // RFC 2202 用例：确认裁剪加密原语与十六进制转换可用（Apache ACL 与各云厂商签名共用）
+    using var hmac = new HMACSHA1("Jefe".GetBytes());
+    var sign = hmac.ComputeHash("what do ya want for nothing?".GetBytes());
+    Assert(sign.ToHex() == "EFFCDF6AE5EB2FA2D27416D5F184DF9C259A7C79", $"HMAC-SHA1 结果不符：{sign.ToHex()}");
+});
+
 Check("云厂商适配", () =>
 {
     // Apache ACL：不转换 Topic/Group，不提供 NameServer 地址
@@ -440,6 +522,12 @@ else
 
         Check("端到端·延迟发送", () => producer.PublishDelay("aot-delay", DelayTimeLevels.S5));
 
+        // 大消息体（超过 CompressOverBytes 4096）走发送端 ZLIB 压缩，消费端按 SysFlag 解压还原
+        var largeBody = "AOT-LARGE-" + new String('x', 200_000);
+        var largeTcs = new TaskCompletionSource<Int32>();
+        var result4 = await producer.PublishAsync(largeBody);
+        Check("端到端·大消息压缩发送", () => Assert(result4.Status == SendStatus.SendOK, $"发送状态 {result4.Status}"));
+
         var tcs = new TaskCompletionSource<String>();
         using var consumer = new Consumer
         {
@@ -452,6 +540,7 @@ else
             foreach (var m in msgs)
             {
                 if (m.BodyString == body) tcs.TrySetResult(m.BodyString!);
+                if (m.BodyString != null && m.BodyString.StartsWith("AOT-LARGE-")) largeTcs.TrySetResult(m.BodyString.Length);
             }
             return true;
         };
@@ -468,6 +557,16 @@ else
         catch (TaskCanceledException)
         {
             Check("端到端·消费", () => throw new Exception("30 秒内未收到消息"));
+        }
+
+        try
+        {
+            var length = await largeTcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            Check("端到端·大消息压缩往返", () => Assert(length == largeBody.Length, $"还原长度 {length}，应为 {largeBody.Length}"));
+        }
+        catch (TimeoutException)
+        {
+            Check("端到端·大消息压缩往返", () => throw new Exception("30 秒内未收到大消息"));
         }
 
         // 消费后的管理面入口：偏移查询、顺序锁、消费者/连接列表、POP 消费
