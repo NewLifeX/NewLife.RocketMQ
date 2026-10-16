@@ -495,12 +495,15 @@ public class Producer : MqBase
     /// <summary>发送消息，不等结果</summary>
     /// <param name="message">消息体</param>
     /// <param name="queue">目标队列。指定时可实现顺序发布（通过SelectQueue获取），默认未指定并自动选择队列</param>
+    /// <remarks>gRPC 模式没有单向发送语义，以异步发送模拟：不等待服务端回执，失败仅记录日志，返回合成的 SendOK 结果</remarks>
     /// <returns></returns>
     public virtual SendResult PublishOneway(Message message, MessageQueue queue)
     {
+        if (message is null) throw new ArgumentNullException(nameof(message));
+
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
-        // gRPC 协议没有单向发送语义，Proxy 下请使用 PublishAsync
-        if (_GrpcService != null) throw new NotSupportedException("gRPC模式下不支持单向发送，请改用 PublishAsync");
+        // gRPC 协议没有单向发送语义，以异步发送模拟：立即返回，失败仅记录日志
+        if (_GrpcService != null) return PublishOnewayViaGrpc(message);
 #endif
 
         // 构造请求头
@@ -600,6 +603,32 @@ public class Producer : MqBase
 
         PublishOneway(message, null);
     }
+
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+    /// <summary>gRPC 模式单向发送：异步发送后本地丢弃结果</summary>
+    /// <param name="message">消息</param>
+    /// <returns>合成发送结果。单向发送不等服务端回执，状态固定为 SendOK</returns>
+    private SendResult PublishOnewayViaGrpc(Message message)
+    {
+        _ = SendOnewayViaGrpcAsync(message);
+
+        return new SendResult { Status = SendStatus.SendOK };
+    }
+
+    /// <summary>后台执行 gRPC 发送，失败仅记录日志</summary>
+    /// <param name="message">消息</param>
+    private async Task SendOnewayViaGrpcAsync(Message message)
+    {
+        try
+        {
+            await PublishViaGrpcAsync(message, null, default).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            if (Log.Enable) Log.Error("gRPC 单向发送失败：{0}", ex.Message);
+        }
+    }
+#endif
     #endregion
 
     #region 批量发布消息

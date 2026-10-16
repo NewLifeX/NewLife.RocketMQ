@@ -189,6 +189,65 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
     }
 
     [SkippableFact]
+    [DisplayName("gRPC_单向发送_不抛异常且消息可消费")]
+    public async Task PublishOnewayViaGrpc_DeliversMessage()
+    {
+        Skip.IfNot(ProxyAvailable(), "未配置或无法连接 gRPC Proxy（ROCKETMQ_GRPC_PROXY）");
+        fixture.EnsureAvailable();
+
+        using var warm = CreateTopic();
+
+        using var producer = new Producer
+        {
+            Topic = _topic,
+            Group = "grpc-producer",
+            NameServerAddress = fixture.NameServerAddress,
+            GrpcProxyAddress = ProxyAddress,
+        };
+        producer.Start();
+
+        var body = "gRPC 单向 " + DateTime.Now.Ticks;
+        var message = new Message { Topic = _topic };
+        message.SetBody(body);
+
+        // gRPC 无单向语义：异步发送模拟，立即返回合成结果，不再抛 NotSupportedException
+        var result = producer.PublishOneway(message, null);
+        Assert.NotNull(result);
+        Assert.Equal(SendStatus.SendOK, result.Status);
+
+        // 后台发送最终应落到 Broker，轮询确认消息真实到达
+        using var consumer = new Consumer
+        {
+            Topic = _topic,
+            Group = "grpc-oneway-" + Guid.NewGuid().ToString("N")[..8],
+            NameServerAddress = fixture.NameServerAddress,
+            GrpcProxyAddress = ProxyAddress,
+        };
+        consumer.Start();
+
+        var route = await consumer.QueryRouteViaGrpcAsync(_topic);
+        Assert.Equal(GrpcCode.OK, route.Status?.Code);
+
+        var arrived = false;
+        for (var i = 0; i < 10 && !arrived; i++)
+        {
+            foreach (var queue in route.MessageQueues)
+            {
+                var list = await consumer.ReceiveMessageViaGrpcAsync(queue, batchSize: 8, longPollingTimeout: TimeSpan.FromSeconds(2));
+                if (list.Any(m => m.Body?.ToStr() == body))
+                {
+                    arrived = true;
+                    break;
+                }
+            }
+
+            if (!arrived) await Task.Delay(1000);
+        }
+
+        Assert.True(arrived, "单向发送的消息未在超时时间内到达");
+    }
+
+    [SkippableFact]
     [DisplayName("gRPC_接收与确认_收到已投递消息")]
     public async Task ReceiveAndAckViaGrpc_ReturnsMessage()
     {
