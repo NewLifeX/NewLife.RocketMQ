@@ -1,0 +1,213 @@
+name: aot
+
+# AOT 冒烟矩阵：NativeAOT 官方不支持跨 OS 编译，每个 RID 使用原生 runner 发布运行（结构对齐 NewLife.Core 的 aot.yml）。
+# 冒烟工程 AotSmoke 的两个环境变量均可选：设置 ROCKETMQ_NAMESERVER / ROCKETMQ_GRPC_PROXY 后追加真实收发用例，
+# 未设置（含空串）自动跳过——计算类用例（帧编解码/请求头/JSON/压缩/ACL/云厂商/双协议转换）恒跑。
+#   - win-x64 为阻断基线：启动本地 RocketMQ（NameServer+Broker+Proxy）后运行全量用例（含端到端与 gRPC 链路）
+#   - linux-x64 的端到端 AOT 由 test.yml 承担（那里已启动 RocketMQ），此处只跑计算类
+#   - 其余平台为观察期（continue-on-error），连续稳定全绿后逐项去掉 experimental 转阻断
+# 发布步骤统一开启 IL2026/IL3050/IL2104 阻断与关闭单告警聚合，避免新增裁剪告警被摘要掩盖
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+  workflow_dispatch:
+
+jobs:
+  # AOT/裁剪分析器 0 告警硬约束（与 RID 无关，单一 job）。
+  # EnableSourceLink=false：门禁只关注分析器诊断，避免 SCM 环境差异引入的 SourceLink 告警干扰
+  aot-analyzer:
+    name: aot analyzer check
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+    - name: AOT Analyzer Check
+      # 库自身 AOT/裁剪分析器告警（net10.0，当前 0 条）；-warnaserror 使新增告警阻断
+      run: dotnet build NewLife.RocketMQ\NewLife.RocketMQ.csproj -f net10.0 -c Release -warnaserror -p:EnableSourceLink=false
+
+  aot:
+    name: aot (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    continue-on-error: ${{ matrix.experimental == true }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+            bin: AotSmoke.exe
+            server: true
+          - rid: linux-x64
+            os: ubuntu-latest
+            bin: AotSmoke
+            experimental: true
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+            bin: AotSmoke
+            experimental: true
+          - rid: win-arm64
+            os: windows-11-arm
+            bin: AotSmoke.exe
+            experimental: true
+          - rid: osx-x64
+            os: macos-15-intel
+            bin: AotSmoke
+            experimental: true
+          - rid: osx-arm64
+            os: macos-latest
+            bin: AotSmoke
+            experimental: true
+
+    env:
+      # win-x64 启动本地 RocketMQ 后开启真实收发；其余平台为空串，冒烟内 IsNullOrEmpty 判定为跳过
+      ROCKETMQ_NAMESERVER: ${{ matrix.server && '127.0.0.1:9876' || '' }}
+      ROCKETMQ_GRPC_PROXY: ${{ matrix.server && 'http://127.0.0.1:8081' || '' }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+    - name: Install NativeAOT Prerequisites (Linux)
+      if: runner.os == 'Linux'
+      run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+    - name: Setup Java (win-x64)
+      if: matrix.server
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    - name: Pre-download RocketMQ (win-x64)
+      if: matrix.server
+      shell: pwsh
+      # 启动脚本的镜像顺序为国内源优先，CI（Azure 主机）改从 apache 归档先取，失败再回退清华镜像
+      run: |
+        New-Item -ItemType Directory -Force C:\RocketMQ | Out-Null
+        $dest = 'C:\RocketMQ\rocketmq-all-5.3.1-bin-release.zip'
+        curl.exe -fsSL --retry 3 "https://archive.apache.org/dist/rocketmq/5.3.1/rocketmq-all-5.3.1-bin-release.zip" -o $dest
+        if ($LASTEXITCODE -ne 0) {
+          curl.exe -fsSL --retry 3 "https://mirrors.tuna.tsinghua.edu.cn/apache/rocketmq/5.3.1/rocketmq-all-5.3.1-bin-release.zip" -o $dest
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+        }
+    - name: Start RocketMQ (win-x64)
+      if: matrix.server
+      # 启动 NameServer + Broker + Proxy 并准备 Proxy 内部主题；脚本复用 runner 自带 Java
+      run: dotnet run --file scripts/RocketMqSetup.cs
+    - name: JIT Baseline
+      # 同一冒烟工程以 JIT 运行，为 AOT 结果提供对照；win-x64 已开启服务端，同时充当真实收发预热
+      run: dotnet run -c Release --project AotSmoke/AotSmoke.csproj
+    - name: Publish NativeAOT Smoke
+      # %3B 为命令行分号转义
+      run: dotnet publish AotSmoke/AotSmoke.csproj -c Release -r ${{ matrix.rid }} -o AotSmoke/bin/aot-out -p:TrimmerSingleWarn=false -p:WarningsAsErrors=IL2026%3BIL3050%3BIL2104
+    - name: Run NativeAOT Smoke
+      # 任一用例失败即非 0 退出码
+      shell: bash
+      run: ./AotSmoke/bin/aot-out/${{ matrix.bin }}
+    - name: Stop RocketMQ (win-x64)
+      if: always() && matrix.server
+      run: dotnet run --file scripts/RocketMqSetup.cs -- --stop
+
+  # NativeAOT 冒烟（musl）：alpine 容器内原生发布运行。
+  # 容器内 actions/setup-dotnet 不可用，改用 dotnet-install.sh；官方要求 alpine 3.15+ 且安装 clang/build-base/zlib-dev
+  aot-musl:
+    name: aot (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-musl-x64
+            os: ubuntu-latest
+          - rid: linux-musl-arm64
+            os: ubuntu-24.04-arm
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Publish & Run NativeAOT Smoke (alpine)
+      run: |
+        docker run --rm -v "$PWD:/src" -w /src alpine:3.20 sh -c '
+          set -e
+          apk add --no-cache bash curl clang build-base zlib-dev icu-libs >/dev/null
+          curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet >/dev/null
+          ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
+          export DOTNET_CLI_TELEMETRY_OPTOUT=1
+          dotnet run -c Release --project AotSmoke/AotSmoke.csproj
+          dotnet publish AotSmoke/AotSmoke.csproj -c Release -r ${{ matrix.rid }} -o AotSmoke/bin/aot-out -p:TrimmerSingleWarn=false -p:WarningsAsErrors=IL2026%3BIL3050%3BIL2104
+          ./AotSmoke/bin/aot-out/AotSmoke
+        '
+
+  # 龙芯 LA64（必选，每次 push/PR）：官方不发 runtime pack、无 NativeAOT 支持（ILCompiler 源码含 LoongArch64 后端但不构成承诺）。
+  # 按 NewLife.Core 配方用 QEMU 用户态仿真（binfmt）+ 龙芯 SDK 运行：
+  #   主信号：AotSmoke 以 LA64 运行时 JIT 运行（AOT 姿态工程：源生成成员访问器、零动态反射路径，E2E 用例自动跳过）
+  #   探索：linux-loongarch64 的裁剪/自包含与 NativeAOT 发布尝试（容错，结论写入摘要；有真机后升级 self-hosted 转阻断）
+  aot-la64:
+    name: aot (linux-loongarch64 qemu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    continue-on-error: true
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup dotNET (host)
+      # 宿主机 x64 SDK 用于发布探索步骤（JIT 冒烟使用龙芯 SDK）
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+    - name: Install QEMU (loong64 binfmt)
+      run: |
+        sudo apt-get update && sudo apt-get install -y qemu-user-static binfmt-support
+        sudo update-binfmts --enable qemu-loongarch64 || true
+    - name: Download Loongson .NET SDK (linux-loongarch64)
+      run: |
+        curl -fL -o "$HOME/la64-sdk.tar.gz" \
+          https://github.com/loongson/dotnet/releases/download/v10.0.112-loongarch64/dotnet-sdk-10.0.112-linux-loongarch64.tar.gz
+        mkdir -p "$HOME/la64" && tar -xzf "$HOME/la64-sdk.tar.gz" -C "$HOME/la64"
+        "$HOME/la64/dotnet" --info
+      # 仿真下 --info 会真实执行 LA64 版 dotnet，是 QEMU 通路的第一道验证
+      env:
+        DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1
+    - name: JIT Smoke (AotSmoke)
+      env:
+        # 宿主无 LA64 原生 ICU，冒烟场景不依赖区域性数据
+        DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1
+        DOTNET_ROOT: /home/runner/la64
+      run: |
+        export PATH="$HOME/la64:$PATH"
+        dotnet run -c Release --project AotSmoke/AotSmoke.csproj
+    - name: Trimmed Publish Attempt (探索, 容错)
+      continue-on-error: true
+      # 龙芯 SDK 的运行时包由 lnuget 源提供；裁剪+自包含发布成功则说明 LA64 裁剪运行时可验证
+      run: |
+        dotnet nuget add source https://lnuget.loongnix.cn/v3/index.json -n loongnuget || true
+        dotnet publish AotSmoke/AotSmoke.csproj -c Release -r linux-loongarch64 --self-contained -p:PublishTrimmed=true -o AotSmoke/bin/aot-out-la64 2>&1 | tail -20
+    - name: Run Trimmed Smoke (探索, 容错)
+      continue-on-error: true
+      run: ./AotSmoke/bin/aot-out-la64/AotSmoke
+    - name: NativeAOT Publish Attempt (探索, 容错)
+      continue-on-error: true
+      # 官方无 linux-loongarch64 的 ILCompiler 包，预期失败；记录结论避免重复尝试
+      run: |
+        dotnet publish AotSmoke/AotSmoke.csproj -c Release -r linux-loongarch64 -p:PublishAot=true -o AotSmoke/bin/aot-out-la64-native 2>&1 | tail -10
+    - name: Summary
+      if: always()
+      run: |
+        {
+          echo "### LA64 冒烟结论"
+          echo "- JIT 冒烟：以龙芯 SDK（v10.0.112）+ QEMU 用户态仿真运行 AotSmoke 计算类用例"
+          echo "- 裁剪发布：依赖 lnuget（lnuget.loongnix.cn）的 LA64 运行时包，属探索项"
+          echo "- NativeAOT：官方无 linux-loongarch64 ILCompiler 包，预期失败，见本步骤日志"
+        } >> $GITHUB_STEP_SUMMARY
