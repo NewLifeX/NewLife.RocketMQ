@@ -5,6 +5,7 @@ on:
     branches: [ '*' ]
   pull_request:
     branches: [ '*' ]
+  workflow_dispatch:
 
 jobs:
   build-test:
@@ -176,6 +177,334 @@ jobs:
         path: /tmp/aot-baseline.json
         if-no-files-found: ignore
 
+    - name: Stop RocketMQ
+      if: always()
+      run: |
+        pkill -f BrokerStartup 2>/dev/null || true
+        pkill -f NamesrvStartup 2>/dev/null || true
+        pkill -f ProxyStartup 2>/dev/null || true
+
+  # ================= 单元测试 RID 矩阵（观察期，结构对齐 NewLife.Core 跨平台矩阵） =================
+  # linux-x64 的全量测试由上方 build-test 既有 job 承担；本段补齐 win-x64 / linux-arm64 / linux-la64。
+  # 三个新 job 首轮观察期（continue-on-error），连续稳定全绿后逐项去掉该标记转阻断。
+  # 每个平台直接在 runner 内安装 RocketMQ（win 用 scripts/RocketMqSetup.cs，linux 内联脚本），全量用例含 gRPC 集成。
+
+  unit-win-x64:
+    name: unit (win-x64)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    continue-on-error: true     # 观察期：连续全绿后转阻断
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+    - name: Pre-download RocketMQ
+      shell: pwsh
+      # 启动脚本的镜像顺序为国内源优先，CI（Azure 主机）改从 apache 归档先取，失败再回退清华镜像
+      run: |
+        New-Item -ItemType Directory -Force C:\RocketMQ | Out-Null
+        $dest = 'C:\RocketMQ\rocketmq-all-5.3.1-bin-release.zip'
+        curl.exe -fsSL --retry 3 "https://archive.apache.org/dist/rocketmq/5.3.1/rocketmq-all-5.3.1-bin-release.zip" -o $dest
+        if ($LASTEXITCODE -ne 0) {
+          curl.exe -fsSL --retry 3 "https://mirrors.tuna.tsinghua.edu.cn/apache/rocketmq/5.3.1/rocketmq-all-5.3.1-bin-release.zip" -o $dest
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+        }
+    - name: Start RocketMQ
+      # 启动 NameServer + Broker + Proxy 并准备 Proxy 内部主题
+      run: dotnet run --file scripts/RocketMqSetup.cs
+    # Broker 冷启动后主题路由注册与消费组初始化需要时间，先跑一轮轻量集成用例预热（预热本身允许失败）
+    - name: Warmup
+      env:
+        ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
+        ROCKETMQ_GRPC_PROXY: "http://127.0.0.1:8081"
+      run: |
+        dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --filter "FullyQualifiedName~GrpcIntegrationTests" || true
+        Start-Sleep -Seconds 10
+    - name: Test
+      env:
+        ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
+        ROCKETMQ_GRPC_PROXY: "http://127.0.0.1:8081"
+      run: dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release -v n --logger "trx;LogFileName=unit-win-x64.trx" --results-directory TestResults
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-unit-win-x64
+        path: TestResults/*.trx
+        if-no-files-found: ignore
+    - name: Stop RocketMQ
+      if: always()
+      run: dotnet run --file scripts/RocketMqSetup.cs -- --stop
+
+  unit-linux-arm64:
+    name: unit (linux-arm64)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    continue-on-error: true     # 观察期：连续全绿后转阻断
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+    - name: Download & Extract RocketMQ
+      run: |
+        RMQ_VERSION="5.3.1"
+        URL1="https://archive.apache.org/dist/rocketmq/${RMQ_VERSION}/rocketmq-all-${RMQ_VERSION}-bin-release.zip"
+        URL2="https://mirrors.tuna.tsinghua.edu.cn/apache/rocketmq/${RMQ_VERSION}/rocketmq-all-${RMQ_VERSION}-bin-release.zip"
+        curl -fsSL "$URL1" -o /tmp/rocketmq.zip || curl -fsSL "$URL2" -o /tmp/rocketmq.zip
+        unzip -q /tmp/rocketmq.zip -d /tmp/
+        mv /tmp/rocketmq-all-${RMQ_VERSION}-bin-release /tmp/rocketmq
+        chmod +x /tmp/rocketmq/bin/*.sh
+    - name: Start RocketMQ
+      run: |
+        RMQ_CONF=/tmp/rocketmq/conf/broker_test.conf
+        echo "brokerClusterName=DefaultCluster"  > $RMQ_CONF
+        echo "brokerName=broker-a"              >> $RMQ_CONF
+        echo "brokerId=0"                       >> $RMQ_CONF
+        echo "deleteWhen=04"                    >> $RMQ_CONF
+        echo "fileReservedTime=48"              >> $RMQ_CONF
+        echo "brokerRole=ASYNC_MASTER"          >> $RMQ_CONF
+        echo "flushDiskType=ASYNC_FLUSH"        >> $RMQ_CONF
+        echo "autoCreateTopicEnable=true"       >> $RMQ_CONF
+        echo "listenPort=10911"                 >> $RMQ_CONF
+        echo "storePathRootDir=/tmp/rocketmq/store" >> $RMQ_CONF
+        echo "brokerIP1=127.0.0.1"              >> $RMQ_CONF
+        echo "diskMaxUsedSpaceRatio=100"        >> $RMQ_CONF
+        echo "diskSpaceWarningLevelRatio=100"   >> $RMQ_CONF
+
+        # 限制 JVM 内存（GitHub Actions 仅 7GB）
+        export MAX_HEAP_SIZE="256m"
+        export HEAP_NEWSIZE="128m"
+
+        echo "=== 启动 NameServer ==="
+        nohup /tmp/rocketmq/bin/mqnamesrv > /tmp/namesrv.log 2>&1 &
+        for i in $(seq 1 30); do
+          if grep -q "boot success" /tmp/namesrv.log 2>/dev/null; then
+            echo "NameServer 已启动 (PID=$(pgrep -f NamesrvStartup))"
+            break
+          fi
+          sleep 1
+        done
+        if ! grep -q "boot success" /tmp/namesrv.log 2>/dev/null; then
+          echo "=== NameServer 启动失败 ==="
+          cat /tmp/namesrv.log
+          exit 1
+        fi
+
+        echo "=== 启动 Broker ==="
+        nohup /tmp/rocketmq/bin/mqbroker -c /tmp/rocketmq/conf/broker_test.conf -n 127.0.0.1:9876 > /tmp/broker.log 2>&1 &
+        for i in $(seq 1 40); do
+          if grep -q "boot success" /tmp/broker.log 2>/dev/null; then
+            echo "Broker 已启动 (PID=$(pgrep -f BrokerStartup))"
+            break
+          fi
+          sleep 1
+        done
+        if ! grep -q "boot success" /tmp/broker.log 2>/dev/null; then
+          echo "=== Broker 启动失败 ==="
+          cat /tmp/broker.log
+          exit 1
+        fi
+
+        echo "=== 启动 Proxy ==="
+        # Proxy 会订阅内部主题 DefaultHeartBeatSyncerTopic，提前创建，避免其无效拉取刷满 Broker 日志并抢占拉取线程
+        /tmp/rocketmq/bin/mqadmin updateTopic -n 127.0.0.1:9876 -c DefaultCluster -t DefaultHeartBeatSyncerTopic -r 1 -w 1 > /dev/null 2>&1 || true
+        # runserver.sh 固定 -Xms4g -Xmx4g，JAVA_OPT_EXT 最后追加，用较小堆覆盖
+        export JAVA_OPT_EXT="-Xms256m -Xmx512m"
+        nohup /tmp/rocketmq/bin/mqproxy -n 127.0.0.1:9876 > /tmp/proxy.log 2>&1 &
+        for i in $(seq 1 40); do
+          if grep -q "rocketmq-proxy startup successfully" /tmp/proxy.log 2>/dev/null; then
+            echo "Proxy 已启动 (PID=$(pgrep -f ProxyStartup))"
+            break
+          fi
+          sleep 1
+        done
+        if ! grep -q "rocketmq-proxy startup successfully" /tmp/proxy.log 2>/dev/null; then
+          echo "=== Proxy 启动失败 ==="
+          cat /tmp/proxy.log
+          exit 1
+        fi
+    # Broker 冷启动后主题路由注册与消费组初始化需要时间，先跑一轮轻量集成用例预热（预热本身允许失败）
+    - name: Warmup
+      env:
+        ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
+        ROCKETMQ_GRPC_PROXY: "http://127.0.0.1:8081"
+      run: |
+        dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --filter "FullyQualifiedName~GrpcIntegrationTests" || true
+        sleep 10
+    - name: Test
+      env:
+        ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
+        ROCKETMQ_GRPC_PROXY: "http://127.0.0.1:8081"
+      run: dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release -v n --logger "trx;LogFileName=unit-linux-arm64.trx" --results-directory TestResults
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-unit-linux-arm64
+        path: TestResults/*.trx
+        if-no-files-found: ignore
+    - name: Stop RocketMQ
+      if: always()
+      run: |
+        pkill -f BrokerStartup 2>/dev/null || true
+        pkill -f NamesrvStartup 2>/dev/null || true
+        pkill -f ProxyStartup 2>/dev/null || true
+
+  # 龙芯 LA64（必选，每次 push/PR）：托管 runner 无 LA64 原生环境，按 NewLife.Core 配方用 QEMU 用户态仿真 + 龙芯 SDK。
+  # 服务端跑在宿主 x64（QEMU 用户态与宿主共享网络栈，LA64 客户端直连 127.0.0.1），全量用例含 gRPC 集成。
+  # 观察期：连续稳定全绿后去掉 continue-on-error 转阻断；有龙芯真机后可升级 self-hosted runner。
+  unit-la64:
+    name: unit (linux-loongarch64 qemu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    continue-on-error: true     # 观察期：连续全绿后转阻断
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    - name: Setup dotNET (host)
+      # 宿主 x64 SDK：用于预热构建与测试（LA64 测试使用龙芯 SDK）
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+    - name: Download & Extract RocketMQ
+      run: |
+        RMQ_VERSION="5.3.1"
+        URL1="https://archive.apache.org/dist/rocketmq/${RMQ_VERSION}/rocketmq-all-${RMQ_VERSION}-bin-release.zip"
+        URL2="https://mirrors.tuna.tsinghua.edu.cn/apache/rocketmq/${RMQ_VERSION}/rocketmq-all-${RMQ_VERSION}-bin-release.zip"
+        curl -fsSL "$URL1" -o /tmp/rocketmq.zip || curl -fsSL "$URL2" -o /tmp/rocketmq.zip
+        unzip -q /tmp/rocketmq.zip -d /tmp/
+        mv /tmp/rocketmq-all-${RMQ_VERSION}-bin-release /tmp/rocketmq
+        chmod +x /tmp/rocketmq/bin/*.sh
+    - name: Start RocketMQ
+      run: |
+        RMQ_CONF=/tmp/rocketmq/conf/broker_test.conf
+        echo "brokerClusterName=DefaultCluster"  > $RMQ_CONF
+        echo "brokerName=broker-a"              >> $RMQ_CONF
+        echo "brokerId=0"                       >> $RMQ_CONF
+        echo "deleteWhen=04"                    >> $RMQ_CONF
+        echo "fileReservedTime=48"              >> $RMQ_CONF
+        echo "brokerRole=ASYNC_MASTER"          >> $RMQ_CONF
+        echo "flushDiskType=ASYNC_FLUSH"        >> $RMQ_CONF
+        echo "autoCreateTopicEnable=true"       >> $RMQ_CONF
+        echo "listenPort=10911"                 >> $RMQ_CONF
+        echo "storePathRootDir=/tmp/rocketmq/store" >> $RMQ_CONF
+        echo "brokerIP1=127.0.0.1"              >> $RMQ_CONF
+        echo "diskMaxUsedSpaceRatio=100"        >> $RMQ_CONF
+        echo "diskSpaceWarningLevelRatio=100"   >> $RMQ_CONF
+
+        export MAX_HEAP_SIZE="256m"
+        export HEAP_NEWSIZE="128m"
+
+        echo "=== 启动 NameServer ==="
+        nohup /tmp/rocketmq/bin/mqnamesrv > /tmp/namesrv.log 2>&1 &
+        for i in $(seq 1 30); do
+          if grep -q "boot success" /tmp/namesrv.log 2>/dev/null; then
+            echo "NameServer 已启动 (PID=$(pgrep -f NamesrvStartup))"
+            break
+          fi
+          sleep 1
+        done
+        if ! grep -q "boot success" /tmp/namesrv.log 2>/dev/null; then
+          echo "=== NameServer 启动失败 ==="
+          cat /tmp/namesrv.log
+          exit 1
+        fi
+
+        echo "=== 启动 Broker ==="
+        nohup /tmp/rocketmq/bin/mqbroker -c /tmp/rocketmq/conf/broker_test.conf -n 127.0.0.1:9876 > /tmp/broker.log 2>&1 &
+        for i in $(seq 1 40); do
+          if grep -q "boot success" /tmp/broker.log 2>/dev/null; then
+            echo "Broker 已启动 (PID=$(pgrep -f BrokerStartup))"
+            break
+          fi
+          sleep 1
+        done
+        if ! grep -q "boot success" /tmp/broker.log 2>/dev/null; then
+          echo "=== Broker 启动失败 ==="
+          cat /tmp/broker.log
+          exit 1
+        fi
+
+        echo "=== 启动 Proxy ==="
+        /tmp/rocketmq/bin/mqadmin updateTopic -n 127.0.0.1:9876 -c DefaultCluster -t DefaultHeartBeatSyncerTopic -r 1 -w 1 > /dev/null 2>&1 || true
+        export JAVA_OPT_EXT="-Xms256m -Xmx512m"
+        nohup /tmp/rocketmq/bin/mqproxy -n 127.0.0.1:9876 > /tmp/proxy.log 2>&1 &
+        for i in $(seq 1 40); do
+          if grep -q "rocketmq-proxy startup successfully" /tmp/proxy.log 2>/dev/null; then
+            echo "Proxy 已启动 (PID=$(pgrep -f ProxyStartup))"
+            break
+          fi
+          sleep 1
+        done
+        if ! grep -q "rocketmq-proxy startup successfully" /tmp/proxy.log 2>/dev/null; then
+          echo "=== Proxy 启动失败 ==="
+          cat /tmp/proxy.log
+          exit 1
+        fi
+    # Broker 冷启动后主题路由注册与消费组初始化需要时间，先跑一轮轻量集成用例预热（预热本身允许失败）；
+    # 同时为后续 QEMU 内的构建留下宿主编译产物（增量复用，避免在仿真下全量编译）
+    - name: Warmup (host)
+      env:
+        ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
+        ROCKETMQ_GRPC_PROXY: "http://127.0.0.1:8081"
+      run: |
+        dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --filter "FullyQualifiedName~GrpcIntegrationTests" || true
+        sleep 10
+    - name: Install QEMU (loong64 binfmt)
+      run: |
+        sudo apt-get update && sudo apt-get install -y qemu-user-static binfmt-support
+        sudo update-binfmts --enable qemu-loongarch64 || true
+    - name: Download Loongson .NET SDK (linux-loongarch64)
+      run: |
+        curl -fL -o "$HOME/la64-sdk.tar.gz" \
+          https://github.com/loongson/dotnet/releases/download/v10.0.112-loongarch64/dotnet-sdk-10.0.112-linux-loongarch64.tar.gz
+        mkdir -p "$HOME/la64" && tar -xzf "$HOME/la64-sdk.tar.gz" -C "$HOME/la64"
+        "$HOME/la64/dotnet" --info
+      # 仿真下 --info 会真实执行 LA64 版 dotnet，是 QEMU 通路的第一道验证
+      env:
+        DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1
+    - name: Test (LA64, QEMU)
+      env:
+        ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
+        ROCKETMQ_GRPC_PROXY: "http://127.0.0.1:8081"
+        # 宿主无 LA64 原生 ICU，全量用例以 invariant 全球化模式运行
+        DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1
+        DOTNET_ROOT: /home/runner/la64
+      # 全量 634 用例在 QEMU 用户态仿真下运行；timeout 守卫保证超时后仍能上传产物与清理服务
+      run: |
+        export PATH="$HOME/la64:$PATH"
+        timeout 150m dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --logger "trx;LogFileName=unit-la64.trx" --results-directory TestResults \
+          || echo "LA64 全量测试失败或超时（观察期，不阻断；详见日志）"
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-unit-la64
+        path: TestResults/*.trx
+        if-no-files-found: ignore
     - name: Stop RocketMQ
       if: always()
       run: |
