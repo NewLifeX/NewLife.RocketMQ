@@ -24,7 +24,7 @@ NewLife.RocketMQ 是新生命团队开发的**企业级纯托管 RocketMQ 客户
 | **多云适配** | 统一 `ICloudProvider` 接口，已内置阿里云/华为云/腾讯云/Apache ACL 四家适配器 |
 | **生产就绪** | 消费重试、死信队列、事务回查、顺序消费、Pop 消费等企业级特性完整支持 |
 | **最广框架覆盖** | .NET Framework 4.5+ 到 .NET 10，gRPC 功能在 .NET Standard 2.1+ 可用 |
-| **AOT 友好** | net10.0 目标支持 NativeAOT/裁剪：帧编解码、JSON 序列化与消息压缩不依赖运行时反射，仓库内置 AOT 冒烟与 NuGet 包消费 AOT 冒烟 |
+| **AOT 友好** | net10.0 目标支持 NativeAOT/裁剪：帧编解码、JSON 序列化与消息压缩不依赖运行时反射，仓库内置 AOT 冒烟与 NuGet 包消费 AOT 冒烟；CI 以主流 RID 矩阵（win/linux/osx、musl 及龙芯 LA64）验证 AOT 发布与运行 |
 | **高性能** | 基于 NewLife.Net 高性能网络层，连接复用、VIP 通道、消息压缩、并发控制 |
 
 ---
@@ -381,6 +381,8 @@ dotnet publish -c Release -r linux-x64
 
 已验证场景（原生可执行文件实测）：帧编解码、请求头属性字典、JSON 序列化、消息压缩（ZLIB 往返与解压上限）、LMQ 属性、ACL 签名、云厂商适配、双协议转换，以及端到端收发（普通/对象体/批量/延迟/大消息压缩、消费、偏移查询、顺序锁、POP）与 gRPC 5.x 链路（路由、收发确认、推送消费、死信转发、FIFO 顺序消费）。
 
+CI 覆盖：win-x64（含本地 RocketMQ 全量端到端）、linux-x64、linux-arm64、win-arm64、osx-x64/osx-arm64、linux-musl-x64/arm64 逐一原生发布运行；龙芯 linux-loongarch64 经 QEMU 用户态仿真 + 龙芯 SDK 运行（官方暂无该平台 NativeAOT 支持，以 AOT 姿态工程 JIT 冒烟为准）。
+
 **自定义类型对象体需登记**：以自定义类型（POCO）作为消息体时，裁剪器默认会移除其公开属性，对象体将被静默序列化为空对象 `{}`。在应用启动处为每个用作消息体的类型调用一次登记即可：
 
 ```csharp
@@ -475,7 +477,7 @@ MqBase (业务基类)
 
 ## 测试覆盖
 
-84 个测试文件，634 个测试用例（xUnit），覆盖核心功能、高级特性、协议兼容、云厂商适配、E2E 集成测试（gRPC 集成用例在未配置 Proxy 时自动跳过）；另含 Apache ACL 2.0 在 Remoting 与 gRPC 两侧的鉴权语义验证（无凭据/非管理员/错误密钥被拒，管理员可正常收发）。
+84 个测试文件，635 个测试用例（xUnit），覆盖核心功能、高级特性、协议兼容、云厂商适配、E2E 集成测试（gRPC 集成用例在未配置 Proxy 时自动跳过）；另含 Apache ACL 2.0 在 Remoting 与 gRPC 两侧的鉴权语义验证（无凭据/非管理员/错误密钥被拒，管理员可正常收发）。CI 以 RID 矩阵运行：单元测试与 AOT 冒烟覆盖 win-x64 / linux-x64 / linux-arm64 / 龙芯 LA64（QEMU 仿真，必选），win-arm64、osx 双架构与 linux-musl 双架构为观察期，全部支持手动触发。
 
 另有 NativeAOT 冒烟（`AotSmoke`，33 个用例，含消息压缩、LMQ、ACL 签名、gRPC 链路、死信转发与 FIFO 顺序消费）、NuGet 包消费 AOT 冒烟（`AotPackageSmoke`，以 PackageReference 消费打包产物，覆盖包资产、源生成序列化、压缩与端到端收发）、发布基线采集（`scripts/AotBaseline.cs`，输出体积/启动开销/吞吐并支持阈值判定，CI 写入流水线摘要）、AOT/JIT 性能对照基准（`Benchmark` 工程基于 BenchmarkDotNet，含分配统计；AOT 侧由 `AotSmoke --bench` 多轮采样）、死信运维工具（`scripts/DlqTool.cs`，把 `%DLQ%{group}` 消息重投到指定主题）与 gRPC 长稳验收脚本（`scripts/GrpcStability.cs`，CI 夜间运行并注入一次 Proxy 重启）。
 
