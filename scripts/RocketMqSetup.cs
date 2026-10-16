@@ -56,6 +56,7 @@ static class RocketMqSetup
     static String LogDir     => Path.Combine(INSTALL_ROOT, "logs");
     static String NamesrvLog => Path.Combine(LogDir, "namesrv.log");
     static String BrokerLog  => Path.Combine(LogDir, "broker.log");
+    static String ProxyLog   => Path.Combine(LogDir, "proxy.log");
     static String BrokerConf => Path.Combine(INSTALL_ROOT, "broker.conf");
     static String PidFile    => Path.Combine(INSTALL_ROOT, "rocketmq.pids");
 
@@ -299,6 +300,7 @@ static class RocketMqSetup
         Directory.CreateDirectory(StoreDir);
         SafeDeleteFile(NamesrvLog);
         SafeDeleteFile(BrokerLog);
+        SafeDeleteFile(ProxyLog);
 
         var java    = _javaExe!;
         var confDir = Path.Combine(RmqHome, "conf");
@@ -330,14 +332,26 @@ static class RocketMqSetup
         }
         PrintOk($"Broker 已启动 (PID={bkProc.Id})");
 
-        File.WriteAllLines(PidFile, [nsProc.Id.ToString(), bkProc.Id.ToString()]);
-
         PrintStep("  等待 Topic 路由注册...");
         await Task.Delay(5000);
 
         // Proxy 会订阅内部主题 DefaultHeartBeatSyncerTopic，Broker 清库后该主题消失，
-        // 其无效拉取会刷满 Broker 日志并抢占拉取线程，导致消费类请求超时，故提前创建
+        // 其无效拉取会刷满 Broker 日志并抢占拉取线程，导致消费类请求超时，故在启动 Proxy 前先创建
         PrepareProxyInternalTopic(java, env);
+
+        PrintStep("  启动 Proxy (127.0.0.1:8081)...");
+        var proxyLogback = Path.Combine(confDir, "rmq.proxy.logback.xml");
+        var proxyProc = StartJava(java, $"{jvmOpts} -Drmq.logback.configurationFile=\"{proxyLogback}\" -cp \"{cp}\" org.apache.rocketmq.proxy.ProxyStartup -n 127.0.0.1:9876", env, ProxyLog);
+        if (!await WaitForKeyword(ProxyLog, "rocketmq-proxy startup successfully", 60))
+        {
+            TryKill(proxyProc);
+            TryKill(bkProc);
+            TryKill(nsProc);
+            throw new Exception($"Proxy 启动超时，查看日志：{ProxyLog}");
+        }
+        PrintOk($"Proxy 已启动 (PID={proxyProc.Id})");
+
+        File.WriteAllLines(PidFile, [nsProc.Id.ToString(), bkProc.Id.ToString(), proxyProc.Id.ToString()]);
     }
 
     /// <summary>创建 Proxy 依赖的内部主题（失败不影响启动）</summary>
@@ -607,6 +621,7 @@ static class RocketMqSetup
         Console.WriteLine();
         Console.WriteLine("  NameServer : 127.0.0.1:9876");
         Console.WriteLine("  Broker     : 127.0.0.1:10911");
+        Console.WriteLine("  Proxy      : http://127.0.0.1:8081");
         Console.WriteLine();
         Console.WriteLine("  运行集成测试：");
         Console.WriteLine("  $env:ROCKETMQ_NAMESERVER=\"127.0.0.1:9876\"");
