@@ -82,19 +82,31 @@ jobs:
         grep -q "boot success" /tmp/broker.log || { cat /tmp/broker.log; exit 1; }
 
         # Proxy 会订阅内部主题 DefaultHeartBeatSyncerTopic，提前创建，避免其无效拉取刷满 Broker 日志并抢占拉取线程；
-        # Broker 冷启动后路由注册到 NameServer 需要时间，直接创建会失败并导致 Proxy 建系统主题异常退出，故重试至多 10 次
-        for i in $(seq 1 10); do
-          /tmp/rocketmq/bin/mqadmin updateTopic -n 127.0.0.1:9876 -c DefaultCluster -t DefaultHeartBeatSyncerTopic -r 1 -w 1 > /dev/null 2>&1 && break
-          sleep 3
-        done
+        # Broker 冷启动后主题路由在 NameServer 生效需要时间，Proxy 启动时系统主题创建失败即退出且不会自愈，
+        # 故先等路由生效再启动 Proxy，失败则重建主题后重启（至多 3 次尝试）
         # runserver.sh 固定 -Xms4g -Xmx4g，JAVA_OPT_EXT 最后追加，用较小堆覆盖
         export JAVA_OPT_EXT="-Xms256m -Xmx512m"
-        nohup /tmp/rocketmq/bin/mqproxy -n 127.0.0.1:9876 > /tmp/proxy.log 2>&1 &
-        for i in $(seq 1 60); do
-          grep -q "rocketmq-proxy startup successfully" /tmp/proxy.log 2>/dev/null && break
-          sleep 1
+        proxy_ok=0
+        for attempt in 1 2 3; do
+          for i in $(seq 1 10); do
+            /tmp/rocketmq/bin/mqadmin updateTopic -n 127.0.0.1:9876 -c DefaultCluster -t DefaultHeartBeatSyncerTopic -r 1 -w 1 > /dev/null 2>&1 && break
+            sleep 3
+          done
+          for i in $(seq 1 10); do
+            /tmp/rocketmq/bin/mqadmin topicRoute -n 127.0.0.1:9876 -t DefaultHeartBeatSyncerTopic 2>/dev/null | grep -q "brokerDatas" && break
+            sleep 3
+          done
+          nohup /tmp/rocketmq/bin/mqproxy -n 127.0.0.1:9876 > /tmp/proxy.log 2>&1 &
+          for i in $(seq 1 60); do
+            grep -q "rocketmq-proxy startup successfully" /tmp/proxy.log 2>/dev/null && break
+            sleep 1
+          done
+          grep -q "rocketmq-proxy startup successfully" /tmp/proxy.log 2>/dev/null && proxy_ok=1 && break
+          echo "Proxy 第 ${attempt} 次启动未成功，重建系统主题后重试"
+          pkill -f ProxyStartup 2>/dev/null || true
+          sleep 20
         done
-        grep -q "rocketmq-proxy startup successfully" /tmp/proxy.log || { cat /tmp/proxy.log; exit 1; }
+        [ "$proxy_ok" = "1" ] || { echo "=== Proxy 启动失败 ==="; cat /tmp/proxy.log; exit 1; }
 
     - name: gRPC stability
       env:
