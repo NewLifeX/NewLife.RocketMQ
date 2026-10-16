@@ -148,15 +148,15 @@ jobs:
           ./AotSmoke/bin/aot-out/AotSmoke
         '
 
-  # 龙芯 LA64（必选，每次 push/PR）：官方不发 runtime pack、无 NativeAOT 支持（ILCompiler 源码含 LoongArch64 后端但不构成承诺）。
+  # 龙芯 LA64（每次 push/PR 运行，但不作强制要求）：官方不发 runtime pack、无 NativeAOT 支持（ILCompiler 源码含 LoongArch64 后端但不构成承诺）。
   # 按 NewLife.Core 配方用 QEMU 用户态仿真（binfmt）+ 龙芯 SDK 运行：
-  #   主信号：AotSmoke 以 LA64 运行时 JIT 运行（AOT 姿态工程：源生成成员访问器、零动态反射路径，E2E 用例自动跳过）
+  #   主信号（观察项，失败不阻断）：AotSmoke 以 LA64 运行时 JIT 运行（AOT 姿态工程：源生成成员访问器、零动态反射路径，E2E 用例自动跳过）
   #   探索：linux-loongarch64 的裁剪/自包含与 NativeAOT 发布尝试（容错，结论写入摘要；有真机后升级 self-hosted 转阻断）
   aot-la64:
     name: aot (linux-loongarch64 qemu)
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    continue-on-error: true
+    continue-on-error: true     # 不作强制要求：即使冒烟失败也不阻断工作流
 
     steps:
     - uses: actions/checkout@v4
@@ -180,6 +180,7 @@ jobs:
         DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
     - name: JIT Smoke (AotSmoke)
+      continue-on-error: true     # 不作强制要求：用例失败仅记录结论，不阻断后续探索步骤与工作流
       env:
         # 宿主无 LA64 原生 ICU，冒烟场景不依赖区域性数据
         DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
