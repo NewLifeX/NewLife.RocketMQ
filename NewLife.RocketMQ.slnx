@@ -1,0 +1,23 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Benchmark/">
+    <Project Path="Benchmark/NewLife.RocketMQ.Benchmarks.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".github/workflows/publish-beta.yml" />
+    <File Path=".github/workflows/publish.yml" />
+    <File Path=".github/workflows/test.yml" />
+    <File Path="Doc/架构设计.md" />
+    <File Path="Doc/需求文档.md" />
+    <File Path="Readme.MD" />
+  </Folder>
+  <Project Path="AotSmoke/AotSmoke.csproj" />
+  <Project Path="NewLife.RocketMQ/NewLife.RocketMQ.csproj" />
+  <Project Path="Test/Test.csproj" />
+  <Project Path="XUnitTestRocketMQ/XUnitTest.csproj" />
+</Solution>
