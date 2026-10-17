@@ -4,6 +4,14 @@
 //   安装 + 启动：dotnet run --file scripts/RocketMqSetup.cs
 //   停止：       dotnet run --file scripts/RocketMqSetup.cs -- --stop
 //   状态查看：   dotnet run --file scripts/RocketMqSetup.cs -- --status
+//   只起 Remoting：dotnet run --file scripts/RocketMqSetup.cs -- --no-proxy
+//   指定 store：   dotnet run --file scripts/RocketMqSetup.cs -- --store-dir R:\RocketMQ\store
+//   日志级别：     dotnet run --file scripts/RocketMqSetup.cs -- --log-level INFO（默认 WARN）
+//
+// 本地测试低资源模式：
+//   * 每次启动清空 store，Broker 始终是全新状态
+//   * NameServer/Broker/Proxy 日志默认 WARN，仅输出到控制台；不再写 %USERPROFILE%\logs\rocketmqlogs
+//   * 异步刷盘间隔 5 秒、commitlog 64MB、线程池收紧，尽量降低磁盘与 CPU 占用
 //
 // 存储目录会自动挑选余量充足的分区（RocketMQ 在磁盘使用率 ≥90% 时拒绝写入）：
 //   优先安装盘，余量不足时改用可用空间最多的分区，路径形如 {盘符}:\RocketMQ\store
@@ -52,16 +60,30 @@ static class RocketMqSetup
     static String RmqHome    => Path.Combine(INSTALL_ROOT, $"rocketmq-{VERSION}");
     static String JdkHome    => Path.Combine(INSTALL_ROOT, "jdk17");
     static String JavaExe    => Path.Combine(JdkHome, "bin", "java.exe");
-    static String StoreDir   => Path.Combine(SelectStoreRoot(), "store");
+    static String StoreDir   => _storeOverride ?? Path.Combine(SelectStoreRoot(), "store");
     static String LogDir     => Path.Combine(INSTALL_ROOT, "logs");
     static String NamesrvLog => Path.Combine(LogDir, "namesrv.log");
     static String BrokerLog  => Path.Combine(LogDir, "broker.log");
     static String ProxyLog   => Path.Combine(LogDir, "proxy.log");
     static String BrokerConf => Path.Combine(INSTALL_ROOT, "broker.conf");
+    static String LogbackConf => Path.Combine(INSTALL_ROOT, "rmq.test.logback.xml");
     static String PidFile    => Path.Combine(INSTALL_ROOT, "rocketmq.pids");
+
+    /// <summary>RocketMQ 自带日志目录。默认配置会在这里堆积 GB 级日志，启动前清理</summary>
+    static String JavaLogDir
+    {
+        get
+        {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return String.IsNullOrEmpty(home) ? "" : Path.Combine(home, "logs", "rocketmqlogs");
+        }
+    }
 
     static String? _storeRoot;
     static String? _storeInfo;
+    static String? _storeOverride;
+    static String _logLevel = "WARN";
+    static Boolean _noProxy;
 
     /// <summary>挑选存储根目录。优先安装盘，余量不足时改用可用空间最多的分区</summary>
     /// <returns>存储根目录，形如 C:\RocketMQ 或 E:\RocketMQ</returns>
@@ -112,6 +134,11 @@ static class RocketMqSetup
         if (args.Contains("--stop"))   { StopAll();   return; }
         if (args.Contains("--status")) { ShowStatus(); return; }
 
+        _noProxy      = args.Contains("--no-proxy");
+        _logLevel     = ReadLogLevel(args);
+        _storeOverride = ReadOption(args, "--store-dir");
+        if (!String.IsNullOrEmpty(_storeOverride)) _storeOverride = Path.GetFullPath(_storeOverride!);
+
         try
         {
             PrintBanner();
@@ -120,6 +147,7 @@ static class RocketMqSetup
 
             await EnsureJavaAsync();
             await EnsureRocketMqAsync();
+            WriteLogbackConf();
             WriteBrokerConf();
             await StartServicesAsync();
             PrintSuccess();
@@ -129,6 +157,54 @@ static class RocketMqSetup
             PrintError("启动失败：" + ex.Message);
             Environment.Exit(1);
         }
+    }
+
+    /// <summary>读取 --log-level 参数或 ROCKETMQ_TEST_LOG_LEVEL 环境变量，默认 WARN</summary>
+    /// <param name="args">命令行参数</param>
+    /// <returns>规范化后的日志级别</returns>
+    static String ReadLogLevel(String[] args)
+    {
+        var level = ReadOption(args, "--log-level");
+        if (String.IsNullOrWhiteSpace(level)) level = Environment.GetEnvironmentVariable("ROCKETMQ_TEST_LOG_LEVEL");
+        if (String.IsNullOrWhiteSpace(level)) level = "WARN";
+
+        level = level!.Trim().ToUpperInvariant();
+        return level is "WARN" or "INFO" or "DEBUG" or "ERROR" ? level : "WARN";
+    }
+
+    /// <summary>读取形如 --name value 的参数值</summary>
+    /// <param name="args">命令行参数</param>
+    /// <param name="name">参数名</param>
+    /// <returns>参数值，未提供时返回 null</returns>
+    static String? ReadOption(String[] args, String name)
+    {
+        var index = Array.IndexOf(args, name);
+        if (index < 0 || index + 1 >= args.Length) return null;
+
+        var value = args[index + 1];
+        return value.StartsWith("--", StringComparison.Ordinal) ? null : value;
+    }
+
+    /// <summary>写入本地测试用 logback 配置：默认只输出 WARN 及以上到控制台，避免大日志写盘</summary>
+    static void WriteLogbackConf()
+    {
+        var xml = $$"""
+            <?xml version="1.0" encoding="UTF-8"?>
+            <configuration>
+              <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder>
+                  <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger{24} - %msg%n</pattern>
+                  <charset class="java.nio.charset.Charset">UTF-8</charset>
+                </encoder>
+              </appender>
+              <root level="{{_logLevel}}">
+                <appender-ref ref="STDOUT"/>
+              </root>
+            </configuration>
+            """;
+
+        File.WriteAllText(LogbackConf, xml, new UTF8Encoding(false));
+        PrintOk($"日志级别 {_logLevel} → {LogbackConf}");
     }
 
     #endregion
@@ -279,10 +355,42 @@ static class RocketMqSetup
             diskMaxUsedSpaceRatio=100
             diskSpaceWarningLevelRatio=100
             logicalDiskSpaceCleanForciblyThreshold=1.0
+            # ── 本地测试低资源模式：每次启动清空 store，异步批量落盘 ──
+            flushCommitLogTimed=true
+            flushIntervalCommitLog=5000
+            flushIntervalConsumeQueue=5000
+            timerFlushIntervalMs=5000
+            # 映射文件 1GB → 64MB/1MB/16MB，减少预分配与页缓存压力
+            mappedFileSizeCommitLog=67108864
+            mappedFileSizeConsumeQueue=1000000
+            mappedFileSizeTimerLog=16777216
+            # 降低统计开销（stats 日志与 per-topic 统计）
+            enableDetailStat=false
+            enableScheduleMessageStats=false
+            # 慢盘容错，避免测试期间因磁盘抖动触发 PageCache busy
+            osPageCacheBusyTimeOutMills=5000
+            # 线程池收紧，避免在开发机上按 CPU 数创建上百个线程
+            sendMessageThreadPoolNums=4
+            pullMessageThreadPoolNums=8
+            litePullMessageThreadPoolNums=8
+            processReplyMessageThreadPoolNums=8
+            ackMessageThreadPoolNums=4
+            queryMessageThreadPoolNums=4
+            adminBrokerThreadPoolNums=4
+            clientManageThreadPoolNums=4
+            consumerManageThreadPoolNums=4
+            loadBalanceProcessorThreadPoolNums=4
+            heartbeatThreadPoolNums=4
+            recoverThreadPoolNums=4
+            endTransactionThreadPoolNums=4
+            batchDispatchRequestThreadPoolNums=4
+            timerPutMessageThreadNum=1
+            timerGetMessageThreadNum=1
             """;
 
         File.WriteAllText(BrokerConf, conf, new UTF8Encoding(false));
         PrintOk($"broker.conf → {BrokerConf}");
+        PrintOk($"低资源模式：日志 {_logLevel}，commitlog 64MB，异步刷盘 5s，线程池收紧");
     }
 
     #endregion
@@ -298,6 +406,7 @@ static class RocketMqSetup
 
         SafeDeleteDir(StoreDir);
         Directory.CreateDirectory(StoreDir);
+        TryDeleteDir(JavaLogDir);
         SafeDeleteFile(NamesrvLog);
         SafeDeleteFile(BrokerLog);
         SafeDeleteFile(ProxyLog);
@@ -306,15 +415,20 @@ static class RocketMqSetup
         var confDir = Path.Combine(RmqHome, "conf");
         var jars    = Directory.GetFiles(Path.Combine(RmqHome, "lib"), "*.jar");
         var cp      = confDir + ";" + String.Join(";", jars);
-        var jvmOpts = "-server -Xms256m -Xmx512m -XX:+UseG1GC -Dfile.encoding=UTF-8";
+        // 限制 JVM 看到的 CPU 数，避免 RocketMQ 在开发机上按物理核数创建上百个线程
+        var cpuCount   = Math.Min(Environment.ProcessorCount, 4);
+        var commonOpts = $"-server -XX:ActiveProcessorCount={cpuCount} -Dfile.encoding=UTF-8 -Drmq.logback.configurationFile=\"{LogbackConf}\"";
+        var nsJvmOpts     = commonOpts + " -Xms128m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC";
+        var brokerJvmOpts = commonOpts + " -Xms256m -Xmx512m -XX:MaxMetaspaceSize=192m -XX:+UseG1GC";
         // Broker 的 POP 消费大量占用直接内存，默认上限与堆相同（512m），长时间压测后会 OutOfMemoryError 导致 POP 失败，
         // 表现为重试消息不再投递、消费进度停滞，故单独放大直接内存
-        var brokerJvmOpts = jvmOpts + " -XX:MaxDirectMemorySize=1g";
+        brokerJvmOpts += " -XX:MaxDirectMemorySize=1g";
+        var proxyJvmOpts = commonOpts + " -Xms256m -Xmx512m -XX:MaxMetaspaceSize=192m -XX:+UseG1GC";
 
         var env = new Dictionary<String, String> { ["ROCKETMQ_HOME"] = RmqHome };
 
         PrintStep("  启动 NameServer (127.0.0.1:9876)...");
-        var nsProc = StartJava(java, $"{jvmOpts} -cp \"{cp}\" org.apache.rocketmq.namesrv.NamesrvStartup", env, NamesrvLog);
+        var nsProc = StartJava(java, $"{nsJvmOpts} -cp \"{cp}\" org.apache.rocketmq.namesrv.NamesrvStartup", env, NamesrvLog);
         if (!await WaitForKeyword(NamesrvLog, "boot success", 30))
         {
             TryKill(nsProc);
@@ -332,26 +446,35 @@ static class RocketMqSetup
         }
         PrintOk($"Broker 已启动 (PID={bkProc.Id})");
 
-        PrintStep("  等待 Topic 路由注册...");
-        await Task.Delay(5000);
+        var pids = new List<String> { nsProc.Id.ToString(), bkProc.Id.ToString() };
 
-        // Proxy 会订阅内部主题 DefaultHeartBeatSyncerTopic，Broker 清库后该主题消失，
-        // 其无效拉取会刷满 Broker 日志并抢占拉取线程，导致消费类请求超时，故在启动 Proxy 前先创建
-        PrepareProxyInternalTopic(java, env);
-
-        PrintStep("  启动 Proxy (127.0.0.1:8081)...");
-        var proxyLogback = Path.Combine(confDir, "rmq.proxy.logback.xml");
-        var proxyProc = StartJava(java, $"{jvmOpts} -Drmq.logback.configurationFile=\"{proxyLogback}\" -cp \"{cp}\" org.apache.rocketmq.proxy.ProxyStartup -n 127.0.0.1:9876", env, ProxyLog);
-        if (!await WaitForKeyword(ProxyLog, "rocketmq-proxy startup successfully", 60))
+        if (_noProxy)
         {
-            TryKill(proxyProc);
-            TryKill(bkProc);
-            TryKill(nsProc);
-            throw new Exception($"Proxy 启动超时，查看日志：{ProxyLog}");
+            PrintOk("  已跳过 Proxy（--no-proxy）");
         }
-        PrintOk($"Proxy 已启动 (PID={proxyProc.Id})");
+        else
+        {
+            PrintStep("  等待 Topic 路由注册...");
+            await Task.Delay(5000);
 
-        File.WriteAllLines(PidFile, [nsProc.Id.ToString(), bkProc.Id.ToString(), proxyProc.Id.ToString()]);
+            // Proxy 会订阅内部主题 DefaultHeartBeatSyncerTopic，Broker 清库后该主题消失，
+            // 其无效拉取会刷满 Broker 日志并抢占拉取线程，导致消费类请求超时，故在启动 Proxy 前先创建
+            PrepareProxyInternalTopic(java, env);
+
+            PrintStep("  启动 Proxy (127.0.0.1:8081)...");
+            var proxyProc = StartJava(java, $"{proxyJvmOpts} -cp \"{cp}\" org.apache.rocketmq.proxy.ProxyStartup -n 127.0.0.1:9876", env, ProxyLog);
+            if (!await WaitForKeyword(ProxyLog, "rocketmq-proxy startup successfully", 60))
+            {
+                TryKill(proxyProc);
+                TryKill(bkProc);
+                TryKill(nsProc);
+                throw new Exception($"Proxy 启动超时，查看日志：{ProxyLog}");
+            }
+            PrintOk($"Proxy 已启动 (PID={proxyProc.Id})");
+            pids.Add(proxyProc.Id.ToString());
+        }
+
+        File.WriteAllLines(PidFile, pids);
     }
 
     /// <summary>创建 Proxy 依赖的内部主题（失败不影响启动）</summary>
@@ -571,6 +694,7 @@ static class RocketMqSetup
     }
 
     static void SafeDeleteDir(String dir) { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+    static void TryDeleteDir(String dir) { try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { } }
     static void SafeDeleteFile(String f)  { if (File.Exists(f)) File.Delete(f); }
     static void SafeAppendLog(String f, String line) { try { File.AppendAllText(f, line + Environment.NewLine); } catch { } }
     static void TryKill(Process? p) { if (p == null) return; try { p.Kill(entireProcessTree: true); } catch { } }
@@ -621,11 +745,18 @@ static class RocketMqSetup
         Console.WriteLine();
         Console.WriteLine("  NameServer : 127.0.0.1:9876");
         Console.WriteLine("  Broker     : 127.0.0.1:10911");
-        Console.WriteLine("  Proxy      : http://127.0.0.1:8081");
+        if (!_noProxy) Console.WriteLine("  Proxy      : http://127.0.0.1:8081");
+        Console.WriteLine($"  Store      : {StoreDir}");
+        Console.WriteLine($"  LogLevel   : {_logLevel}");
+        if (_noProxy) Console.WriteLine("  未启动 Proxy：gRPC 集成用例将自动跳过");
         Console.WriteLine();
         Console.WriteLine("  运行集成测试：");
         Console.WriteLine("  $env:ROCKETMQ_NAMESERVER=\"127.0.0.1:9876\"");
         Console.WriteLine("  dotnet test XUnitTestRocketMQ\\XUnitTest.csproj");
+        Console.WriteLine();
+        Console.WriteLine("  排查时恢复详细日志：--log-level INFO（日志量会增大；或 $env:ROCKETMQ_TEST_LOG_LEVEL=\"INFO\"）");
+        Console.WriteLine("  提示：将以下目录加入 Microsoft Defender 排除可进一步降低磁盘占用（需管理员）：");
+        Console.WriteLine($"    Add-MpPreference -ExclusionPath '{INSTALL_ROOT}','{StoreDir}'");
         Console.WriteLine();
         Console.WriteLine("  停止：dotnet run --file scripts/RocketMqSetup.cs -- --stop");
         Console.WriteLine("============================================================");

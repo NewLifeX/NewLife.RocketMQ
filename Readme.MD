@@ -481,6 +481,22 @@ MqBase (业务基类)
 
 另有 NativeAOT 冒烟（`AotSmoke`，33 个用例，含消息压缩、LMQ、ACL 签名、gRPC 链路、死信转发与 FIFO 顺序消费）、NuGet 包消费 AOT 冒烟（`AotPackageSmoke`，以 PackageReference 消费打包产物，覆盖包资产、源生成序列化、压缩与端到端收发）、发布基线采集（`scripts/AotBaseline.cs`，输出体积/启动开销/吞吐并支持阈值判定，CI 写入流水线摘要）、AOT/JIT 性能对照基准（`Benchmark` 工程基于 BenchmarkDotNet，含分配统计；AOT 侧由 `AotSmoke --bench` 多轮采样）、死信运维工具（`scripts/DlqTool.cs`，把 `%DLQ%{group}` 消息重投到指定主题）与 gRPC 长稳验收脚本（`scripts/GrpcStability.cs`，CI 夜间运行并注入一次 Proxy 重启）。
 
+### 本地集成测试（Windows）
+
+```powershell
+# 一键安装并启动 NameServer + Broker + Proxy（每次启动清空 store）
+dotnet run --file scripts/RocketMqSetup.cs
+
+$env:ROCKETMQ_NAMESERVER = "127.0.0.1:9876"
+dotnet test XUnitTestRocketMQ\XUnitTest.csproj -c Release
+
+# 停止 / 状态
+dotnet run --file scripts/RocketMqSetup.cs -- --stop
+dotnet run --file scripts/RocketMqSetup.cs -- --status
+```
+
+本地启动默认使用低资源模式：三个 JVM 的日志降到 WARN（不再写 `%USERPROFILE%\logs\rocketmqlogs`）、异步刷盘间隔 5 秒、commitlog 64MB、线程池收紧，并且每次启动都会清空 store，Broker 始终处于全新状态。排查问题时用 `--log-level INFO`（或 `$env:ROCKETMQ_TEST_LOG_LEVEL="INFO"`）恢复详细日志（日志量会明显增大）；不需要 gRPC 时用 `--no-proxy` 少起一个 JVM；需要把 store 指到 RAM 盘时用 `--store-dir R:\RocketMQ\store`。
+
 ---
 
 ## 参与贡献
