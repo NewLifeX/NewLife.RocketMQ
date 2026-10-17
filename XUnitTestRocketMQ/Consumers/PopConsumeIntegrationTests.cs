@@ -18,6 +18,8 @@ namespace XUnitTest.Consumers;
 /// 2. 消息被拉取后进入不可见期（invisibleTime），需手动确认
 /// 3. 超时未确认消息自动重新可见，可被再次消费
 /// </remarks>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class PopConsumeIntegrationTests
 {
     [Fact]
@@ -36,15 +38,12 @@ public class PopConsumeIntegrationTests
             Log = XTrace.Log,
         };
         producer.Start();
-        Thread.Sleep(2000);
 
         var stamp = DateTime.UtcNow.Ticks.ToString();
         var body = $"pop-test-{stamp}";
         var sr = producer.Publish(body);
         Assert.Equal(SendStatus.SendOK, sr.Status);
         XTrace.WriteLine("发送消息: {0}", body);
-
-        Thread.Sleep(500);
 
         // 创建消费者（不自动调度，手动 Pop）
         using var consumer = new Consumer
@@ -56,7 +55,7 @@ public class PopConsumeIntegrationTests
             AutoSchedule = false,
         };
         consumer.Start();
-        Thread.Sleep(3000);
+        TestWait.Until(() => consumer.Brokers is { Count: > 0 }, 10_000);
 
         // 获取 Broker 名称
         var brokers = consumer.Brokers;
@@ -125,7 +124,6 @@ public class PopConsumeIntegrationTests
 
         var stamp = DateTime.UtcNow.Ticks.ToString();
         producer.Publish($"invisible-test-{stamp}");
-        Thread.Sleep(500);
 
         using var consumer = new Consumer
         {
@@ -136,7 +134,7 @@ public class PopConsumeIntegrationTests
             AutoSchedule = false,
         };
         consumer.Start();
-        Thread.Sleep(3000);
+        TestWait.Until(() => consumer.Brokers is { Count: > 0 }, 10_000);
 
         var brokers = consumer.Brokers;
         Assert.NotEmpty(brokers);

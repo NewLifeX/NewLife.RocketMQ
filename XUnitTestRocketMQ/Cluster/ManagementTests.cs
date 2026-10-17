@@ -9,6 +9,8 @@ using XUnitTest.Integration;
 namespace XUnitTest.Cluster;
 
 /// <summary>管理功能测试</summary>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class ManagementTests
 {
     [Fact]

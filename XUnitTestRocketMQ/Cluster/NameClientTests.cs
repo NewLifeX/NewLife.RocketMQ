@@ -130,6 +130,57 @@ public class NameClientTests
     }
 
     [Fact]
+    [DisplayName("GetRouteInfo_空对象响应_返回空列表")]
+    public void GetRouteInfo_EmptyObject_ReturnsEmpty()
+    {
+        var pb = new Producer();
+        var nc = new Mock<NameClient>("clientId", pb) { CallBase = true };
+        nc.Setup(e => e.Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, It.IsAny<Object>(), false))
+            .Returns(new Command { Payload = (ArrayPacket)"{}".GetBytes() });
+
+        var brokers = nc.Object.GetRouteInfo("empty_topic");
+
+        Assert.Empty(brokers);
+    }
+
+    [Fact]
+    [DisplayName("GetRouteInfo_无响应体_返回空列表且不抛异常")]
+    public void GetRouteInfo_NullPayload_ReturnsEmpty()
+    {
+        var pb = new Producer();
+        var nc = new Mock<NameClient>("clientId", pb) { CallBase = true };
+        nc.Setup(e => e.Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, It.IsAny<Object>(), false))
+            .Returns(new Command());
+
+        var brokers = nc.Object.GetRouteInfo("empty_topic");
+
+        Assert.Empty(brokers);
+    }
+
+    [Fact]
+    [DisplayName("GetRouteInfo_主题不存在_回退默认主题并限制队列数")]
+    public void GetRouteInfo_TopicNotExist_FallsBackToDefaultTopic()
+    {
+        var target = """
+            {"brokerDatas":[{"brokerAddrs":{"0":"10.0.0.1:10911"},"brokerName":"broker-a","cluster":"DefaultCluster","enableActingMaster":false}],"filterServerTable":{},"queueDatas":[{"brokerName":"broker-a","perm":6,"readQueueNums":8,"topicSysFlag":0,"writeQueueNums":8}]}
+            """;
+
+        var pb = new Producer();
+        var nc = new Mock<NameClient>("clientId", pb) { CallBase = true };
+        nc.SetupSequence(e => e.Invoke(RequestCode.GET_ROUTEINTO_BY_TOPIC, null, It.IsAny<Object>(), false))
+            .Throws(new ResponseException(ResponseCode.TOPIC_NOT_EXIST, "topic missing"))
+            .Returns(new Command { Payload = (ArrayPacket)target.GetBytes() });
+
+        var brokers = nc.Object.GetRouteInfo("missing_topic");
+
+        var broker = Assert.Single(brokers);
+        Assert.Equal("broker-a", broker.Name);
+        // 默认主题队列数超过客户端配置时，按客户端配置裁剪
+        Assert.Equal(pb.DefaultTopicQueueNums, broker.ReadQueueNums);
+        Assert.Equal(pb.DefaultTopicQueueNums, broker.WriteQueueNums);
+    }
+
+    [Fact]
     [DisplayName("GetRouteInfo_Master地址排首位_Slave地址正确解析")]
     public void GetRouteInfo_MasterSlave_Addresses()
     {

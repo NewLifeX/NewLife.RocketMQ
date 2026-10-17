@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Linq;
+using NewLife;
 using NewLife.RocketMQ;
 using Xunit;
 
@@ -69,5 +70,28 @@ public class BrokerFailoverTests
 
         Assert.True(masterInfo.IsMaster);
         Assert.False(slaveInfo.IsMaster);
+    }
+
+    [Fact]
+    [DisplayName("ClusterClient_无服务器地址_连接抛出XException")]
+    public void ClusterClient_NoServers_Throws()
+    {
+        using var client = new TestClusterClient { Config = new Producer(), Servers = [] };
+
+        Assert.Throws<XException>(() => client.ConnectNow());
+    }
+
+    [Fact]
+    [DisplayName("ClusterClient_无服务器地址_切换返回false")]
+    public void ClusterClient_NoServers_SwitchServerReturnsFalse()
+    {
+        using var client = new TestClusterClient { Config = new Producer(), Servers = [] };
+
+        Assert.False(client.SwitchServer());
+    }
+
+    private sealed class TestClusterClient : ClusterClient
+    {
+        public void ConnectNow() => EnsureCreate();
     }
 }

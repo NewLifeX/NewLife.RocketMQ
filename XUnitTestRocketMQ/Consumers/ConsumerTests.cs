@@ -10,6 +10,8 @@ using XUnitTest.Integration;
 
 namespace XUnitTest.Consumers;
 
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class ConsumerTests
 {
     private Consumer _consumer;
@@ -39,7 +41,7 @@ public class ConsumerTests
         _consumer = consumer;
 
         // 等待 Rebalance 后验证路由信息
-        Thread.Sleep(3000);
+        TestWait.Until(() => consumer.Brokers is { Count: > 0 }, 10_000);
 
         // 验证消费者已获取到 Broker 路由信息
         Assert.NotNull(consumer.Brokers);

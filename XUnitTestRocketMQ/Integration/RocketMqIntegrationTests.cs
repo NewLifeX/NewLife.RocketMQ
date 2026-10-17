@@ -17,6 +17,7 @@ namespace XUnitTest.Integration;
 /// <remarks>初始化</remarks>
 /// <param name="fixture">RocketMQ Fixture</param>
 [Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class ProducerIntegrationTests(RocketMqFixture fixture)
 {
     [Fact]
@@ -87,6 +88,7 @@ public class ProducerIntegrationTests(RocketMqFixture fixture)
 /// <remarks>初始化</remarks>
 /// <param name="fixture">RocketMQ Fixture</param>
 [Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class ConsumerIntegrationTests(RocketMqFixture fixture)
 {
     [Fact]

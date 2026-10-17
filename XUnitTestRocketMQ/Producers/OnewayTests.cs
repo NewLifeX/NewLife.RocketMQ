@@ -10,6 +10,8 @@ using XUnitTest.Integration;
 namespace XUnitTest.Producers;
 
 /// <summary>单向消息（PublishOneway）集成测试</summary>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class OnewayTests
 {
     [Fact]
@@ -80,7 +82,6 @@ public class OnewayTests
         };
         producer.Start();
         producer.Publish("_init_");
-        Thread.Sleep(500);
 
         // 创建消费者
         using var consumer = new Consumer
@@ -103,7 +104,7 @@ public class OnewayTests
             return true;
         };
         consumer.Start();
-        Thread.Sleep(3000);
+        TestWait.Until(() => consumer.Queues is { Length: > 0 }, 15_000);
 
         var mq = producer.SelectQueue();
         mq.Topic = topic;

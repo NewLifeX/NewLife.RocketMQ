@@ -15,6 +15,8 @@ namespace XUnitTest.Cluster;
 /// 即 VIP 端口 = 10909。开启后消息走 VIP 端口通信。
 /// Apache RocketMQ 4.x 默认开启 VIP 通道，5.x 已移除该机制。
 /// </remarks>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class VipChannelIntegrationTests
 {
     [Fact]
@@ -32,7 +34,6 @@ public class VipChannelIntegrationTests
             VipChannelEnabled = true,
         };
         producer.Start();
-        Thread.Sleep(2000);
 
         var sr = producer.Publish($"vip-enabled-{DateTime.UtcNow.Ticks}");
         XTrace.WriteLine("VipChannel=true 发送结果: {0}", sr.Status);
@@ -57,7 +58,6 @@ public class VipChannelIntegrationTests
             VipChannelEnabled = false,
         };
         producer.Start();
-        Thread.Sleep(2000);
 
         var sr = producer.Publish($"vip-disabled-{DateTime.UtcNow.Ticks}");
         XTrace.WriteLine("VipChannel=false 发送结果: {0}", sr.Status);

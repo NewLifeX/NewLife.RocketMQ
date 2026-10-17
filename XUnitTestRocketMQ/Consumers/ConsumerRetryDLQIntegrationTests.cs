@@ -18,6 +18,8 @@ namespace XUnitTest.Consumers;
 /// 2. 超过 MaxReconsumeTimes 后消息进入 %DLQ%{group}
 /// 注意：Broker 重试有延迟（至少 10 秒），测试超时需预留 90 秒以上。
 /// </remarks>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class ConsumerRetryDLQIntegrationTests
 {
     [Fact]
@@ -36,14 +38,11 @@ public class ConsumerRetryDLQIntegrationTests
             Log = XTrace.Log,
         };
         producer.Start();
-        Thread.Sleep(2000);
 
         var stamp = DateTime.UtcNow.Ticks.ToString();
         var sr = producer.Publish($"retry-test-{stamp}");
         Assert.Equal(SendStatus.SendOK, sr.Status);
         XTrace.WriteLine("发送消息: stamp={0}", stamp);
-
-        Thread.Sleep(500);
 
         var maxRetry = 2;
         var receivedStamps = new List<(String body, Int32 reconsumeTimes)>();
@@ -150,7 +149,7 @@ public class ConsumerRetryDLQIntegrationTests
             return true; // 第二次起放行，偏移推进
         };
         consumer.Start();
-        Thread.Sleep(3000);  // 等待消费者重新平衡完成
+        TestWait.Until(() => consumer.Queues is { Length: > 0 }, 15_000);  // 等待消费者重新平衡完成
 
         using var producer = new Producer
         {

@@ -17,6 +17,8 @@ namespace XUnitTest.Consumers;
 /// 广播模式：同一 Group 下所有消费者都能收到每条消息，而非集群模式的负载均衡分配。
 /// 偏移量存储在本地文件，不由 Broker 管理。
 /// </remarks>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class BroadcastConsumeIntegrationTests
 {
     [Fact]
@@ -92,7 +94,7 @@ public class BroadcastConsumeIntegrationTests
         consumer2.Start();
 
         // 等待两个消费者完成 Rebalance
-        Thread.Sleep(5000);
+        TestWait.Until(() => consumer1.Queues is { Length: > 0 } && consumer2.Queues is { Length: > 0 }, 15_000);
 
         // 发送消息
         using var producer = new Producer

@@ -10,6 +10,8 @@ using XUnitTest.Integration;
 namespace XUnitTest.Producers;
 
 /// <summary>事务消息完整流程集成测试</summary>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class TransactionMessageIntegrationTests
 {
     /// <summary>尝试 EndTransaction，若 Broker 不支持则返回 false 并记录日志</summary>
@@ -44,7 +46,6 @@ public class TransactionMessageIntegrationTests
         };
         producer.Start();
         producer.Publish("_init_");
-        Thread.Sleep(500);
 
         using var consumer = new Consumer
         {
@@ -71,7 +72,7 @@ public class TransactionMessageIntegrationTests
             return true;
         };
         consumer.Start();
-        Thread.Sleep(3000);
+        TestWait.Until(() => consumer.Queues is { Length: > 0 }, 15_000);
 
         var result = producer.PublishTransaction("tx-commit-body");
         Assert.NotNull(result);
@@ -105,7 +106,6 @@ public class TransactionMessageIntegrationTests
         };
         producer.Start();
         producer.Publish("_init_");
-        Thread.Sleep(500);
 
         using var consumer = new Consumer
         {
@@ -127,7 +127,7 @@ public class TransactionMessageIntegrationTests
             return true;
         };
         consumer.Start();
-        Thread.Sleep(3000);
+        TestWait.Until(() => consumer.Queues is { Length: > 0 }, 15_000);
 
         var result = producer.PublishTransaction("tx-rollback-body");
         Assert.Equal(SendStatus.SendOK, result.Status);

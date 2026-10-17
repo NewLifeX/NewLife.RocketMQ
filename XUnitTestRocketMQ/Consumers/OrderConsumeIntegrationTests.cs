@@ -16,6 +16,8 @@ namespace XUnitTest.Consumers;
 /// 顺序消费原理：通过 LockBatchMQ 锁定队列，确保同一队列同一时刻只有一个消费者处理。
 /// 本测试验证：开启 OrderConsume 后，发送到同一队列的消息按发送顺序被消费。
 /// </remarks>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class OrderConsumeIntegrationTests
 {
     [Fact]
@@ -35,7 +37,6 @@ public class OrderConsumeIntegrationTests
         };
         initProducer.Start();
         initProducer.Publish("_init_");
-        Thread.Sleep(500);
 
         // 创建消费者（FromLastOffset=true 避免消费历史消息）
         using var consumer = new Consumer
@@ -73,7 +74,7 @@ public class OrderConsumeIntegrationTests
         consumer.Start();
 
         // 等待消费者完成 Rebalance
-        Thread.Sleep(5000);
+        TestWait.Until(() => consumer.Queues is { Length: > 0 }, 15_000);
 
         // 用 SelectQueue 固定到同一队列顺序发送 5 条消息
         var targetQueue = initProducer.SelectQueue();
@@ -118,7 +119,7 @@ public class OrderConsumeIntegrationTests
             Log = XTrace.Log,
         };
         consumer.Start();
-        Thread.Sleep(3000);
+        TestWait.Until(() => consumer.Brokers is { Count: > 0 }, 10_000);
 
         // 获取路由队列
         var brokers = consumer.Brokers;

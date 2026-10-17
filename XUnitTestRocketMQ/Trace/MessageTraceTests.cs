@@ -9,6 +9,8 @@ using XUnitTest.Integration;
 
 namespace XUnitTest.Trace;
 
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class MessageTraceTests
 {
     private const String Topic = "TopicDemo";

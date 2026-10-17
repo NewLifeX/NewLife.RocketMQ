@@ -6,6 +6,8 @@ using XUnitTest.Integration;
 
 namespace XUnitTest.Producers;
 
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class ProducerTests
 {
     [Fact]

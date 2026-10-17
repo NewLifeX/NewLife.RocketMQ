@@ -15,6 +15,8 @@ namespace XUnitTest.Consumers;
 /// <remarks>
 /// Consumer 可通过 Topics 属性订阅多个主题，在同一消费者组内接收所有主题的消息。
 /// </remarks>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class MultiTopicIntegrationTests
 {
     [Fact]
@@ -74,7 +76,7 @@ public class MultiTopicIntegrationTests
             return true;
         };
         consumer.Start();
-        Thread.Sleep(5000);
+        TestWait.Until(() => consumer.Queues is { Length: > 0 }, 15_000);
 
         // 分别向两个 Topic 发送消息
         using var producerA = new Producer

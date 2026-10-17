@@ -148,12 +148,17 @@ jobs:
         dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --no-build --filter "FullyQualifiedName~GrpcIntegrationTests" || true
         sleep 10
 
+    # 单元测试按测试类并行执行，几秒内完成；先跑一遍可快速失败，避免集成用例耗时后才暴露单元回归
+    - name: Unit tests (fast)
+      run: |
+        dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --no-build --filter "Category!=Integration" -v minimal
+
     - name: Test
       env:
         ROCKETMQ_NAMESERVER: "127.0.0.1:9876"
         ROCKETMQ_GRPC_PROXY: "http://127.0.0.1:8081"
       run: |
-        dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --no-build -v n
+        dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --no-build --blame-hang-timeout 10m -v n
 
     # NativeAOT 冒烟：裁剪环境下验证帧编解码、请求头字典、JSON 序列化、消息压缩（ZLIB 往返与上限）、
     # LMQ 属性、ACL 签名、端到端收发与 gRPC 5.x 链路

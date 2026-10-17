@@ -17,6 +17,8 @@ namespace XUnitTest.Consumers;
 /// 前提：Broker 必须启用 enablePropertyFilter=true（默认关闭）。
 /// 若 Broker 未启用，测试会跳过验证（不强制失败）。
 /// </remarks>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class SQL92FilterIntegrationTests
 {
     [Fact]
@@ -72,7 +74,7 @@ public class SQL92FilterIntegrationTests
             return;
         }
 
-        Thread.Sleep(4000);
+        TestWait.Until(() => consumer.Queues is { Length: > 0 }, 10_000);
 
         // 发送两条消息：age=10（符合）和 age=3（不符合）
         using var producer = new Producer
@@ -99,11 +101,8 @@ public class SQL92FilterIntegrationTests
         Assert.Equal(SendStatus.SendOK, srBlock.Status);
         XTrace.WriteLine("发送 age=3 消息（应被过滤）");
 
-        // 等待 20 秒
-        await receivedOk.WaitAsync(TimeSpan.FromSeconds(20));
-
-        // 等 5 秒以确保被过滤消息不会延迟到达
-        await Task.Delay(5000);
+        // 等待符合过滤条件的消息（最长 5 秒）
+        await receivedOk.WaitAsync(TimeSpan.FromSeconds(5));
 
         lock (receivedMessages)
         {
@@ -113,7 +112,13 @@ public class SQL92FilterIntegrationTests
                 XTrace.WriteLine("未收到任何消息，Broker 可能未启用 enablePropertyFilter=true，跳过 SQL92 过滤验证");
                 return;
             }
+        }
 
+        // 再等 1.5 秒，确认被过滤消息没有延迟到达
+        await Task.Delay(1500);
+
+        lock (receivedMessages)
+        {
             // 应只收到 age=10 的消息
             foreach (var m in receivedMessages)
             {

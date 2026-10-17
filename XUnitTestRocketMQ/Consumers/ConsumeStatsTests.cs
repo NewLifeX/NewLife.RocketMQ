@@ -9,6 +9,8 @@ using XUnitTest.Integration;
 namespace XUnitTest.Consumers;
 
 /// <summary>消费统计和过滤服务器测试</summary>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class ConsumeStatsTests
 {
     [Fact]

@@ -10,6 +10,8 @@ using XUnitTest.Integration;
 
 namespace XUnitTest.Cloud;
 
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class SupportApacheAclTest
 {
     private const String NameServerAddress = "127.0.0.1:9876";
@@ -57,7 +59,7 @@ public class SupportApacheAclTest
         using var consumer = CreateConsumerInstance(TestTopic);
         consumer.OnConsume = OnConsume;
         consumer.Start();
-        Thread.Sleep(3000);
+        TestWait.Until(() => consumer.Queues is { Length: > 0 }, 15_000);
        
         static Boolean OnConsume(MessageQueue q, MessageExt[] ms)
         {

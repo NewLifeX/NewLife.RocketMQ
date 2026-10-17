@@ -21,6 +21,7 @@ namespace XUnitTest.Integration;
 /// <remarks>初始化</remarks>
 /// <param name="fixture">RocketMQ Fixture</param>
 [Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class GrpcIntegrationTests(RocketMqFixture fixture)
 {
     /// <summary>gRPC Proxy 地址（环境变量 ROCKETMQ_GRPC_PROXY）</summary>
@@ -241,7 +242,7 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
                 }
             }
 
-            if (!arrived) await Task.Delay(1000);
+            if (!arrived) await Task.Delay(300);
         }
 
         Assert.True(arrived, "单向发送的消息未在超时时间内到达");
@@ -286,7 +287,7 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
                 messages.AddRange(list);
             }
 
-            if (!messages.Any(m => m.Body?.ToStr() == body)) await Task.Delay(1000);
+            if (!messages.Any(m => m.Body?.ToStr() == body)) await Task.Delay(300);
         }
 
         Assert.Contains(messages, m => m.Body?.ToStr() == body);
@@ -324,7 +325,7 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
                 }
             }
 
-            await Task.Delay(1000);
+            await Task.Delay(300);
         }
 
         return null;
@@ -534,7 +535,6 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
             GrpcProxyAddress = ProxyAddress,
         };
         dlqConsumer.Start();
-        await Task.Delay(3000);
 
         var dlqRoute = await dlqConsumer.QueryRouteViaGrpcAsync($"%DLQ%{group}");
         Assert.Equal(GrpcCode.OK, dlqRoute.Status?.Code);
@@ -561,7 +561,7 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
                 }
             }
 
-            if (found.Count < total) await Task.Delay(1500);
+            if (found.Count < total) await Task.Delay(500);
         }
 
         Assert.Equal(total, found.Count);
@@ -642,7 +642,6 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
             GrpcProxyAddress = ProxyAddress,
         };
         consumer.Start();
-        await Task.Delay(3000);
 
         var route = await consumer.QueryRouteViaGrpcAsync(topic);
         var found = new System.Collections.Generic.List<String>();
@@ -659,7 +658,7 @@ public class GrpcIntegrationTests(RocketMqFixture fixture)
                 }
             }
 
-            if (!found.Contains(commitBody)) await Task.Delay(1500);
+            if (!found.Contains(commitBody)) await Task.Delay(500);
         }
 
         Assert.Contains(commitBody, found);

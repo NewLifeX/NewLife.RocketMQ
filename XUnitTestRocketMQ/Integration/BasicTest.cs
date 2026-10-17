@@ -2,14 +2,11 @@
 using System.Net.Sockets;
 using NewLife.Log;
 using NewLife.RocketMQ;
-using Xunit;
 
-// 所有测试用例放入一个汇编级集合，除非单独指定Collection特性
-[assembly: CollectionBehavior(CollectionBehavior.CollectionPerAssembly)]
-
+// 单元测试按测试类并行；所有依赖真实 Broker 的用例统一放入 RocketMQ 集合串行执行。
+// 该集合在 RocketMqCollection 中标记 DisableParallelization，避免与单元测试或其他集成用例互相干扰。
 namespace XUnitTest.Integration;
 
-[Collection("Basic")]
 public class BasicTest
 {
     private static MqSetting _config;

@@ -202,7 +202,7 @@ public class NameClient : ClusterClient
             if (list.Count == 0)
             {
                 WriteLog("未能找到主题[{0}]的任何Broker信息，可能是Topic或NameServer错误，也可能是不支持的服务端版本。服务端返回如下：", topic);
-                WriteLog(rs.Payload.ToStr());
+                WriteLog(rs.Payload?.ToStr());
             }
 
             // 有改变，重新平衡队列

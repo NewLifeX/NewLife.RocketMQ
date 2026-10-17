@@ -16,6 +16,8 @@ namespace XUnitTest.Consumers;
 /// BatchAck 允许一次 RPC 批量确认多条 Pop 消息，减少网络开销。
 /// 前提：消息必须通过 Pop 方式拉取，消息属性中含 POP_CK（PopCheckPoint）。
 /// </remarks>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class BatchAckIntegrationTests
 {
     [Fact]
@@ -34,7 +36,6 @@ public class BatchAckIntegrationTests
             Log = XTrace.Log,
         };
         producer.Start();
-        Thread.Sleep(2000);
 
         var stamp = DateTime.UtcNow.Ticks.ToString();
         const Int32 sendCount = 3;
@@ -45,7 +46,6 @@ public class BatchAckIntegrationTests
         }
 
         XTrace.WriteLine("已发送 {0} 条消息，stamp={1}", sendCount, stamp);
-        Thread.Sleep(500);
 
         // 创建消费者（手动 Pop，不自动调度）
         using var consumer = new Consumer
@@ -57,7 +57,7 @@ public class BatchAckIntegrationTests
             AutoSchedule = false,
         };
         consumer.Start();
-        Thread.Sleep(3000);
+        TestWait.Until(() => consumer.Brokers is { Count: > 0 }, 10_000);
 
         var brokers = consumer.Brokers;
         Assert.NotEmpty(brokers);
@@ -65,12 +65,12 @@ public class BatchAckIntegrationTests
 
         // Pop 消息，收集到 3 条或超时
         var collected = new List<MessageExt>();
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         while (collected.Count < sendCount && !cts.Token.IsCancellationRequested)
         {
             try
             {
-                var pr = await consumer.PopMessageAsync(brokerName, maxNums: 8, invisibleTime: 60_000, pollTime: 3_000, cancellationToken: cts.Token);
+                var pr = await consumer.PopMessageAsync(brokerName, maxNums: 32, invisibleTime: 60_000, pollTime: 1_000, cancellationToken: cts.Token);
                 if (pr?.Messages != null)
                 {
                     foreach (var m in pr.Messages)
@@ -137,7 +137,7 @@ public class BatchAckIntegrationTests
             AutoSchedule = false,
         };
         consumer.Start();
-        Thread.Sleep(2000);
+        TestWait.Until(() => consumer.Brokers is { Count: > 0 }, 10_000);
 
         var brokers = consumer.Brokers;
         Assert.NotEmpty(brokers);

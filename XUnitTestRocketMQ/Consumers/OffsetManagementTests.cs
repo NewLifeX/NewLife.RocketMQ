@@ -32,7 +32,7 @@ public sealed class OffsetManagementFixture : IDisposable
         Consumer.Start();
 
         // 等待 Rebalance 完成后取第一个队列
-        Thread.Sleep(6000);
+        TestWait.Until(() => Consumer.Queues is { Length: > 0 }, 15_000);
 
         var queues = Consumer.Queues;
         if (queues != null && queues.Length > 0)
@@ -43,7 +43,8 @@ public sealed class OffsetManagementFixture : IDisposable
 }
 
 /// <summary>Consumer 偏移量管理集成测试</summary>
-[Collection("OffsetMgmt")]
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class OffsetManagementTests : IClassFixture<OffsetManagementFixture>
 {
     private readonly OffsetManagementFixture _fixture;

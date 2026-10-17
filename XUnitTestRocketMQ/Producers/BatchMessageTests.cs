@@ -13,7 +13,8 @@ using XUnitTest.Integration;
 namespace XUnitTest.Producers;
 
 /// <summary>批量消息发送测试</summary>
-[Collection("Basic")]
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class BatchMessageTests
 {
     [Fact]

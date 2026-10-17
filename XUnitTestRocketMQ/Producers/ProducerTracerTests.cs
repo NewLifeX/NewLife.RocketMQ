@@ -8,6 +8,8 @@ using XUnitTest.Integration;
 
 namespace XUnitTest.Producers;
 
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class ProducerTracerTests
 {
     private const String Topic = "TopicDemo";
@@ -16,8 +18,6 @@ public class ProducerTracerTests
     [Fact]
     public void Producer_And_Consumer_With_Trace_Enabled_Should_Work()
     {
-        XTrace.UseConsole();
-
         var set = BasicTest.GetConfig();
         var mre = new ManualResetEvent(false);
 
@@ -44,7 +44,7 @@ public class ProducerTracerTests
         consumer.Start();
 
         // 等待消费者完成 Rebalance
-        Thread.Sleep(3000);
+        TestWait.Until(() => consumer.Queues is { Length: > 0 }, 15_000);
 
         // 2. 创建并启动生产者
         using var producer = new Producer

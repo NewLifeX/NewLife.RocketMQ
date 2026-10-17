@@ -15,6 +15,8 @@ namespace XUnitTest.Trace;
 /// 验证 EnableMessageTrace=true 时，Producer 发送消息后
 /// AsyncTraceDispatcher 能将轨迹数据投递至 RMQ_SYS_TRACE_TOPIC。
 /// </remarks>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class MessageTraceIntegrationTests
 {
     [Fact]
@@ -60,8 +62,8 @@ public class MessageTraceIntegrationTests
 
         traceConsumer.Start();
 
-        // 稍等消费者注册完成
-        await Task.Delay(2000);
+        // 等待轨迹消费者完成 Rebalance
+        await TestWait.UntilAsync(() => Task.FromResult(traceConsumer.Queues is { Length: > 0 }), 10_000);
 
         // 2. 创建开启轨迹的生产者，发送业务消息
         using var producer = new Producer
@@ -183,8 +185,7 @@ public class MessageTraceIntegrationTests
         }
 
         // 5. 等待轨迹到达（轨迹发送有延迟）
-        await Task.Delay(3000);
-        var traceArrived = await done.WaitAsync(TimeSpan.FromSeconds(5));
+        var traceArrived = await done.WaitAsync(TimeSpan.FromSeconds(8));
 
         if (!traceArrived)
         {

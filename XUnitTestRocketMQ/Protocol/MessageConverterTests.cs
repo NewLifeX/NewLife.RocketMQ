@@ -71,6 +71,70 @@ public class MessageConverterTests
     }
 
     [Fact]
+    [DisplayName("GrpcMessage_ToMessageExt_null_抛出ArgumentNullException")]
+    public void GrpcToMessageExt_Null_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => ((GrpcMessage)null).ToMessageExt());
+    }
+
+    [Fact]
+    [DisplayName("GrpcMessage_ToMessage_null_抛出ArgumentNullException")]
+    public void GrpcToMessage_Null_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => ((GrpcMessage)null).ToMessage());
+    }
+
+    [Fact]
+    [DisplayName("Message_ToGrpcMessage_null_抛出ArgumentNullException")]
+    public void MessageToGrpc_Null_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => ((Message)null).ToGrpcMessage());
+    }
+
+    [Fact]
+    [DisplayName("GrpcMessage_无系统属性_转换使用默认值")]
+    public void GrpcToMessageExt_WithoutSystemProperties_UsesDefaults()
+    {
+        var grpc = new GrpcMessage
+        {
+            Topic = new GrpcResource { Name = "topic-default" },
+            Body = new Byte[] { 0x05 },
+        };
+
+        var ext = grpc.ToMessageExt();
+
+        Assert.Equal("topic-default", ext.Topic);
+        Assert.Equal(new Byte[] { 0x05 }, ext.Body);
+        Assert.Equal(0, ext.QueueId);
+        Assert.Equal(0, ext.QueueOffset);
+        Assert.Equal(0, ext.ReconsumeTimes);
+        Assert.Null(ext.Tags);
+        Assert.Null(ext.Keys);
+    }
+
+    [Fact]
+    [DisplayName("Message_ToGrpcMessage_UNIQ_KEY映射为MsgId且空Keys被过滤")]
+    public void MessageToGrpc_UniqKeyAndEmptyKeys()
+    {
+        var msg = new Message
+        {
+            Topic = "topic1",
+            Body = new Byte[] { 0x06 },
+            Tags = "tag",
+            Keys = "k1,,k2,",
+        };
+        msg.Properties["UNIQ_KEY"] = "uniq-001";
+        msg.Properties["TAGS"] = "should-be-skipped";
+
+        var grpc = msg.ToGrpcMessage();
+
+        Assert.Equal("uniq-001", grpc.SystemProperties?.MessageId);
+        Assert.Equal(new[] { "k1", "k2" }, grpc.SystemProperties?.Keys);
+        Assert.DoesNotContain("UNIQ_KEY", grpc.UserProperties.Keys);
+        Assert.DoesNotContain("TAGS", grpc.UserProperties.Keys);
+    }
+
+    [Fact]
     [DisplayName("双向转换_往返字段保持")]
     public void RoundTrip_FieldsPreserved()
     {

@@ -10,6 +10,8 @@ using XUnitTest.Integration;
 namespace XUnitTest.Producers;
 
 /// <summary>Request-Reply 特性测试</summary>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class RequestReplyTests
 {
     [Fact]
@@ -29,7 +31,6 @@ public class RequestReplyTests
 
         // 预创建 Topic，避免消费者启动时 Topic 不存在导致 Rebalance 得到空队列、定时器延至 60 秒
         producer.Publish("_init_");
-        Thread.Sleep(500);
 
         // 创建消费者
         using var consumer = new Consumer
@@ -60,8 +61,8 @@ public class RequestReplyTests
 
         consumer.Start();
 
-        // 等待消费者完成 Rebalance 并开始拉取（Rebalance 通常在 100ms 触发，但首次 Pull 需要建立连接，留 10 秒余量）
-        Thread.Sleep(10000);
+        // 等待消费者完成 Rebalance 并开始拉取
+        TestWait.Until(() => consumer.Queues is { Length: > 0 }, 15_000);
 
         // 发送请求并等待响应
         var requestBody = "Hello, this is a request!";
@@ -89,7 +90,6 @@ public class RequestReplyTests
 
         // 预创建 Topic，避免消费者启动时 Topic 不存在导致 Rebalance 得到空队列、定时器延至 60 秒
         producer.Publish("_init_");
-        await Task.Delay(500);
 
         // 创建消费者
         using var consumer = new Consumer
@@ -120,8 +120,8 @@ public class RequestReplyTests
 
         consumer.Start();
 
-        // 等待消费者完成 Rebalance 并开始拉取（Rebalance 通常在 100ms 触发，但首次 Pull 需要建立连接，留 10 秒余量）
-        await Task.Delay(10000);
+        // 等待消费者完成 Rebalance 并开始拉取
+        await TestWait.UntilAsync(() => Task.FromResult(consumer.Queues is { Length: > 0 }), 15_000);
 
         // 异步发送请求并等待响应
         var requestBody = "Hello, this is an async request!";

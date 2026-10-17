@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using NewLife;
@@ -11,6 +12,8 @@ using XUnitTest.Integration;
 namespace XUnitTest.Cluster;
 
 /// <summary>管理功能扩展集成测试 — 消息查询与消费组信息</summary>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class ManagementExtendedTests
 {
     [Fact]
@@ -36,13 +39,15 @@ public class ManagementExtendedTests
         var result = producer.Publish(msg, null);
         Assert.Equal(SendStatus.SendOK, result.Status);
 
-        // 等待 Broker 索引构建（最长 5 秒）
-        Thread.Sleep(5000);
-
-        // 按 Key 查询
-        var msgs = producer.QueryMessageByKey(topic, uniqueKey, 10,
-            DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeMilliseconds(),
-            DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeMilliseconds());
+        // 轮询 Broker 索引构建（最长 5 秒），索引就绪后立即继续
+        IList<MessageExt> msgs = null;
+        TestWait.Until(() =>
+        {
+            msgs = producer.QueryMessageByKey(topic, uniqueKey, 10,
+                DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeMilliseconds(),
+                DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeMilliseconds());
+            return msgs?.Count > 0;
+        }, 5000, 300);
 
         // 索引有一定延迟，返回空也不报错；有结果则验证 Key 匹配
         if (msgs?.Count > 0)
@@ -113,7 +118,7 @@ public class ManagementExtendedTests
         consumer.Start();
 
         // 等待 Rebalance 分配队列
-        Thread.Sleep(5000);
+        TestWait.Until(() => consumer.Queues is { Length: > 0 }, 15_000);
 
         var queues = consumer.Queues;
         Assert.NotNull(queues);

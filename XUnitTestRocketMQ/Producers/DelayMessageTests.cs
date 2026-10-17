@@ -11,6 +11,8 @@ using XUnitTest.Integration;
 namespace XUnitTest.Producers;
 
 /// <summary>延迟消息集成测试</summary>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class DelayMessageTests
 {
     [Fact]
@@ -29,7 +31,6 @@ public class DelayMessageTests
         };
         initProducer.Start();
         initProducer.Publish("_init_");
-        Thread.Sleep(500);
 
         // 创建消费者
         using var consumer = new Consumer
@@ -57,7 +58,7 @@ public class DelayMessageTests
             return true;
         };
         consumer.Start();
-        Thread.Sleep(3000);
+        TestWait.Until(() => consumer.Queues is { Length: > 0 }, 15_000);
 
         // 发布延迟消息，等级 S1（约1秒后投递）
         initProducer.PublishDelay("delay-test-S1", DelayTimeLevels.S1);

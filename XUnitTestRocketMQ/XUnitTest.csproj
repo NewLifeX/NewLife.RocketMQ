@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <None Remove="Cloud\AliyunIssuesTests.cs~RF3444505.TMP" />
+    <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

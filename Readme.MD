@@ -477,7 +477,7 @@ MqBase (业务基类)
 
 ## 测试覆盖
 
-84 个测试文件，635 个测试用例（xUnit），覆盖核心功能、高级特性、协议兼容、云厂商适配、E2E 集成测试（gRPC 集成用例在未配置 Proxy 时自动跳过）；另含 Apache ACL 2.0 在 Remoting 与 gRPC 两侧的鉴权语义验证（无凭据/非管理员/错误密钥被拒，管理员可正常收发）。CI 以 RID 矩阵运行：单元测试与 AOT 冒烟覆盖 win-x64 / linux-x64 / linux-arm64 / 龙芯 LA64（QEMU 仿真，必选），win-arm64、osx 双架构与 linux-musl 双架构为观察期，全部支持手动触发。
+86 个测试文件，655 个测试用例（xUnit），覆盖核心功能、高级特性、协议兼容、云厂商适配、E2E 集成测试（gRPC 集成用例在未配置 Proxy 时自动跳过）；另含 Apache ACL 2.0 在 Remoting 与 gRPC 两侧的鉴权语义验证（无凭据/非管理员/错误密钥被拒，管理员可正常收发）。单元测试按测试类并行执行，`dotnet test XUnitTestRocketMQ/XUnitTest.csproj --filter "Category!=Integration"` 约 4 秒完成；依赖真实 Broker 的集成用例统一进入 RocketMQ 集合串行执行，避免共享主题与消费组互相干扰；排查问题时设置 `ROCKETMQ_TEST_VERBOSE=1` 可恢复框架日志。CI 以 RID 矩阵运行：单元测试与 AOT 冒烟覆盖 win-x64 / linux-x64 / linux-arm64 / 龙芯 LA64（QEMU 仿真，必选），win-arm64、osx 双架构与 linux-musl 双架构为观察期，全部支持手动触发。
 
 另有 NativeAOT 冒烟（`AotSmoke`，33 个用例，含消息压缩、LMQ、ACL 签名、gRPC 链路、死信转发与 FIFO 顺序消费）、NuGet 包消费 AOT 冒烟（`AotPackageSmoke`，以 PackageReference 消费打包产物，覆盖包资产、源生成序列化、压缩与端到端收发）、发布基线采集（`scripts/AotBaseline.cs`，输出体积/启动开销/吞吐并支持阈值判定，CI 写入流水线摘要）、AOT/JIT 性能对照基准（`Benchmark` 工程基于 BenchmarkDotNet，含分配统计；AOT 侧由 `AotSmoke --bench` 多轮采样）、死信运维工具（`scripts/DlqTool.cs`，把 `%DLQ%{group}` 消息重投到指定主题）与 gRPC 长稳验收脚本（`scripts/GrpcStability.cs`，CI 夜间运行并注入一次 Proxy 重启）。
 

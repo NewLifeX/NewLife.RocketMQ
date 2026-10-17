@@ -7,6 +7,8 @@ using XUnitTest.Integration;
 namespace XUnitTest.Cluster;
 
 /// <summary>按Key查询消息测试</summary>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class QueryMessageTests
 {
     [Fact]

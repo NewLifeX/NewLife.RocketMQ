@@ -15,6 +15,8 @@ namespace XUnitTest.Cluster;
 /// 如果本地 Broker 版本低于 5.5.0，CreateTopic 会成功（Broker 忽略 topicMessageType 字段）
 /// 但不具备 Lite Topic 特性，测试仍会通过（CreateTopic 返回成功次数 &gt; 0）。
 /// </remarks>
+[Collection("RocketMQ")]
+[Trait("Category", "Integration")]
 public class LiteTopicIntegrationTests
 {
     [Fact]
