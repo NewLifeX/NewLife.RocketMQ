@@ -295,6 +295,10 @@ producer.VipChannelEnabled = true;  // 启用 VIP 通道（BrokerPort - 2）
 producer.CompressOverBytes = 4096;  // 消息体超过 4KB 自动 ZLIB 压缩
 ```
 
+### HTTP 桥接（MQ ↔ WebAPI）
+
+消费消息后转发给 WebAPI、或提供 WebAPI 供外部发布消息，用现有 API 即可组合实现，写法见 [HTTP 桥接指南](Doc/HttpBridge_Guide.md)。
+
 ---
 
 ## 云厂商接入
@@ -421,7 +425,7 @@ MqBase (业务基类)
 └── AclProvider     (Apache ACL：HMAC-SHA1 签名)
 ```
 
-详见 [需求文档](Doc/需求文档.md)、[功能清单](Doc/功能清单.md)、[架构设计文档](Doc/架构设计.md)、[竞品分析](Doc/竞品分析.md)。
+详见 [需求文档](Doc/需求文档.md)、[功能清单](Doc/功能清单.md)、[架构设计文档](Doc/架构设计.md)、[竞品分析](Doc/竞品分析.md)、[HTTP 桥接指南](Doc/HttpBridge_Guide.md)。
 
 ---
 
