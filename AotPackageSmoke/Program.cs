@@ -141,10 +141,12 @@ Check("消息压缩·ZLIB 往返与上限", () =>
     Assert(compressor.Decompress(packed).Length == raw.Length, "解压长度不一致");
 
     var bomb = compressor.Compress(new Byte[10 * 1024 * 1024]);
+    // 默认上限面向大消息放得较宽，这里用显式小上限实例验证拦截逻辑
+    var guarded = new ZlibMessageCompressor { MaxDecompressSize = 4 * 1024 * 1024 };
     var caught = false;
     try
     {
-        compressor.Decompress(bomb);
+        guarded.Decompress(bomb);
     }
     catch (InvalidDataException ex)
     {

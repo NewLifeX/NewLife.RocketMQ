@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using NewLife;
 using NewLife.Buffers;
@@ -12,9 +13,11 @@ namespace XUnitTest.Protocol;
 public class MessageExtRobustnessTests
 {
     /// <summary>构造一条最小有效消息的二进制字节（大端序）</summary>
-    private static Byte[] BuildMessage(String topic, String body)
+    private static Byte[] BuildMessage(String topic, String body, Int32 sysFlag = 0) => BuildMessage(topic, body.GetBytes(), sysFlag);
+
+    /// <summary>构造一条最小有效消息的二进制字节（大端序）</summary>
+    private static Byte[] BuildMessage(String topic, Byte[] bodyBytes, Int32 sysFlag = 0)
     {
-        var bodyBytes = body.GetBytes();
         var topicBytes = topic.GetBytes();
         var propsBytes = Array.Empty<Byte>();
 
@@ -30,7 +33,7 @@ public class MessageExtRobustnessTests
         writer.Write((Int32)0);                     // Flag
         writer.Write((Int64)0);                     // QueueOffset
         writer.Write((Int64)100);                   // CommitLogOffset
-        writer.Write((Int32)0);                     // SysFlag
+        writer.Write(sysFlag);                      // SysFlag
         writer.Write((Int64)0);                     // BornTimestamp
         writer.Write(new Byte[4]);                  // BornHost IPv4
         writer.Write((Int32)0);                     // BornPort
@@ -119,6 +122,73 @@ public class MessageExtRobustnessTests
 
         // 安全跳过，无消息且不抛异常
         Assert.Empty(msgs);
+    }
+
+    [Fact]
+    [DisplayName("ReadAll_中间消息解码失败_跳过并继续解析后续消息")]
+    public void ReadAll_DecodeFailure_SkipsAndContinues()
+    {
+        var first = BuildMessage("test-topic", "hello");
+        // SysFlag=1 标记 zlib 压缩，但 Body 为不可解压数据，解码时抛异常
+        var corrupt = BuildMessage("bad-topic", [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], 1);
+        var last = BuildMessage("test-topic", "world");
+
+        var all = new Byte[first.Length + corrupt.Length + last.Length];
+        Buffer.BlockCopy(first, 0, all, 0, first.Length);
+        Buffer.BlockCopy(corrupt, 0, all, first.Length, corrupt.Length);
+        Buffer.BlockCopy(last, 0, all, first.Length + corrupt.Length, last.Length);
+
+        var errors = new List<MessageDecodeError>();
+        var msgs = MessageExt.ReadAll(new ArrayPacket(all), errors.Add);
+
+        // 坏消息被跳过，前后两条正常消息均被解析
+        Assert.Equal(2, msgs.Count);
+        Assert.Equal("hello", msgs[0].BodyString);
+        Assert.Equal("world", msgs[1].BodyString);
+
+        var err = Assert.Single(errors);
+        Assert.Equal(first.Length, err.Offset);
+        Assert.Equal(corrupt.Length, err.StoreSize);
+        Assert.Equal(corrupt, err.Data);
+        Assert.NotNull(err.Exception);
+    }
+
+    [Fact]
+    [DisplayName("ReadAll_整批消息解码失败_返回空列表并逐条上报")]
+    public void ReadAll_AllDecodeFailed_ReturnsEmptyAndReports()
+    {
+        var bad1 = BuildMessage("bad-topic", [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], 1);
+        var bad2 = BuildMessage("bad-topic", [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], 1);
+
+        var all = new Byte[bad1.Length + bad2.Length];
+        Buffer.BlockCopy(bad1, 0, all, 0, bad1.Length);
+        Buffer.BlockCopy(bad2, 0, all, bad1.Length, bad2.Length);
+
+        var errors = new List<MessageDecodeError>();
+        var msgs = MessageExt.ReadAll(new ArrayPacket(all), errors.Add);
+
+        Assert.Empty(msgs);
+        Assert.Equal(2, errors.Count);
+        Assert.Equal(0, errors[0].Offset);
+        Assert.Equal(bad1.Length, errors[1].Offset);
+    }
+
+    [Fact]
+    [DisplayName("ReadAll_压缩大消息_正常解码")]
+    public void ReadAll_LargeCompressedMessage()
+    {
+        // 回归 #120：6MB 消息压缩后解码，解压结果远超 RocketMQ 默认 4MB 上限
+        var body = new Byte[6 * 1024 * 1024];
+        for (var i = 0; i < body.Length; i++) body[i] = (Byte)(i * 31 % 251);
+
+        var compressed = new ZlibMessageCompressor().Compress(body);
+        var data = BuildMessage("test-topic", compressed, 1);
+
+        var msgs = MessageExt.ReadAll(new ArrayPacket(data));
+
+        var msg = Assert.Single(msgs);
+        Assert.Equal(body.Length, msg.Body.Length);
+        Assert.True(body.AsSpan().SequenceEqual(msg.Body));
     }
 
     [Fact]

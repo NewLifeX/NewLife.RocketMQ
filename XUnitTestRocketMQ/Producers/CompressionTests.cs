@@ -169,14 +169,30 @@ public class CompressionTests
     [DisplayName("ZlibMessageCompressor_解压超过上限_抛出异常")]
     public void Zlib_Decompress_ExceedsLimit_Throws()
     {
-        // zip bomb 防护：解压输出超过 4MB 上限时抛异常，防止 OOM
-        var big = new Byte[ZlibMessageCompressor.MaxDecompressSize + 1024]; // 全 0，压缩比极高
-        var compressor = new ZlibMessageCompressor();
+        // zip bomb 防护：解压输出超过上限时抛异常，防止 OOM
+        var big = new Byte[64 * 1024 + 1024]; // 全 0，压缩比极高
+        var compressor = new ZlibMessageCompressor { MaxDecompressSize = 64 * 1024 };
         var compressed = compressor.Compress(big);
 
         Assert.True(compressed.Length < big.Length);
 
         Assert.Throws<InvalidDataException>(() => compressor.Decompress(compressed));
+    }
+
+    [Fact]
+    [DisplayName("ZlibMessageCompressor_6MB大消息压缩解压往返")]
+    public void Zlib_Decompress_LargeMessage()
+    {
+        // 生产消息体可达 6MB，压缩后仍超过 RocketMQ 默认 4MB，解压结果不能被上限误杀
+        var original = new Byte[6 * 1024 * 1024];
+        for (var i = 0; i < original.Length; i++) original[i] = (Byte)(i * 31 % 251);
+
+        var compressor = new ZlibMessageCompressor();
+        var compressed = compressor.Compress(original);
+        var decompressed = compressor.Decompress(compressed);
+
+        Assert.Equal(original.Length, decompressed.Length);
+        Assert.True(original.AsSpan().SequenceEqual(decompressed));
     }
 
     private class FakeCompressor : IMessageCompressor

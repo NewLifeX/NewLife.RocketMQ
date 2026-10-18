@@ -189,40 +189,94 @@ public class MessageExt : Message, IAccessor
     /// <summary>读取所有消息</summary>
     /// <param name="body">消息数据包</param>
     /// <returns></returns>
-    public static IList<MessageExt> ReadAll(IPacket body)
+    public static IList<MessageExt> ReadAll(IPacket body) => ReadAll(body, null);
+
+    /// <summary>读取所有消息。单条消息解码失败时跳过该条，继续解析同批其余消息</summary>
+    /// <param name="body">消息数据包</param>
+    /// <param name="onDecodeError">单条消息解码失败回调。为空时仅写 XTrace 日志</param>
+    /// <returns></returns>
+    /// <remarks>
+    /// 消息头 StoreSize 包含自身 4 字节并标识本条消息完整长度，失败时按该长度跳过错位，
+    /// 避免解码异常把读取位置留在消息中间导致后续消息全部错乱。
+    /// </remarks>
+    public static IList<MessageExt> ReadAll(IPacket body, Action<MessageDecodeError> onDecodeError)
     {
         var buf = body.ReadBytes();
-        var reader = new SpanReader(buf) { IsLittleEndian = false };
-
         var list = new List<MessageExt>();
-        while (reader.Available > 0)
+        var offset = 0;
+        while (buf.Length - offset >= 4)
         {
-            MessageExt msg;
-            try
+            // StoreSize 为大端序，包含自身 4 字节
+            var storeSize = (buf[offset] << 24) | (buf[offset + 1] << 16) | (buf[offset + 2] << 8) | buf[offset + 3];
+            if (storeSize <= 4 || offset + storeSize > buf.Length)
             {
-                msg = new MessageExt();
-                if (!msg.Read(ref reader)) break;
-            }
-            catch (Exception ex)
-            {
-                // 单条坏消息不影响整批解析，跳过并记录，避免整批消息全部丢失
-                XTrace.WriteLine("解码消息失败，跳过：{0}", ex.Message);
+                // 长度非法时无法定位下一条消息边界，剩余数据全部放弃
+                ReportDecodeError(new InvalidDataException($"消息长度[{storeSize}]非法，剩余[{buf.Length - offset}]"), Slice(buf, offset, buf.Length - offset), offset, storeSize, onDecodeError);
                 break;
             }
 
-            // INNER_BATCH_FLAG(0x80) 标识批量消息，Body 内嵌多条子消息
-            if ((msg.SysFlag & 0x80) != 0 && msg.Body != null && msg.Body.Length > 0)
+            MessageExt msg = null;
+            try
             {
-                var batches = DecodeBatch(msg);
-                list.AddRange(batches);
+                var reader = new SpanReader(buf, offset, storeSize) { IsLittleEndian = false };
+                var tmp = new MessageExt();
+                if (tmp.Read(ref reader)) msg = tmp;
             }
-            else
+            catch (Exception ex)
             {
-                list.Add(msg);
+                ReportDecodeError(ex, Slice(buf, offset, storeSize), offset, storeSize, onDecodeError);
             }
+
+            if (msg != null)
+            {
+                // INNER_BATCH_FLAG(0x80) 标识批量消息，Body 内嵌多条子消息
+                if ((msg.SysFlag & 0x80) != 0 && msg.Body != null && msg.Body.Length > 0)
+                {
+                    var batches = DecodeBatch(msg);
+                    list.AddRange(batches);
+                }
+                else
+                {
+                    list.Add(msg);
+                }
+            }
+
+            offset += storeSize;
         }
 
         return list;
+    }
+
+    private static Byte[] Slice(Byte[] buf, Int32 offset, Int32 count)
+    {
+        var data = new Byte[count];
+        Buffer.BlockCopy(buf, offset, data, 0, count);
+        return data;
+    }
+
+    private static void ReportDecodeError(Exception ex, Byte[] data, Int32 offset, Int32 storeSize, Action<MessageDecodeError> onDecodeError)
+    {
+        if (onDecodeError == null)
+        {
+            XTrace.WriteLine("解码消息失败，跳过：{0}", ex.Message);
+            return;
+        }
+
+        try
+        {
+            onDecodeError(new MessageDecodeError
+            {
+                Exception = ex,
+                Data = data,
+                Offset = offset,
+                StoreSize = storeSize,
+            });
+        }
+        catch (Exception err)
+        {
+            // 回调异常不得中断整批解析
+            XTrace.WriteException(err);
+        }
     }
 
     /// <summary>解码批量消息。BatchMessage 的 Body 内嵌多条子消息</summary>

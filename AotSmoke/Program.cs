@@ -346,14 +346,16 @@ Check("压缩·ZLIB 往返与格式兼容", () =>
 
 Check("压缩·解压输出上限", () =>
 {
-    // 10MB 全零数据压缩后仅数十 KB，解压时应被 4MB 上限拦截，避免 zip bomb 撑爆内存
+    // 10MB 全零数据压缩后仅数十 KB，解压时应被上限拦截，避免 zip bomb 撑爆内存
     var bomb = MessageCompressorRegistry.GetOrThrow(0).Compress(new Byte[10 * 1024 * 1024]);
     Assert(bomb.Length < 1024 * 1024, $"全零数据压缩率异常：{bomb.Length}");
 
+    // 默认上限面向大消息放得较宽，这里用显式小上限实例验证拦截逻辑
+    var guarded = new ZlibMessageCompressor { MaxDecompressSize = 4 * 1024 * 1024 };
     var caught = false;
     try
     {
-        MessageCompressorRegistry.GetOrThrow(0).Decompress(bomb);
+        guarded.Decompress(bomb);
     }
     catch (InvalidDataException ex)
     {

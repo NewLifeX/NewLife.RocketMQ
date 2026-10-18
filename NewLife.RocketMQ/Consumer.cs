@@ -89,6 +89,9 @@ public class Consumer : MqBase
     /// <summary>消费事件</summary>
     public event EventHandler<ConsumeEventArgs> Consumed;
 
+    /// <summary>消息解码失败事件。单条消息无法解码时触发，应用层可据此告警或旁路保存原始数据</summary>
+    public event EventHandler<MessageDecodeEventArgs> DecodeError;
+
     private readonly IList<IConsumeMessageHook> _consumeMessageHooks = new List<IConsumeMessageHook>();
     private AsyncTraceDispatcher _traceDispatcher;
     private MessageTraceHook _traceHook;
@@ -290,9 +293,27 @@ public class Consumer : MqBase
 
         // 读取内容
         var pk = rs.Payload;
-        if (pk != null) pr.Messages = MessageExt.ReadAll(pk).ToArray();
+        if (pk != null) pr.Messages = MessageExt.ReadAll(pk, e => OnDecodeError(mq, e)).ToArray();
 
         return pr;
+    }
+
+    /// <summary>处理单条消息解码失败。写日志并触发 <see cref="DecodeError"/> 事件</summary>
+    /// <param name="mq">队列</param>
+    /// <param name="error">解码失败信息</param>
+    private void OnDecodeError(MessageQueue mq, MessageDecodeError error)
+    {
+        WriteLog("解码消息失败，跳过 [{0}]：{1}", mq, error.Exception?.Message);
+
+        try
+        {
+            DecodeError?.Invoke(this, new MessageDecodeEventArgs { Queue = mq, Error = error });
+        }
+        catch (Exception ex)
+        {
+            // 应用层回调异常不得影响拉取
+            Log?.Error(ex.GetMessage());
+        }
     }
 
     #endregion
@@ -791,6 +812,14 @@ public class Consumer : MqBase
                                 {
                                     _concurrentSemaphore?.Release();
                                 }
+                            }
+                            else if (pr.NextBeginOffset > st.Offset)
+                            {
+                                // 整批消息均无法解码时若不推进位点，同一批坏消息会被无限重拉，队列假死；
+                                // 按已消费处理，跳过该批并提交位点
+                                WriteLog("批次无可解码消息，跳过 [{0}] Offset={1:n0}, NextOffset={2:n0}", mq, st.Offset, pr.NextBeginOffset);
+                                st.Offset = pr.NextBeginOffset;
+                                await UpdateOffset(mq, st.Offset, cancellationToken).ConfigureAwait(false);
                             }
 
                             break;
@@ -1619,7 +1648,11 @@ public class Consumer : MqBase
 
             pr.Read(rs.Header?.ExtFields);
 
-            if (rs.Payload != null) pr.Messages = MessageExt.ReadAll(rs.Payload).ToArray();
+            if (rs.Payload != null)
+            {
+                var mq = new MessageQueue { Topic = Topic, BrokerName = brokerName, QueueId = queueId };
+                pr.Messages = MessageExt.ReadAll(rs.Payload, e => OnDecodeError(mq, e)).ToArray();
+            }
 
             return pr;
         }

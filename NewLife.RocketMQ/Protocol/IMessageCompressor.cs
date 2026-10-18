@@ -31,10 +31,16 @@ public interface IMessageCompressor
 /// </remarks>
 public class ZlibMessageCompressor : IMessageCompressor
 {
-    /// <summary>解压输出大小上限。默认4MB（RocketMQ 消息上限），防止 zip bomb</summary>
-    public const Int32 MaxDecompressSize = 4 * 1024 * 1024;
+    /// <summary>解压输出大小上限。默认64MB，防止 zip bomb</summary>
+    /// <remarks>
+    /// RocketMQ 默认的 4MB 消息上限约束的是压缩后大小，压缩比高的消息或 Broker 调大 maxMessageSize 后，
+    /// 解压结果可能远超 4MB（如 6MB 业务消息），因此不能沿用 4MB 作为解压上限。
+    /// 如需调整，可替换注册实例：<c>MessageCompressorRegistry.Register(0, new ZlibMessageCompressor { MaxDecompressSize = 128 * 1024 * 1024 })</c>；
+    /// 类型 3（0x300 别名）与类型 0 共用同一实例，需要一并替换。
+    /// </remarks>
+    public Int32 MaxDecompressSize { get; set; } = 64 * 1024 * 1024;
 
-    private static readonly String TooLargeMessage = $"解压数据超过上限[{MaxDecompressSize}]";
+    private InvalidDataException TooLargeException() => new($"解压数据超过上限[{MaxDecompressSize}]");
 
     /// <summary>压缩，输出 RFC1950 ZLIB 格式（2字节头 + deflate + Adler-32尾）</summary>
     /// <param name="data">原始字节</param>
@@ -83,17 +89,17 @@ public class ZlibMessageCompressor : IMessageCompressor
             if (result != null) return result;
 
             // 超出解压上限是最终结论，不再退化重试：否则 zip bomb 会被当作 RAW DEFLATE 解出残缺数据而悄然通过
-            if (tooLarge) throw new InvalidDataException(TooLargeMessage);
+            if (tooLarge) throw TooLargeException();
 
             // 部分实现不含 Adler-32 尾，仅剥离头部重试
             result = DecompressCore(data, 2, data.Length - 2, out tooLarge);
             if (result != null) return result;
-            if (tooLarge) throw new InvalidDataException(TooLargeMessage);
+            if (tooLarge) throw TooLargeException();
         }
 
         // RAW DEFLATE（或头部误判后的最后一次尝试）
         var raw = DecompressCore(data, 0, data.Length, out var rawTooLarge);
-        if (rawTooLarge) throw new InvalidDataException(TooLargeMessage);
+        if (rawTooLarge) throw TooLargeException();
 
         return raw;
     }
@@ -108,13 +114,14 @@ public class ZlibMessageCompressor : IMessageCompressor
     /// <param name="length">长度，小于0时取到结尾</param>
     /// <param name="tooLarge">是否因超出输出上限而中止</param>
     /// <returns>解压结果；超出上限时返回 null 并置 <paramref name="tooLarge"/></returns>
-    private static Byte[] DecompressCore(Byte[] data, Int32 offset, Int32 length, out Boolean tooLarge)
+    private Byte[] DecompressCore(Byte[] data, Int32 offset, Int32 length, out Boolean tooLarge)
     {
         tooLarge = false;
 
         if (length < 0) length = data.Length - offset;
         if (length <= 0) return [];
 
+        var maxSize = MaxDecompressSize;
         using var ms = new MemoryStream(data, offset, length);
         using var ds = new DeflateStream(ms, CompressionMode.Decompress);
         using var output = new MemoryStream();
@@ -125,7 +132,7 @@ public class ZlibMessageCompressor : IMessageCompressor
         while ((read = ds.Read(buf, 0, buf.Length)) > 0)
         {
             total += read;
-            if (total > MaxDecompressSize)
+            if (total > maxSize)
             {
                 tooLarge = true;
                 return null;
