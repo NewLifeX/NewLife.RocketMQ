@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using NewLife.Buffers;
 using NewLife.Serialization;
+using NewLife;
 
 namespace NewLife.RocketMQ.Grpc;
 
@@ -311,13 +312,13 @@ public static class ProtoExtensions
         var shift = 0;
         while (shift < 64)
         {
-            if (reader.Available <= 0) throw new EndOfStreamException("读取varint时到达数据末尾");
+            if (reader.Available <= 0) throw new EndOfStreamException(L.T("Reached the end of the data while reading a varint."));
             var b = reader.ReadByte();
             result |= (UInt64)(b & 0x7F) << shift;
             if ((b & 0x80) == 0) return result;
             shift += 7;
         }
-        throw new InvalidDataException("Varint编码超长");
+        throw new InvalidDataException(L.T("The varint encoding is too long."));
     }
 
     /// <summary>读取field tag，返回字段编号和线路类型</summary>

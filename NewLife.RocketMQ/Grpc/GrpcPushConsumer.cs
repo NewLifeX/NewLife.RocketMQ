@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Log;
+using NewLife;
 
 namespace NewLife.RocketMQ.Grpc;
 
@@ -128,13 +129,13 @@ public class GrpcPushConsumer : IDisposable
     /// <exception cref="InvalidOperationException">未设置必要属性时抛出</exception>
     public async Task StartAsync()
     {
-        if (Topic.IsNullOrEmpty()) throw new InvalidOperationException("Topic 不能为空");
-        if (Group.IsNullOrEmpty()) throw new InvalidOperationException("Group 不能为空");
-        if (Endpoints.IsNullOrEmpty()) throw new InvalidOperationException("Endpoints 不能为空");
-        if (OnMessage == null) throw new InvalidOperationException("OnMessage 回调不能为空");
+        if (Topic.IsNullOrEmpty()) throw new InvalidOperationException(L.T("Topic cannot be empty."));
+        if (Group.IsNullOrEmpty()) throw new InvalidOperationException(L.T("Group cannot be empty."));
+        if (Endpoints.IsNullOrEmpty()) throw new InvalidOperationException(L.T("Endpoints cannot be empty."));
+        if (OnMessage == null) throw new InvalidOperationException(L.T("The OnMessage callback cannot be empty."));
 
         // 重复启动防护
-        if (_consumeTask != null) throw new InvalidOperationException("Push Consumer 已启动");
+        if (_consumeTask != null) throw new InvalidOperationException(L.T("The push consumer has already started."));
 
         var grpcClient = new GrpcClient
         {

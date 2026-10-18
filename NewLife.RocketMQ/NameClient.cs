@@ -5,6 +5,7 @@ using NewLife.Net;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Threading;
+using NewLife;
 
 namespace NewLife.RocketMQ;
 
@@ -54,7 +55,7 @@ public class NameClient : ClusterClient
     {
         var cfg = Config;
         if (cfg.NameServerAddress.IsNullOrEmpty())
-            throw new ArgumentNullException(nameof(cfg.NameServerAddress), "未指定NameServer地址");
+            throw new ArgumentNullException(nameof(cfg.NameServerAddress), L.T("The NameServer address is not specified."));
 
         var ss = cfg.NameServerAddress.Split(";");
 

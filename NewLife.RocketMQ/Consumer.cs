@@ -13,6 +13,7 @@ using NewLife.Serialization;
 using NewLife.Threading;
 
 using NewLife.RocketMQ.MessageTrace;
+using NewLife;
 
 namespace NewLife.RocketMQ;
 
@@ -1706,7 +1707,7 @@ public class Consumer : MqBase
     public Task<Boolean> AckMessageAsync(String brokerName, MessageExt msg, CancellationToken cancellationToken = default)
     {
         if (msg == null) throw new ArgumentNullException(nameof(msg));
-        if (String.IsNullOrEmpty(msg.PopCheckPoint)) throw new ArgumentException("消息不含Pop检查点信息（POP_CK属性缺失），请确认该消息是通过Pop方式拉取的。", nameof(msg));
+        if (String.IsNullOrEmpty(msg.PopCheckPoint)) throw new ArgumentException(L.T("The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop."), nameof(msg));
 
         return AckMessageAsync(brokerName, msg.PopCheckPoint, msg.QueueOffset, msg.QueueId, cancellationToken);
     }
@@ -1778,7 +1779,7 @@ public class Consumer : MqBase
     public Task<Boolean> ChangeInvisibleTimeAsync(String brokerName, MessageExt msg, Int64 invisibleTime, Boolean incrementReconsumeTimes = true, CancellationToken cancellationToken = default)
     {
         if (msg == null) throw new ArgumentNullException(nameof(msg));
-        if (String.IsNullOrEmpty(msg.PopCheckPoint)) throw new ArgumentException("消息不含Pop检查点信息（POP_CK属性缺失），请确认该消息是通过Pop方式拉取的。", nameof(msg));
+        if (String.IsNullOrEmpty(msg.PopCheckPoint)) throw new ArgumentException(L.T("The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop."), nameof(msg));
 
         return ChangeInvisibleTimeAsync(brokerName, msg.PopCheckPoint, msg.QueueOffset, invisibleTime, msg.QueueId, incrementReconsumeTimes, cancellationToken);
     }

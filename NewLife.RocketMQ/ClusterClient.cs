@@ -6,6 +6,7 @@ using NewLife.Net;
 using NewLife.RocketMQ.Client;
 using NewLife.RocketMQ.Protocol;
 using NewLife.Serialization;
+using NewLife;
 
 namespace NewLife.RocketMQ;
 
@@ -90,7 +91,7 @@ public abstract class ClusterClient : DisposeBase
             _Client = null;
 
             var servers = Servers;
-            if (servers == null || servers.Length == 0) throw new XException("[{0}]服务器地址为空！", Name);
+            if (servers == null || servers.Length == 0) throw new XException(L.T("[{0}] server address is empty!"), Name);
 
             // 从上一个成功地址的下一个开始轮询，避免始终钉在第一个地址（raft多节点集群可能连到非Leader）
             if (_serverIndex >= servers.Length) _serverIndex = -1;
@@ -137,7 +138,7 @@ public abstract class ClusterClient : DisposeBase
                 catch { }
             }
 
-            if (_Client == null) throw new XException("[{0}]集群所有地址[{1}]连接失败！", Name, servers.Length);
+            if (_Client == null) throw new XException(L.T("[{0}] failed to connect to all cluster addresses [{1}]!"), Name, servers.Length);
         }
     }
 

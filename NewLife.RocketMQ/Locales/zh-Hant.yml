@@ -1,0 +1,12 @@
+# 繁體中文譯文。鍵為英文源文，缺失時執行期回退英文。
+"[{0}] server address is empty!": "[{0}]服務器地址為空！"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}]集群所有地址[{1}]連接失敗！"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "消息不含Pop檢查點信息（POP_CK屬性缺失），請確認該消息是通過Pop方式拉取的。"
+"Topic cannot be empty.": "Topic 不能為空"
+"Group cannot be empty.": "Group 不能為空"
+"Endpoints cannot be empty.": "Endpoints 不能為空"
+"The OnMessage callback cannot be empty.": "OnMessage 回調不能為空"
+"The push consumer has already started.": "Push Consumer 已啟動"
+"Reached the end of the data while reading a varint.": "讀取varint時到達數據末尾"
+"The varint encoding is too long.": "Varint編碼超長"
+"The NameServer address is not specified.": "未指定NameServer地址"
