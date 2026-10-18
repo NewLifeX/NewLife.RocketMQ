@@ -36,6 +36,41 @@ public class TraceDispatcherConfigTests
         return (Producer)field.GetValue(dispatcher);
     }
 
+    private static Object CreateTraceHook(IDisposable dispatcher)
+    {
+        var type = typeof(Producer).Assembly.GetType("NewLife.RocketMQ.MessageTrace.MessageTraceHook");
+        Assert.NotNull(type);
+
+        var ctor = type.GetConstructor(new[] { dispatcher.GetType() });
+        Assert.NotNull(ctor);
+
+        return ctor.Invoke(new Object[] { dispatcher });
+    }
+
+    private static void InvokeOnStop(MqBase host)
+    {
+        var method = host.GetType().GetMethod("OnStop", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+
+        method.Invoke(host, null);
+    }
+
+    private static System.Collections.IList GetHookList(MqBase host, String fieldName)
+    {
+        var field = host.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(field);
+
+        return (System.Collections.IList)field.GetValue(host);
+    }
+
+    private static void SetField(MqBase host, String fieldName, Object value)
+    {
+        var field = host.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(field);
+
+        field.SetValue(host, value);
+    }
+
     [Fact]
     [DisplayName("轨迹分发器_继承宿主CloudProvider")]
     public void InheritCloudProvider()
@@ -139,5 +174,53 @@ public class TraceDispatcherConfigTests
         {
             dispatcher.Dispose();
         }
+    }
+
+    [Fact]
+    [DisplayName("生产者停止_释放轨迹分发器并移除钩子")]
+    public void ProducerStop_DisposesDispatcher()
+    {
+        using var host = new Producer { EnableMessageTrace = true };
+        var dispatcher = CreateDispatcher(host);
+        var hook = CreateTraceHook(dispatcher);
+        SetField(host, "_traceDispatcher", dispatcher);
+        SetField(host, "_traceHook", hook);
+
+        var hooks = GetHookList(host, "_sendMessageHooks");
+        hooks.Add(hook);
+
+        InvokeOnStop(host);
+
+        Assert.Null(GetPrivateField(host, "_traceDispatcher"));
+        Assert.Null(GetPrivateField(host, "_traceHook"));
+        Assert.False(hooks.Contains(hook));
+    }
+
+    [Fact]
+    [DisplayName("消费者停止_释放轨迹分发器并移除钩子")]
+    public void ConsumerStop_DisposesDispatcher()
+    {
+        using var host = new Consumer { EnableMessageTrace = true };
+        var dispatcher = CreateDispatcher(host);
+        var hook = CreateTraceHook(dispatcher);
+        SetField(host, "_traceDispatcher", dispatcher);
+        SetField(host, "_traceHook", hook);
+
+        var hooks = GetHookList(host, "_consumeMessageHooks");
+        hooks.Add(hook);
+
+        InvokeOnStop(host);
+
+        Assert.Null(GetPrivateField(host, "_traceDispatcher"));
+        Assert.Null(GetPrivateField(host, "_traceHook"));
+        Assert.False(hooks.Contains(hook));
+    }
+
+    private static Object GetPrivateField(Object target, String fieldName)
+    {
+        var field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(field);
+
+        return field.GetValue(target);
     }
 }

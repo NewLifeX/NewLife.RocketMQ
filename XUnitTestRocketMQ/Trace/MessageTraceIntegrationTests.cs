@@ -196,4 +196,49 @@ public class MessageTraceIntegrationTests
         Assert.NotEmpty(traceReceived);
         XTrace.WriteLine($"共收到 {traceReceived.Count} 条消费轨迹消息");
     }
+
+    [Fact]
+    [DisplayName("消费者轨迹_名称服务器由CloudProvider解析时_启动成功")]
+    public void ConsumerTrace_ProviderResolvesNameServer_StartsSuccessfully()
+    {
+        var set = BasicTest.GetConfig();
+
+        // 模拟阿里云场景：NameServerAddress 为空，由 CloudProvider 解析后写入。
+        // 轨迹分发器必须在 base.OnStart 解析出地址之后再启动，否则会收到空地址
+        using var consumer = new Consumer
+        {
+            Topic = "TopicDemo",
+            Group = "nx_trace_consumer_provider_group",
+            CloudProvider = new NameServerProvider { Server = set.NameServer },
+            EnableMessageTrace = true,
+            AutoSchedule = false,
+            Log = XTrace.Log,
+        };
+
+        consumer.Start();
+
+        Assert.True(consumer.Active);
+        Assert.Equal(set.NameServer, consumer.NameServerAddress);
+
+        consumer.Stop();
+    }
+
+    private sealed class NameServerProvider : ICloudProvider
+    {
+        public String Server { get; set; }
+
+        public String Name => "Test";
+
+        public String AccessKey => null;
+
+        public String SecretKey => null;
+
+        public String OnsChannel => null;
+
+        public String TransformTopic(String topic) => topic;
+
+        public String TransformGroup(String group) => group;
+
+        public String GetNameServerAddress() => Server;
+    }
 }

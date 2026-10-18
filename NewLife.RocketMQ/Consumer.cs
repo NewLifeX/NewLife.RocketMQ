@@ -91,6 +91,7 @@ public class Consumer : MqBase
 
     private readonly IList<IConsumeMessageHook> _consumeMessageHooks = new List<IConsumeMessageHook>();
     private AsyncTraceDispatcher _traceDispatcher;
+    private MessageTraceHook _traceHook;
 
     /// <summary>注册消费消息钩子。在消息消费前后调用</summary>
     /// <param name="hook">钩子实现</param>
@@ -143,13 +144,6 @@ public class Consumer : MqBase
         var allTopics = GetEffectiveTopics();
         WriteLog("正在准备消费 {0}", allTopics.Join(","));
 
-        if (EnableMessageTrace)
-        {
-            _traceDispatcher = new AsyncTraceDispatcher(this);
-            _traceDispatcher.Start(NameServerAddress);
-            _consumeMessageHooks.Add(new MessageTraceHook(_traceDispatcher));
-        }
-
         var list = Data;
         if (list == null)
         {
@@ -175,6 +169,16 @@ public class Consumer : MqBase
         }
 
         base.OnStart();
+
+        // 内部轨迹Producer与宿主一样依赖名称服务器地址。必须在 base.OnStart 之后启动，
+        // 因为阿里云场景下 NameServerAddress 可能为空，需要由 CloudProvider 通过 HTTP 接口解析后再传入
+        if (EnableMessageTrace)
+        {
+            _traceDispatcher = new AsyncTraceDispatcher(this);
+            _traceDispatcher.Start(NameServerAddress);
+            _traceHook = new MessageTraceHook(_traceDispatcher);
+            _consumeMessageHooks.Add(_traceHook);
+        }
 
         // 多Topic时，通知NameClient轮询额外主题的路由
         if (allTopics.Length > 1 && _NameServer != null)
@@ -210,6 +214,15 @@ public class Consumer : MqBase
         PersistAll(_Queues).Wait();
 
         base.OnStop();
+
+        // 轨迹分发器持有独立Producer与后台线程，不释放会在停止后继续存活
+        if (_traceHook != null)
+        {
+            _consumeMessageHooks.Remove(_traceHook);
+            _traceHook = null;
+        }
+        _traceDispatcher.TryDispose();
+        _traceDispatcher = null;
     }
 
     /// <summary>创建Broker客户端，已重载，设置更大的超时时间</summary>

@@ -42,6 +42,7 @@ public class Producer : MqBase
 
     private readonly IList<ISendMessageHook> _sendMessageHooks = new List<ISendMessageHook>();
     private AsyncTraceDispatcher _traceDispatcher;
+    private MessageTraceHook _traceHook;
 
     /// <summary>注册发送消息钩子。在消息发送前后调用</summary>
     /// <param name="hook">钩子实现</param>
@@ -80,7 +81,8 @@ public class Producer : MqBase
         {
             _traceDispatcher = new AsyncTraceDispatcher(this);
             _traceDispatcher.Start(NameServerAddress);
-            _sendMessageHooks.Add(new MessageTraceHook(_traceDispatcher));
+            _traceHook = new MessageTraceHook(_traceDispatcher);
+            _sendMessageHooks.Add(_traceHook);
         }
 
         LoadBalance ??= new WeightRoundRobin();
@@ -111,6 +113,15 @@ public class Producer : MqBase
         }
 
         base.OnStop();
+
+        // 轨迹分发器持有独立Producer与后台线程，不释放会在停止后继续存活
+        if (_traceHook != null)
+        {
+            _sendMessageHooks.Remove(_traceHook);
+            _traceHook = null;
+        }
+        _traceDispatcher.TryDispose();
+        _traceDispatcher = null;
     }
     #endregion
 
