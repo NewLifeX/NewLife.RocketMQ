@@ -181,6 +181,7 @@ jobs:
       run: |
         dotnet pack NewLife.RocketMQ/NewLife.RocketMQ.csproj -c Release -p:Version=3.2.0-aotpackage -o /tmp/rmqpack
         dotnet restore AotPackageSmoke/AotPackageSmoke.csproj -r linux-x64 \
+          -p:NewLifeRocketMQVersion=3.2.0-aotpackage \
           -p:RestoreSources="/tmp/rmqpack;https://api.nuget.org/v3/index.json"
         dotnet publish AotPackageSmoke/AotPackageSmoke.csproj -c Release -r linux-x64 --no-restore \
           -p:TrimmerSingleWarn=false -p:WarningsAsErrors=IL2026%3BIL3050%3BIL2104
