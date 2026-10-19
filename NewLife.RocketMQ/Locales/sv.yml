@@ -1,0 +1,12 @@
+# Svenska 词表（sv）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] serveradressen är tom!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] det gick inte att ansluta till alla klusteradresser [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Meddelandet innehåller ingen Pop-kontrollpunktsinformation (egenskapen POP_CK saknas); se till att det hämtades med Pop."
+"Topic cannot be empty.": "Ämnet får inte vara tomt."
+"Group cannot be empty.": "Gruppen får inte vara tom."
+"Endpoints cannot be empty.": "Slutpunkterna får inte vara tomma."
+"The OnMessage callback cannot be empty.": "OnMessage-återanropet får inte vara tomt."
+"The push consumer has already started.": "Push-konsumenten har redan startats."
+"Reached the end of the data while reading a varint.": "Nådde slutet av data när en varint lästes."
+"The varint encoding is too long.": "Varint-kodningen är för lång."
+"The NameServer address is not specified.": "NameServer-adressen är inte angiven."

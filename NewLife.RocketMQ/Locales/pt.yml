@@ -1,0 +1,12 @@
+# Português 词表（pt）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] o endereço do servidor está vazio!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] falha ao conectar a todos os endereços do cluster [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "A mensagem não contém informações de ponto de verificação Pop (a propriedade POP_CK está ausente); verifique se foi obtida com Pop."
+"Topic cannot be empty.": "O tópico não pode estar vazio."
+"Group cannot be empty.": "O grupo não pode estar vazio."
+"Endpoints cannot be empty.": "Os pontos de extremidade não podem estar vazios."
+"The OnMessage callback cannot be empty.": "O retorno de chamada OnMessage não pode estar vazio."
+"The push consumer has already started.": "O consumidor push já foi iniciado."
+"Reached the end of the data while reading a varint.": "Fim dos dados alcançado ao ler um varint."
+"The varint encoding is too long.": "A codificação varint é muito longa."
+"The NameServer address is not specified.": "O endereço do NameServer não foi especificado."

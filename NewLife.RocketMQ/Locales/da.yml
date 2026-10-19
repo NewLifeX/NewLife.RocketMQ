@@ -1,0 +1,12 @@
+# Dansk 词表（da）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] serveradressen er tom!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] kunne ikke oprette forbindelse til alle klyngeadresser [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Meddelelsen indeholder ikke Pop-kontrolpunktinformation (egenskaben POP_CK mangler); sørg for, at den blev hentet med Pop."
+"Topic cannot be empty.": "Emne må ikke være tomt."
+"Group cannot be empty.": "Gruppe må ikke være tom."
+"Endpoints cannot be empty.": "Endepunkter må ikke være tomme."
+"The OnMessage callback cannot be empty.": "OnMessage-callback må ikke være tom."
+"The push consumer has already started.": "Push-forbrugeren er allerede startet."
+"Reached the end of the data while reading a varint.": "Nåede slutningen af dataene under læsning af en varint."
+"The varint encoding is too long.": "Varint-kodningen er for lang."
+"The NameServer address is not specified.": "NameServer-adressen er ikke angivet."

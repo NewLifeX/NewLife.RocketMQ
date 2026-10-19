@@ -1,0 +1,12 @@
+# Русский 词表（ru）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] адрес сервера пуст!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] не удалось подключиться ко всем адресам кластера [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Сообщение не содержит информацию контрольной точки Pop (отсутствует свойство POP_CK); убедитесь, что оно получено с помощью Pop."
+"Topic cannot be empty.": "Тема не может быть пустой."
+"Group cannot be empty.": "Группа не может быть пустой."
+"Endpoints cannot be empty.": "Конечные точки не могут быть пустыми."
+"The OnMessage callback cannot be empty.": "Обратный вызов OnMessage не может быть пустым."
+"The push consumer has already started.": "Push-потребитель уже запущен."
+"Reached the end of the data while reading a varint.": "При чтении varint достигнут конец данных."
+"The varint encoding is too long.": "Кодировка varint слишком длинная."
+"The NameServer address is not specified.": "Адрес NameServer не указан."

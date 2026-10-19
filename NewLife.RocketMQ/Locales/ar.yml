@@ -1,0 +1,12 @@
+# العربية 词表（ar）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] عنوان الخادم فارغ!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] تعذّر الاتصال بجميع عناوين الكتلة [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "لا تحتوي الرسالة على معلومات نقطة التحقق الخاصة بـ Pop (الخاصية POP_CK مفقودة)؛ تأكد من استرجاعها باستخدام Pop."
+"Topic cannot be empty.": "لا يمكن أن يكون الموضوع فارغًا."
+"Group cannot be empty.": "لا يمكن أن تكون المجموعة فارغة."
+"Endpoints cannot be empty.": "لا يمكن أن تكون نقاط النهاية فارغة."
+"The OnMessage callback cannot be empty.": "لا يمكن أن تكون دالة الاستدعاء OnMessage فارغة."
+"The push consumer has already started.": "بدأ مستهلك الدفع بالفعل."
+"Reached the end of the data while reading a varint.": "تم الوصول إلى نهاية البيانات أثناء قراءة varint."
+"The varint encoding is too long.": "ترميز varint طويل جدًا."
+"The NameServer address is not specified.": "لم يتم تحديد عنوان NameServer."

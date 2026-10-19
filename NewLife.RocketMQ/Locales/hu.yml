@@ -1,0 +1,12 @@
+# Magyar 词表（hu）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] a kiszolgáló címe üres!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] nem sikerült kapcsolódni a fürt egyik címéhez sem: [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Az üzenet nem tartalmaz Pop-ellenőrzőpont-információt (hiányzik a POP_CK tulajdonság); győződjön meg arról, hogy Pop-pal kérte le."
+"Topic cannot be empty.": "A témakör nem lehet üres."
+"Group cannot be empty.": "A csoport nem lehet üres."
+"Endpoints cannot be empty.": "A végpontok nem lehetnek üresek."
+"The OnMessage callback cannot be empty.": "Az OnMessage visszahívás nem lehet üres."
+"The push consumer has already started.": "A push-fogyasztó már elindult."
+"Reached the end of the data while reading a varint.": "A varint olvasása közben elérte az adatok végét."
+"The varint encoding is too long.": "A varint kódolása túl hosszú."
+"The NameServer address is not specified.": "A NameServer címe nincs megadva."

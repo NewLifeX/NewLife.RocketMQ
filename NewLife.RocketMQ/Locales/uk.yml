@@ -1,0 +1,12 @@
+# Українська 词表（uk）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] адреса сервера порожня!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] не вдалося підключитися до всіх адрес кластера [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Повідомлення не містить інформації контрольної точки Pop (відсутня властивість POP_CK); переконайтеся, що його отримано за допомогою Pop."
+"Topic cannot be empty.": "Тема не може бути порожньою."
+"Group cannot be empty.": "Група не може бути порожньою."
+"Endpoints cannot be empty.": "Кінцеві точки не можуть бути порожніми."
+"The OnMessage callback cannot be empty.": "Зворотний виклик OnMessage не може бути порожнім."
+"The push consumer has already started.": "Push-споживач уже запущено."
+"Reached the end of the data while reading a varint.": "Під час читання varint досягнуто кінця даних."
+"The varint encoding is too long.": "Кодування varint занадто довге."
+"The NameServer address is not specified.": "Адресу NameServer не вказано."

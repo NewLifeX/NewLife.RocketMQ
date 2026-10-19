@@ -1,0 +1,12 @@
+# Bahasa Indonesia 词表（id）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] alamat server kosong!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] gagal terhubung ke semua alamat klaster [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Pesan tidak berisi informasi titik pemeriksaan Pop (properti POP_CK tidak ada); pastikan pesan diambil dengan Pop."
+"Topic cannot be empty.": "Topik tidak boleh kosong."
+"Group cannot be empty.": "Grup tidak boleh kosong."
+"Endpoints cannot be empty.": "Titik akhir tidak boleh kosong."
+"The OnMessage callback cannot be empty.": "Callback OnMessage tidak boleh kosong."
+"The push consumer has already started.": "Konsumen push sudah dimulai."
+"Reached the end of the data while reading a varint.": "Mencapai akhir data saat membaca varint."
+"The varint encoding is too long.": "Pengodean varint terlalu panjang."
+"The NameServer address is not specified.": "Alamat NameServer tidak ditentukan."

@@ -1,0 +1,12 @@
+# 한국어 词表（ko）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] 서버 주소가 비어 있습니다!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] 모든 클러스터 주소 [{1}]에 연결하지 못했습니다!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "메시지에 Pop 체크포인트 정보가 없습니다(POP_CK 속성 누락). Pop으로 가져왔는지 확인하세요."
+"Topic cannot be empty.": "토픽은 비워 둘 수 없습니다."
+"Group cannot be empty.": "그룹은 비워 둘 수 없습니다."
+"Endpoints cannot be empty.": "엔드포인트는 비워 둘 수 없습니다."
+"The OnMessage callback cannot be empty.": "OnMessage 콜백은 비워 둘 수 없습니다."
+"The push consumer has already started.": "푸시 소비자가 이미 시작되었습니다."
+"Reached the end of the data while reading a varint.": "varint를 읽는 중 데이터 끝에 도달했습니다."
+"The varint encoding is too long.": "varint 인코딩이 너무 깁니다."
+"The NameServer address is not specified.": "NameServer 주소가 지정되지 않았습니다."

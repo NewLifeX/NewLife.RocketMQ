@@ -1,0 +1,12 @@
+# 日本語 词表（ja）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] サーバーアドレスが空です！"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] すべてのクラスターアドレス [{1}] への接続に失敗しました！"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "メッセージに Pop チェックポイント情報が含まれていません（POP_CK プロパティがありません）。Pop で取得したことを確認してください。"
+"Topic cannot be empty.": "トピックを空にすることはできません。"
+"Group cannot be empty.": "グループを空にすることはできません。"
+"Endpoints cannot be empty.": "エンドポイントを空にすることはできません。"
+"The OnMessage callback cannot be empty.": "OnMessage コールバックを空にすることはできません。"
+"The push consumer has already started.": "プッシュコンシューマーはすでに開始されています。"
+"Reached the end of the data while reading a varint.": "varint の読み取り中にデータの末尾に達しました。"
+"The varint encoding is too long.": "varint エンコードが長すぎます。"
+"The NameServer address is not specified.": "NameServer アドレスが指定されていません。"

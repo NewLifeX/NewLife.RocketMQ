@@ -1,0 +1,12 @@
+# Bahasa Melayu 词表（ms）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] alamat pelayan kosong!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] gagal menyambung ke semua alamat kluster [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Mesej tidak mengandungi maklumat titik semak Pop (sifat POP_CK tiada); pastikan ia diambil dengan Pop."
+"Topic cannot be empty.": "Topik tidak boleh kosong."
+"Group cannot be empty.": "Kumpulan tidak boleh kosong."
+"Endpoints cannot be empty.": "Titik akhir tidak boleh kosong."
+"The OnMessage callback cannot be empty.": "Panggil balik OnMessage tidak boleh kosong."
+"The push consumer has already started.": "Pengguna push sudah dimulakan."
+"Reached the end of the data while reading a varint.": "Mencapai penghujung data semasa membaca varint."
+"The varint encoding is too long.": "Pengekodan varint terlalu panjang."
+"The NameServer address is not specified.": "Alamat NameServer tidak dinyatakan."

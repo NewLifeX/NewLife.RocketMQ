@@ -1,0 +1,12 @@
+# Norsk bokmål 词表（nb）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] serveradressen er tom!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] kunne ikke koble til alle klyngeadresser [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Meldingen inneholder ikke Pop-sjekkpunktinformasjon (egenskapen POP_CK mangler); sørg for at den ble hentet med Pop."
+"Topic cannot be empty.": "Emne kan ikke være tomt."
+"Group cannot be empty.": "Gruppe kan ikke være tom."
+"Endpoints cannot be empty.": "Endepunkter kan ikke være tomme."
+"The OnMessage callback cannot be empty.": "OnMessage-tilbakekallingen kan ikke være tom."
+"The push consumer has already started.": "Push-forbrukeren er allerede startet."
+"Reached the end of the data while reading a varint.": "Nådde slutten av dataene under lesing av en varint."
+"The varint encoding is too long.": "Varint-kodingen er for lang."
+"The NameServer address is not specified.": "NameServer-adressen er ikke angitt."

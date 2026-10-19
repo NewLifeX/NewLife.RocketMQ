@@ -1,0 +1,12 @@
+# Tiếng Việt 词表（vi）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] địa chỉ máy chủ trống!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] không thể kết nối tới tất cả địa chỉ cụm [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Tin nhắn không chứa thông tin điểm kiểm tra Pop (thiếu thuộc tính POP_CK); hãy đảm bảo tin nhắn được lấy bằng Pop."
+"Topic cannot be empty.": "Chủ đề không được để trống."
+"Group cannot be empty.": "Nhóm không được để trống."
+"Endpoints cannot be empty.": "Điểm cuối không được để trống."
+"The OnMessage callback cannot be empty.": "Hàm gọi lại OnMessage không được để trống."
+"The push consumer has already started.": "Trình tiêu thụ push đã được khởi động."
+"Reached the end of the data while reading a varint.": "Đã đạt đến cuối dữ liệu khi đọc varint."
+"The varint encoding is too long.": "Mã hóa varint quá dài."
+"The NameServer address is not specified.": "Chưa chỉ định địa chỉ NameServer."

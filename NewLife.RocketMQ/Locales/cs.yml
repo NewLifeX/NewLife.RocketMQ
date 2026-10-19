@@ -1,0 +1,12 @@
+# Čeština 词表（cs）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] adresa serveru je prázdná!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] nepodařilo se připojit ke všem adresám clusteru [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Zpráva neobsahuje informace o kontrolním bodu Pop (chybí vlastnost POP_CK); ujistěte se, že byla načtena pomocí Pop."
+"Topic cannot be empty.": "Téma nesmí být prázdné."
+"Group cannot be empty.": "Skupina nesmí být prázdná."
+"Endpoints cannot be empty.": "Koncové body nesmí být prázdné."
+"The OnMessage callback cannot be empty.": "Zpětné volání OnMessage nesmí být prázdné."
+"The push consumer has already started.": "Push konzument již byl spuštěn."
+"Reached the end of the data while reading a varint.": "Při čtení varint bylo dosaženo konce dat."
+"The varint encoding is too long.": "Kódování varint je příliš dlouhé."
+"The NameServer address is not specified.": "Adresa NameServer není zadána."

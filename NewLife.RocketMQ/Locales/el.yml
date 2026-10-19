@@ -1,0 +1,12 @@
+# Ελληνικά 词表（el）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] η διεύθυνση διακομιστή είναι κενή!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] αποτυχία σύνδεσης με όλες τις διευθύνσεις cluster [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Το μήνυμα δεν περιέχει πληροφορίες σημείου ελέγχου Pop (λείπει η ιδιότητα POP_CK)· βεβαιωθείτε ότι ανακτήθηκε με Pop."
+"Topic cannot be empty.": "Το θέμα δεν μπορεί να είναι κενό."
+"Group cannot be empty.": "Η ομάδα δεν μπορεί να είναι κενή."
+"Endpoints cannot be empty.": "Τα τελικά σημεία δεν μπορούν να είναι κενά."
+"The OnMessage callback cannot be empty.": "Η επιστροφή κλήσης OnMessage δεν μπορεί να είναι κενή."
+"The push consumer has already started.": "Ο καταναλωτής push έχει ήδη ξεκινήσει."
+"Reached the end of the data while reading a varint.": "Κατά την ανάγνωση ενός varint έφτασε στο τέλος των δεδομένων."
+"The varint encoding is too long.": "Η κωδικοποίηση varint είναι πολύ μεγάλη."
+"The NameServer address is not specified.": "Η διεύθυνση NameServer δεν έχει καθοριστεί."

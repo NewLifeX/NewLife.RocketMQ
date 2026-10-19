@@ -1,0 +1,12 @@
+# Français 词表（fr）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] l'adresse du serveur est vide !"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] échec de la connexion à toutes les adresses du cluster [{1}] !"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Le message ne contient pas d'informations de point de contrôle Pop (la propriété POP_CK est absente) ; vérifiez qu'il a été récupéré avec Pop."
+"Topic cannot be empty.": "Le sujet ne peut pas être vide."
+"Group cannot be empty.": "Le groupe ne peut pas être vide."
+"Endpoints cannot be empty.": "Les points de terminaison ne peuvent pas être vides."
+"The OnMessage callback cannot be empty.": "Le rappel OnMessage ne peut pas être vide."
+"The push consumer has already started.": "Le consommateur push a déjà démarré."
+"Reached the end of the data while reading a varint.": "Fin des données atteinte lors de la lecture d'un varint."
+"The varint encoding is too long.": "L'encodage varint est trop long."
+"The NameServer address is not specified.": "L'adresse du NameServer n'est pas spécifiée."

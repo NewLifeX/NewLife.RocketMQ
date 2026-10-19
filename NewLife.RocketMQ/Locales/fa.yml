@@ -1,0 +1,12 @@
+# فارسی 词表（fa）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] نشانی سرور خالی است!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] اتصال به همه نشانی‌های خوشه [{1}] ناموفق بود!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "پیام حاوی اطلاعات نقطه بررسی Pop نیست (ویژگی POP_CK وجود ندارد)؛ مطمئن شوید که با Pop دریافت شده است."
+"Topic cannot be empty.": "موضوع نمی‌تواند خالی باشد."
+"Group cannot be empty.": "گروه نمی‌تواند خالی باشد."
+"Endpoints cannot be empty.": "نقاط پایانی نمی‌توانند خالی باشند."
+"The OnMessage callback cannot be empty.": "تابع بازگشتی OnMessage نمی‌تواند خالی باشد."
+"The push consumer has already started.": "مصرف‌کننده فشاری قبلاً شروع شده است."
+"Reached the end of the data while reading a varint.": "هنگام خواندن varint به پایان داده‌ها رسیدیم."
+"The varint encoding is too long.": "کدگذاری varint بیش از حد طولانی است."
+"The NameServer address is not specified.": "نشانی NameServer مشخص نشده است."

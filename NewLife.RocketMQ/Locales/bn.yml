@@ -1,0 +1,12 @@
+# বাংলা 词表（bn）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] সার্ভার ঠিকানা খালি!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] সকল ক্লাস্টার ঠিকানায় [{1}] সংযোগ করা যায়নি!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "বার্তাটিতে Pop চেকপয়েন্ট তথ্য নেই (POP_CK বৈশিষ্ট্যটি অনুপস্থিত); নিশ্চিত করুন এটি Pop দিয়ে আনা হয়েছে।"
+"Topic cannot be empty.": "টপিক খালি হতে পারে না।"
+"Group cannot be empty.": "গ্রুপ খালি হতে পারে না।"
+"Endpoints cannot be empty.": "এন্ডপয়েন্ট খালি হতে পারে না।"
+"The OnMessage callback cannot be empty.": "OnMessage কলব্যাক খালি হতে পারে না।"
+"The push consumer has already started.": "পুশ কনজিউমার ইতিমধ্যে শুরু হয়েছে।"
+"Reached the end of the data while reading a varint.": "varint পড়ার সময় ডেটার শেষে পৌঁছেছে।"
+"The varint encoding is too long.": "varint এনকোডিং খুব দীর্ঘ।"
+"The NameServer address is not specified.": "NameServer ঠিকানা নির্দিষ্ট করা হয়নি।"

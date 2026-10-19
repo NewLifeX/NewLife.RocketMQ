@@ -1,0 +1,12 @@
+# हिन्दी 词表（hi）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] सर्वर पता खाली है!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] सभी क्लस्टर पतों [{1}] से कनेक्ट नहीं हो सका!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "संदेश में Pop चेकपॉइंट जानकारी नहीं है (POP_CK प्रॉपर्टी अनुपस्थित है); सुनिश्चित करें कि इसे Pop से प्राप्त किया गया है।"
+"Topic cannot be empty.": "विषय खाली नहीं हो सकता।"
+"Group cannot be empty.": "समूह खाली नहीं हो सकता।"
+"Endpoints cannot be empty.": "एंडपॉइंट खाली नहीं हो सकते।"
+"The OnMessage callback cannot be empty.": "OnMessage कॉलबैक खाली नहीं हो सकता।"
+"The push consumer has already started.": "पुश उपभोक्ता पहले ही शुरू हो चुका है।"
+"Reached the end of the data while reading a varint.": "varint पढ़ते समय डेटा का अंत पहुँच गया।"
+"The varint encoding is too long.": "varint एन्कोडिंग बहुत लंबी है।"
+"The NameServer address is not specified.": "NameServer पता निर्दिष्ट नहीं है।"

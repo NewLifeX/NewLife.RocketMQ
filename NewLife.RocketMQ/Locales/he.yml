@@ -1,0 +1,12 @@
+# עברית 词表（he）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] כתובת השרת ריקה!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] החיבור לכל כתובות האשכול [{1}] נכשל!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "ההודעה אינה מכילה מידע על נקודת ביקורת Pop (המאפיין POP_CK חסר); ודא שהיא אוחזרה באמצעות Pop."
+"Topic cannot be empty.": "הנושא לא יכול להיות ריק."
+"Group cannot be empty.": "הקבוצה לא יכולה להיות ריקה."
+"Endpoints cannot be empty.": "נקודות הקצה לא יכולות להיות ריקות."
+"The OnMessage callback cannot be empty.": "קריאת החזרה OnMessage לא יכולה להיות ריקה."
+"The push consumer has already started.": "צרכן ה-push כבר הופעל."
+"Reached the end of the data while reading a varint.": "הגעת לסוף הנתונים בעת קריאת varint."
+"The varint encoding is too long.": "קידוד ה-varint ארוך מדי."
+"The NameServer address is not specified.": "כתובת ה-NameServer לא צוינה."

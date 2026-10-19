@@ -1,0 +1,12 @@
+# Nederlands 词表（nl）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] serveradres is leeg!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] kan geen verbinding maken met alle clusteradressen [{1}]!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Het bericht bevat geen Pop-controlepuntinformatie (de eigenschap POP_CK ontbreekt); zorg dat het met Pop is opgehaald."
+"Topic cannot be empty.": "Onderwerp mag niet leeg zijn."
+"Group cannot be empty.": "Groep mag niet leeg zijn."
+"Endpoints cannot be empty.": "Eindpunten mogen niet leeg zijn."
+"The OnMessage callback cannot be empty.": "De OnMessage-callback mag niet leeg zijn."
+"The push consumer has already started.": "De push-consument is al gestart."
+"Reached the end of the data while reading a varint.": "Einde van de gegevens bereikt bij het lezen van een varint."
+"The varint encoding is too long.": "De varint-codering is te lang."
+"The NameServer address is not specified.": "Het NameServer-adres is niet opgegeven."

@@ -1,0 +1,12 @@
+# ไทย 词表（th）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] ที่อยู่เซิร์ฟเวอร์ว่างเปล่า!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] เชื่อมต่อกับที่อยู่คลัสเตอร์ทั้งหมด [{1}] ไม่สำเร็จ!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "ข้อความไม่มีข้อมูลจุดตรวจสอบของ Pop (ไม่มีพร็อพเพอร์ตี้ POP_CK) โปรดตรวจสอบว่าได้ดึงมาด้วย Pop"
+"Topic cannot be empty.": "หัวข้อต้องไม่ว่างเปล่า"
+"Group cannot be empty.": "กลุ่มต้องไม่ว่างเปล่า"
+"Endpoints cannot be empty.": "ปลายทางต้องไม่ว่างเปล่า"
+"The OnMessage callback cannot be empty.": "คอลแบ็ก OnMessage ต้องไม่ว่างเปล่า"
+"The push consumer has already started.": "ผู้บริโภคแบบพุชเริ่มทำงานแล้ว"
+"Reached the end of the data while reading a varint.": "อ่านข้อมูลจนถึงจุดสิ้นสุดขณะอ่าน varint"
+"The varint encoding is too long.": "การเข้ารหัส varint ยาวเกินไป"
+"The NameServer address is not specified.": "ยังไม่ได้ระบุที่อยู่ NameServer"

@@ -1,0 +1,12 @@
+# Suomi 词表（fi）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] palvelimen osoite on tyhjä!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] yhteyden muodostus kaikkiin klusterin osoitteisiin [{1}] epäonnistui!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Viesti ei sisällä Pop-tarkistuspistetietoja (POP_CK-ominaisuus puuttuu); varmista, että se haettiin Pop-toiminnolla."
+"Topic cannot be empty.": "Aihe ei voi olla tyhjä."
+"Group cannot be empty.": "Ryhmä ei voi olla tyhjä."
+"Endpoints cannot be empty.": "Päätepisteet eivät voi olla tyhjiä."
+"The OnMessage callback cannot be empty.": "OnMessage-takaisinkutsu ei voi olla tyhjä."
+"The push consumer has already started.": "Push-kuluttaja on jo käynnistetty."
+"Reached the end of the data while reading a varint.": "Tietojen loppu saavutettiin varintia luettaessa."
+"The varint encoding is too long.": "Varint-koodaus on liian pitkä."
+"The NameServer address is not specified.": "NameServer-osoitetta ei ole määritetty."

@@ -1,0 +1,12 @@
+# Türkçe 词表（tr）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] sunucu adresi boş!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] tüm küme adreslerine [{1}] bağlanılamadı!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "İletide Pop denetim noktası bilgisi yok (POP_CK özelliği eksik); Pop ile alındığından emin olun."
+"Topic cannot be empty.": "Konu boş olamaz."
+"Group cannot be empty.": "Grup boş olamaz."
+"Endpoints cannot be empty.": "Uç noktalar boş olamaz."
+"The OnMessage callback cannot be empty.": "OnMessage geri çağrısı boş olamaz."
+"The push consumer has already started.": "Push tüketicisi zaten başlatıldı."
+"Reached the end of the data while reading a varint.": "Bir varint okunurken verilerin sonuna ulaşıldı."
+"The varint encoding is too long.": "varint kodlaması çok uzun."
+"The NameServer address is not specified.": "NameServer adresi belirtilmemiş."

@@ -1,0 +1,12 @@
+# Română 词表（ro）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"[{0}] server address is empty!": "[{0}] adresa serverului este goală!"
+"[{0}] failed to connect to all cluster addresses [{1}]!": "[{0}] conectarea la toate adresele clusterului [{1}] a eșuat!"
+"The message does not contain Pop checkpoint information (the POP_CK property is missing); make sure it was retrieved with Pop.": "Mesajul nu conține informații despre punctul de control Pop (proprietatea POP_CK lipsește); asigurați-vă că a fost preluat cu Pop."
+"Topic cannot be empty.": "Subiectul nu poate fi gol."
+"Group cannot be empty.": "Grupul nu poate fi gol."
+"Endpoints cannot be empty.": "Punctele finale nu pot fi goale."
+"The OnMessage callback cannot be empty.": "Funcția de apel invers OnMessage nu poate fi goală."
+"The push consumer has already started.": "Consumatorul push a fost deja pornit."
+"Reached the end of the data while reading a varint.": "S-a atins sfârșitul datelor la citirea unui varint."
+"The varint encoding is too long.": "Codificarea varint este prea lungă."
+"The NameServer address is not specified.": "Adresa NameServer nu este specificată."
