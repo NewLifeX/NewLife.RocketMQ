@@ -30,7 +30,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.RocketMQ" Version="$(NewLifeRocketMQVersion)" />
+    <PackageReference Include="NewLife.RocketMQ" Version="3.2.2026.1019-beta0430" />
   </ItemGroup>
 
 </Project>
