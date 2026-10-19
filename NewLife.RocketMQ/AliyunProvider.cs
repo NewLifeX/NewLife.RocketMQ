@@ -29,7 +29,7 @@ public class AliyunProvider : ICloudProvider
     public String TransformTopic(String topic)
     {
         var ins = InstanceId;
-        if (!String.IsNullOrEmpty(ins) && !topic.StartsWith(ins))
+        if (!String.IsNullOrEmpty(ins) && !topic.StartsWith(ins, StringComparison.Ordinal))
             return $"{ins}%{topic}";
 
         return topic;
@@ -41,7 +41,7 @@ public class AliyunProvider : ICloudProvider
     public String TransformGroup(String group)
     {
         var ins = InstanceId;
-        if (!String.IsNullOrEmpty(ins) && !group.StartsWith(ins))
+        if (!String.IsNullOrEmpty(ins) && !group.StartsWith(ins, StringComparison.Ordinal))
             return $"{ins}%{group}";
 
         return group;

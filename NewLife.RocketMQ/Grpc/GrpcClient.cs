@@ -1,5 +1,6 @@
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -368,7 +369,7 @@ public class GrpcClient : IDisposable
         // RocketMQ 5.x gRPC 使用 authorization header
         if (!String.IsNullOrEmpty(AccessKey) && !String.IsNullOrEmpty(SecretKey))
         {
-            var timestamp = DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ");
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ", CultureInfo.InvariantCulture);
             request.Headers.TryAddWithoutValidation("x-mq-date-time", timestamp);
             request.Headers.TryAddWithoutValidation("authorization",
                 $"MQv2-HMAC-SHA1 Credential={AccessKey}, SignedHeaders=x-mq-date-time, Signature={ComputeSignature(timestamp)}");

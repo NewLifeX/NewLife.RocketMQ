@@ -162,7 +162,7 @@ public class Consumer : MqBase
             {
                 GroupName = Group,
                 ConsumeFromWhere = FromLastOffset ? "CONSUME_FROM_LAST_OFFSET" : "CONSUME_FROM_FIRST_OFFSET",
-                MessageModel = MessageModel.ToString().ToUpper(),
+                MessageModel = MessageModel.ToString().ToUpperInvariant(),
                 SubscriptionDataSet = sds,
                 ConsumeType = ConsumeType,
             };

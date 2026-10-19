@@ -66,9 +66,9 @@ public class Header
         var err = Remark;
         if (!err.IsNullOrEmpty())
         {
-            var p = err.IndexOf("Exception: ");
+            var p = err.IndexOf("Exception: ", StringComparison.Ordinal);
             if (p >= 0) err = err.Substring(p + "Exception: ".Length);
-            p = err.IndexOf(", ");
+            p = err.IndexOf(", ", StringComparison.Ordinal);
             if (p > 0) err = err.Substring(0, p);
         }
 

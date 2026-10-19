@@ -29,7 +29,7 @@ public class TencentProvider : ICloudProvider
     public String TransformTopic(String topic)
     {
         var ns = Namespace;
-        if (!String.IsNullOrEmpty(ns) && !topic.StartsWith(ns))
+        if (!String.IsNullOrEmpty(ns) && !topic.StartsWith(ns, StringComparison.Ordinal))
             return $"{ns}%{topic}";
 
         return topic;
@@ -41,7 +41,7 @@ public class TencentProvider : ICloudProvider
     public String TransformGroup(String group)
     {
         var ns = Namespace;
-        if (!String.IsNullOrEmpty(ns) && !group.StartsWith(ns))
+        if (!String.IsNullOrEmpty(ns) && !group.StartsWith(ns, StringComparison.Ordinal))
             return $"{ns}%{group}";
 
         return group;

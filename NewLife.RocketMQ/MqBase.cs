@@ -284,8 +284,8 @@ public abstract class MqBase : DisposeBase
                 var ins = _aliyunOptions?.InstanceId;
                 if (!ins.IsNullOrEmpty())
                 {
-                    if (!Topic.StartsWith(ins)) Topic = $"{ins}%{Topic}";
-                    if (!Group.StartsWith(ins)) Group = $"{ins}%{Group}";
+                    if (!Topic.StartsWith(ins, StringComparison.Ordinal)) Topic = $"{ins}%{Topic}";
+                    if (!Group.StartsWith(ins, StringComparison.Ordinal)) Group = $"{ins}%{Group}";
                 }
             }
 #pragma warning restore CS0618
