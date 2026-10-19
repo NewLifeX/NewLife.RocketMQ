@@ -2,7 +2,8 @@
 //
 // 用途：以 NativeAOT（PublishAot=true）发布为原生可执行文件后运行，验证裁剪环境下以下链路仍然可用：
 //   帧编解码、请求头属性字典、JSON 序列化（含源生成成员访问器）、云厂商适配、双协议消息转换、
-//   消息体对象序列化、消息压缩（ZLIB 往返与其解压上限）、LMQ 属性、ACL 签名算法、埋点标签序列化，
+//   消息体对象序列化、消息压缩（ZLIB 往返与其解压上限）、LMQ 属性、ACL 签名算法、埋点标签序列化、
+//   运行时多语言词表（中文翻译与英文回退），
 //   以及端到端收发（普通/对象体/批量/延迟/大消息压缩、消费、偏移查询、顺序锁、POP 消费）。
 // 环境变量 ROCKETMQ_NAMESERVER（如 127.0.0.1:9876）可选；设置后追加真实收发用例，未设置时跳过。
 // 环境变量 ROCKETMQ_GRPC_PROXY（如 http://127.0.0.1:8081）可选；设置后追加 gRPC 5.x 链路用例（路由/收发/确认/推送消费/死信转发/FIFO 顺序消费）。
@@ -12,6 +13,7 @@
 
 using System.Buffers;
 using System.Diagnostics;
+using System.Globalization;
 using System.Security.Cryptography;
 using NewLife;
 using NewLife.Data;
@@ -380,6 +382,41 @@ Check("压缩·未注册类型提示", () =>
     }
 
     Assert(caught, "未注册 LZ4 时应提示安装扩展包");
+});
+
+Check("多语言·词表翻译与英文回退", () =>
+{
+    // NativeAOT 默认开启不变全球化（InvariantGlobalization），此时只存在不变文化，词表应静默回退英文而不是抛异常；
+    // 应用若保留 ICU（InvariantGlobalization=false），则应能查到译文
+    CultureInfo? zh = null;
+    try { zh = CultureInfo.GetCultureInfo("zh-CN"); } catch (CultureNotFoundException) { }
+
+    var saved = Localization.Culture;
+    try
+    {
+        if (zh == null)
+        {
+            Localization.Culture = CultureInfo.InvariantCulture;
+            var text = Localization.Translate("Topic cannot be empty.");
+            Assert(text == "Topic cannot be empty.", $"不变全球化模式下未回退英文：{text}");
+
+            var formatted = Localization.Translate("Unknown wire type: {0}", 7);
+            Assert(formatted == "Unknown wire type: 7", $"不变全球化模式下格式化异常：{formatted}");
+            return;
+        }
+
+        Localization.Culture = zh;
+        var translated = Localization.Translate("Topic cannot be empty.");
+        Assert(translated == "Topic 不能为空", $"中文译文不符：{translated}");
+
+        Localization.Culture = CultureInfo.GetCultureInfo("sw-KE");
+        var fallback = Localization.Translate("Topic cannot be empty.");
+        Assert(fallback == "Topic cannot be empty.", $"未支持语言未回退英文：{fallback}");
+    }
+    finally
+    {
+        Localization.Culture = saved;
+    }
 });
 
 Check("LMQ·多分发目标属性", () =>
