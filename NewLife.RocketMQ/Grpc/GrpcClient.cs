@@ -164,7 +164,7 @@ public class GrpcClient : IDisposable
             if (!response.IsSuccessStatusCode)
             {
                 response.Dispose();
-                throw new InvalidOperationException($"gRPC {method} 失败：HTTP {(Int32)response.StatusCode}");
+                throw new InvalidOperationException(L.T("gRPC {0} failed: HTTP {1}", method, (Int32)response.StatusCode));
             }
 
             // 读取响应
@@ -218,7 +218,7 @@ public class GrpcClient : IDisposable
 
             response = await client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
-                throw new InvalidOperationException($"gRPC {method} 失败：HTTP {(Int32)response.StatusCode}");
+                throw new InvalidOperationException(L.T("gRPC {0} failed: HTTP {1}", method, (Int32)response.StatusCode));
 
             stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
 
@@ -233,7 +233,7 @@ public class GrpcClient : IDisposable
                 // 解析帧头（4字节大端序无符号长度）
                 var compressed = headerBuf[0] != 0;
                 var length = (Int32)(((UInt32)headerBuf[1] << 24) | ((UInt32)headerBuf[2] << 16) | ((UInt32)headerBuf[3] << 8) | headerBuf[4]);
-                if (length < 0) throw new InvalidDataException($"gRPC 帧长度非法[{length}]");
+                if (length < 0) throw new InvalidDataException(L.T("Invalid gRPC frame length [{0}]", length));
                 if (length == 0) continue;
 
                 // 读取消息体
@@ -296,7 +296,7 @@ public class GrpcClient : IDisposable
             {
                 response.Dispose();
                 httpRequest.Dispose();
-                throw new InvalidOperationException($"gRPC {method} 失败：HTTP {(Int32)response.StatusCode}");
+                throw new InvalidOperationException(L.T("gRPC {0} failed: HTTP {1}", method, (Int32)response.StatusCode));
             }
 
             var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
@@ -547,7 +547,7 @@ public class GrpcStreamSession : IDisposable
         }
 
         var length = (Int32)(((UInt32)headerBuf[1] << 24) | ((UInt32)headerBuf[2] << 16) | ((UInt32)headerBuf[3] << 8) | headerBuf[4]);
-        if (length < 0) throw new InvalidDataException($"gRPC 帧长度非法[{length}]");
+        if (length < 0) throw new InvalidDataException(L.T("Invalid gRPC frame length [{0}]", length));
         if (length == 0) return [];
 
         var body = new Byte[length];

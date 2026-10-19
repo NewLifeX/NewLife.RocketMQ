@@ -523,7 +523,7 @@ public static class ProtoExtensions
                 reader.ReadBytes(4);
                 break;
             default:
-                throw new InvalidDataException($"未知的线路类型: {wireType}");
+                throw new InvalidDataException(L.T("Unknown wire type: {0}", wireType));
         }
     }
 
@@ -531,7 +531,7 @@ public static class ProtoExtensions
     private static void EnsureAvailable(ref SpanReader reader, Int32 len)
     {
         if (len < 0 || len > reader.Available)
-            throw new EndOfStreamException($"字段长度[{len}]超过剩余[{reader.Available}]");
+            throw new EndOfStreamException(L.T("Field length [{0}] exceeds the remaining [{1}]", len, reader.Available));
     }
 
     #endregion

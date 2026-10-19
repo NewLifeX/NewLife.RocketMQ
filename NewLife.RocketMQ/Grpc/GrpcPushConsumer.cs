@@ -48,6 +48,9 @@ public class GrpcPushConsumer : IDisposable
 {
     #region 属性
 
+    /// <summary>日志前缀。不参与本地化词表查找</summary>
+    private const String Prefix = "[GrpcPushConsumer] ";
+
     /// <summary>主题</summary>
     public String Topic { get; set; }
 
@@ -159,7 +162,7 @@ public class GrpcPushConsumer : IDisposable
         // 先查询路由，获取消息队列
         var routeResponse = await _service.QueryRouteAsync(Topic, _cts.Token).ConfigureAwait(false);
         if (routeResponse?.MessageQueues == null || routeResponse.MessageQueues.Count == 0)
-            throw new InvalidOperationException($"主题 [{Topic}] 未找到可用队列：{routeResponse?.Status}");
+            throw new InvalidOperationException(L.T("No available queue found for topic [{0}]: {1}", Topic, routeResponse?.Status));
 
         // 资源上报长连接：Proxy 据此保持客户端注册与订阅关系，接收消息依赖它
         _telemetry = new GrpcTelemetrySession(_service)
@@ -184,14 +187,14 @@ public class GrpcPushConsumer : IDisposable
 
         // 等资源上报长连接就绪再开始拉取，避免 Proxy 侧尚未注册订阅关系时接收失败
         if (!await _telemetry.WaitReadyAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false))
-            Log.Warn("[GrpcPushConsumer] 资源上报长连接未在 10 秒内就绪，接收可能失败");
+            Log.WritePrefixed(LogLevel.Warn, Prefix, "The telemetry stream was not ready within 10 seconds; receiving may fail");
 
         _consumeTask = Task.Run(() => ConsumeLoopAsync(routeResponse.MessageQueues, _cts.Token), _cts.Token);
 
         // 心跳：保持 Proxy 侧会话注册，防止长时间运行会话被回收
         _heartbeatTask = Task.Run(() => HeartbeatLoopAsync(_cts.Token), _cts.Token);
 
-        Log.Info($"[GrpcPushConsumer] 已启动，Topic={Topic}，Group={Group}，队列数={routeResponse.MessageQueues.Count}");
+        Log.InfoPrefixed(Prefix, "Started, Topic={0}, Group={1}, queues={2}", Topic, Group, routeResponse.MessageQueues.Count);
     }
 
     /// <summary>停止 Push Consumer</summary>
@@ -222,7 +225,7 @@ public class GrpcPushConsumer : IDisposable
             await Task.Delay(50).ConfigureAwait(false);
         }
 
-        Log.Info("[GrpcPushConsumer] 已停止");
+        Log.InfoPrefixed(Prefix, "Stopped");
     }
 
     /// <summary>心跳循环。周期上报客户端存活，保持 Proxy 侧会话</summary>
@@ -241,7 +244,7 @@ public class GrpcPushConsumer : IDisposable
             }
             catch (Exception ex)
             {
-                Log.Warn($"[GrpcPushConsumer] 心跳失败: {ex.Message}");
+                Log.WritePrefixed(LogLevel.Warn, Prefix, "Heartbeat failed: {0}", ex.Message);
             }
         }
     }
@@ -307,7 +310,7 @@ public class GrpcPushConsumer : IDisposable
             }
             catch (Exception ex)
             {
-                Log.Error($"[GrpcPushConsumer] 拉取消息异常: {ex.Message}");
+                Log.ErrorPrefixed(Prefix, "Failed to pull messages: {0}", ex.Message);
                 // 出错后短暂等待，避免疯狂重试
                 try { await Task.Delay(1000, cancellationToken).ConfigureAwait(false); }
                 catch (OperationCanceledException) { break; }
@@ -354,7 +357,7 @@ public class GrpcPushConsumer : IDisposable
         }
         catch (Exception ex)
         {
-            Log.Error($"[GrpcPushConsumer] 处理消息 {messageId} 异常: {ex.Message}");
+            Log.ErrorPrefixed(Prefix, "Failed to process message {0}: {1}", messageId, ex.Message);
             success = false;
         }
         finally
@@ -381,7 +384,7 @@ public class GrpcPushConsumer : IDisposable
                 }
                 catch (Exception ex)
                 {
-                    Log.Warn($"[GrpcPushConsumer] Ack 消息 {messageId} 失败: {ex.Message}");
+                    Log.WritePrefixed(LogLevel.Warn, Prefix, "Failed to acknowledge message {0}: {1}", messageId, ex.Message);
                 }
             }
         }
@@ -404,7 +407,7 @@ public class GrpcPushConsumer : IDisposable
                             attempt,
                             MaxDeliveryAttempts,
                             cancellationToken).ConfigureAwait(false);
-                        Log.Warn($"[GrpcPushConsumer] 消息 {messageId} 已达最大投递次数 {attempt}，转入死信队列");
+                        Log.WritePrefixed(LogLevel.Warn, Prefix, "Message {0} reached the max delivery attempts {1} and is moved to the dead letter queue", messageId, attempt);
                     }
                     else
                     {
@@ -419,7 +422,7 @@ public class GrpcPushConsumer : IDisposable
                 }
                 catch (Exception ex)
                 {
-                    Log.Warn($"[GrpcPushConsumer] 消息 {messageId} 重投处理失败: {ex.Message}");
+                    Log.WritePrefixed(LogLevel.Warn, Prefix, "Failed to handle redelivered message {0}: {1}", messageId, ex.Message);
                 }
             }
         }

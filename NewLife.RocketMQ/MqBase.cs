@@ -183,7 +183,7 @@ public abstract class MqBase : DisposeBase
         // 输出当前版本
         Assembly.GetExecutingAssembly().WriteVersion();
 
-        XTrace.WriteLine("RocketMQ文档：https://newlifex.com/core/rocketmq");
+        XTrace.WriteLine("RocketMQ documentation: https://newlifex.com/core/rocketmq");
     }
 
     /// <summary>实例化</summary>
@@ -309,7 +309,7 @@ public abstract class MqBase : DisposeBase
         // 使用gRPC协议时，初始化gRPC客户端
         if (!GrpcProxyAddress.IsNullOrEmpty())
         {
-            WriteLog("使用gRPC协议连接Proxy[{0}]", GrpcProxyAddress);
+            WriteLog("Connecting to Proxy [{0}] over gRPC", GrpcProxyAddress);
 
             var svc = new Grpc.GrpcMessagingService(GrpcProxyAddress)
             {
@@ -331,7 +331,7 @@ public abstract class MqBase : DisposeBase
             if (route.Status?.Code != Grpc.GrpcCode.OK)
                 throw new InvalidOperationException($"gRPC QueryRoute failed: {route.Status}");
 
-            WriteLog("gRPC路由查询成功，发现[{0}]个队列", route.MessageQueues.Count);
+            WriteLog("gRPC route query succeeded, [{0}] queues found", route.MessageQueues.Count);
             _GrpcService = svc;
 
             // 建立资源上报长连接。Proxy 依据它缓存客户端设置并保持注册，消息接收等操作依赖该连接
@@ -364,7 +364,7 @@ public abstract class MqBase : DisposeBase
 #pragma warning restore CS0618
         }
 
-        WriteLog("正在从名称服务器[{0}]查找该Topic所在Broker服务器地址列表", NameServerAddress);
+        WriteLog("Looking up Broker addresses of the topic from NameServer [{0}]", NameServerAddress);
 
         var client = new NameClient(ClientId, this)
         {
@@ -382,7 +382,7 @@ public abstract class MqBase : DisposeBase
 
         foreach (var item in rs)
         {
-            WriteLog("发现Broker[{0}]: {1}, reads={2}, writes={3}", item.Name, item.Addresses.Join(), item.ReadQueueNums, item.WriteQueueNums);
+            WriteLog("Discovered Broker [{0}]: {1}, reads={2}, writes={3}", item.Name, item.Addresses.Join(), item.ReadQueueNums, item.WriteQueueNums);
         }
 
         _NameServer = client;
@@ -424,7 +424,7 @@ public abstract class MqBase : DisposeBase
             catch (Exception ex)
             {
                 // 下线通知失败不应阻断停止流程
-                if (Log.Enable) Log.Warn("通知Proxy客户端下线失败：{0}", ex.Message);
+                if (Log.Enable) Log.Warn("Failed to notify Proxy of client termination: {0}", ex.Message);
             }
         }
 
@@ -577,7 +577,7 @@ public abstract class MqBase : DisposeBase
             // 在所有Broker上创建Topic
             foreach (var item in Brokers)
             {
-                WriteLog("在Broker[{0}]上创建主题：{1}", item.Name, topic);
+                WriteLog("Creating topic [{1}] on Broker [{0}]", item.Name, topic);
                 try
                 {
                     var bk = GetBroker(item.Name);
@@ -613,7 +613,7 @@ public abstract class MqBase : DisposeBase
             // 从所有Broker上删除
             foreach (var item in Brokers)
             {
-                WriteLog("在Broker[{0}]上删除主题：{1}", item.Name, topic);
+                WriteLog("Deleting topic [{1}] on Broker [{0}]", item.Name, topic);
                 try
                 {
                     var bk = GetBroker(item.Name);
@@ -668,7 +668,7 @@ public abstract class MqBase : DisposeBase
 
             foreach (var item in Brokers)
             {
-                WriteLog("在Broker[{0}]上创建消费组：{1}", item.Name, groupName);
+                WriteLog("Creating consumer group [{1}] on Broker [{0}]", item.Name, groupName);
                 try
                 {
                     var bk = GetBroker(item.Name);
@@ -702,7 +702,7 @@ public abstract class MqBase : DisposeBase
         {
             foreach (var item in Brokers)
             {
-                WriteLog("在Broker[{0}]上删除消费组：{1}", item.Name, groupName);
+                WriteLog("Deleting consumer group [{1}] on Broker [{0}]", item.Name, groupName);
                 try
                 {
                     var bk = GetBroker(item.Name);
@@ -910,7 +910,7 @@ public abstract class MqBase : DisposeBase
         {
             foreach (var item in Brokers)
             {
-                WriteLog("在Broker[{0}]上注册过滤服务器：{1}", item.Name, filterServerAddr);
+                WriteLog("Registering filter server [{1}] on Broker [{0}]", item.Name, filterServerAddr);
                 try
                 {
                     var bk = GetBroker(item.Name);
@@ -919,7 +919,7 @@ public abstract class MqBase : DisposeBase
                 }
                 catch (Exception ex)
                 {
-                    WriteLog("注册过滤服务器失败[{0}]：{1}", item.Name, ex.Message);
+                    WriteLog("Failed to register filter server on [{0}]: {1}", item.Name, ex.Message);
                 }
             }
         }
@@ -1033,9 +1033,9 @@ public abstract class MqBase : DisposeBase
     /// <summary>客户端日志。详细的指令收发日志，仅用于调试</summary>
     public ILog ClientLog { get; set; }
 
-    /// <summary>写日志</summary>
-    /// <param name="format"></param>
-    /// <param name="args"></param>
-    public void WriteLog(String format, params Object[] args) => Log?.Info($"[{this}]" + format, args);
+    /// <summary>写日志。前缀在本地化翻译之后拼接，不参与词表查找</summary>
+    /// <param name="format">消息模板，英文原文，运行期按日志语言翻译</param>
+    /// <param name="args">格式化参数</param>
+    public void WriteLog(String format, params Object[] args) => Log?.InfoPrefixed($"[{this}]", format, args);
     #endregion
 }

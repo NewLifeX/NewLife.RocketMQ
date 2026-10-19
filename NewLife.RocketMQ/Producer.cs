@@ -636,7 +636,7 @@ public class Producer : MqBase
         }
         catch (Exception ex)
         {
-            if (Log.Enable) Log.Error("gRPC 单向发送失败：{0}", ex.Message);
+            if (Log.Enable) Log.Error("Failed to send one-way message over gRPC: {0}", ex.Message);
         }
     }
 #endif
@@ -1189,7 +1189,7 @@ public class Producer : MqBase
                 state = OnCheckTransaction(msgExt, transactionId);
             else
             {
-                WriteLog("收到事务回查但未设置OnCheckTransaction委托，事务ID={0}，将默认回滚", transactionId);
+                WriteLog("Transaction check received but OnCheckTransaction is not set, transaction ID={0}; rolling back by default", transactionId);
             }
 
             // 构造EndTransaction请求
@@ -1207,12 +1207,12 @@ public class Producer : MqBase
             var bk = Clients?.FirstOrDefault();
             bk?.Invoke(RequestCode.END_TRANSACTION, null, header.GetProperties());
 
-            WriteLog("事务回查完成，事务ID={0}，状态={1}", transactionId, state);
+            WriteLog("Transaction check completed, transaction ID={0}, state={1}", transactionId, state);
         }
         catch (Exception ex)
         {
             span?.SetError(ex, null);
-            WriteLog("事务回查处理异常：{0}", ex.Message);
+            WriteLog("Transaction check failed: {0}", ex.Message);
         }
 
         return null;

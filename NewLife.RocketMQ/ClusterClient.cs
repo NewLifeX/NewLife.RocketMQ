@@ -71,7 +71,7 @@ public abstract class ClusterClient : DisposeBase
     /// <summary>开始</summary>
     protected virtual void OnStart()
     {
-        WriteLog("集群地址：{0}", Servers.Join(";"));
+        WriteLog("Cluster addresses: {0}", Servers.Join(";"));
 
         if (Config != null)
             _serializeType = Config.SerializeType;
@@ -99,7 +99,7 @@ public abstract class ClusterClient : DisposeBase
             {
                 var idx = (_serverIndex + 1 + i) % servers.Length;
                 var uri = servers[idx];
-                WriteLog("正在连接[{0}]", uri);
+                WriteLog("Connecting to [{0}]", uri);
 
                 if (uri.Type == NetType.Unknown) uri.Type = NetType.Tcp;
 
@@ -131,7 +131,7 @@ public abstract class ClusterClient : DisposeBase
                         _Client = client;
                         _serverIndex = idx;
                         OnConnected();
-                        WriteLog("连接成功[{0}]", uri);
+                        WriteLog("Connected to [{0}]", uri);
                         break;
                     }
                 }
@@ -151,7 +151,7 @@ public abstract class ClusterClient : DisposeBase
     /// <returns>是否切换成功</returns>
     public Boolean SwitchServer()
     {
-        WriteLog("切换服务器到下一个地址");
+        WriteLog("Switching to the next server address");
 
         lock (this)
         {
@@ -166,7 +166,7 @@ public abstract class ClusterClient : DisposeBase
         }
         catch (Exception ex)
         {
-            WriteLog("切换服务器失败：{0}", ex.Message);
+            WriteLog("Failed to switch server: {0}", ex.Message);
             return false;
         }
     }
@@ -478,7 +478,7 @@ public abstract class ClusterClient : DisposeBase
     protected virtual Command OnReceive(Command cmd)
     {
         var code = !cmd.Reply ? (RequestCode)cmd.Header.Code + "" : (ResponseCode)cmd.Header.Code + "";
-        WriteLog("收到：Code={0} {1}", code, cmd.Header.ToJson());
+        WriteLog("Received: Code={0} {1}", code, cmd.Header.ToJson());
 
         using var span = Tracer?.NewSpan($"mq:{Name}:Receive:{code}", cmd);
         span?.AppendTag(cmd.Payload?.ToStr());
@@ -504,9 +504,9 @@ public abstract class ClusterClient : DisposeBase
     /// <summary>日志</summary>
     public ILog Log { get; set; }
 
-    /// <summary>写日志</summary>
-    /// <param name="format"></param>
-    /// <param name="args"></param>
-    public void WriteLog(String format, params Object[] args) => Log?.Info($"[{Name}]{format}", args);
+    /// <summary>写日志。前缀在本地化翻译之后拼接，不参与词表查找</summary>
+    /// <param name="format">消息模板，英文原文，运行期按日志语言翻译</param>
+    /// <param name="args">格式化参数</param>
+    public void WriteLog(String format, params Object[] args) => Log?.InfoPrefixed($"[{Name}]", format, args);
     #endregion
 }

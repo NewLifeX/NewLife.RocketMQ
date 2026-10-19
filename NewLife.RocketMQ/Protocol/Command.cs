@@ -129,7 +129,7 @@ public class Command : IAccessor, IMessage
 
             // 解析头部
             var type = (SerializeType)((oriHeaderLen >> 24) & 0xFF);
-            if (!TryReadHeader(dataBuf, 0, headerLen, type)) throw new NotSupportedException($"不支持[{type}]序列化");
+            if (!TryReadHeader(dataBuf, 0, headerLen, type)) throw new NotSupportedException(L.T("Serialization of [{0}] is not supported", type));
 
             // 读取主体
             if (bodyLen > 0)
@@ -137,7 +137,7 @@ public class Command : IAccessor, IMessage
         }
         catch (Exception ex)
         {
-            XTrace.WriteLine("序列化错误！{0}", ex.Message);
+            XTrace.WriteLine("Serialization failed! {0}", ex.Message);
             return false;
         }
 
@@ -186,7 +186,7 @@ public class Command : IAccessor, IMessage
             var extFieldsLength = rd.ReadInt32();
             if (extFieldsLength > 0)
             {
-                if (extFieldsLength > headerLength) throw new Exception($"扩展字段长度[{extFieldsLength}]超过头部长度[{headerLength}]");
+                if (extFieldsLength > headerLength) throw new Exception(L.T("Extended field length [{0}] exceeds the header length [{1}]", extFieldsLength, headerLength));
 
                 var extFields = header.GetExtFields();
                 var endPos = rd.Position + extFieldsLength;
@@ -215,8 +215,8 @@ public class Command : IAccessor, IMessage
     {
         var len = useShortLength ? reader.ReadInt16() : reader.ReadInt32();
         if (len == 0) return null;
-        if (len < 0) throw new Exception($"字符串长度为负数[{len}]");
-        if (len > limit) throw new Exception($"字符串长度[{len}]超过限制[{limit}]");
+        if (len < 0) throw new Exception(L.T("String length is negative [{0}]", len));
+        if (len > limit) throw new Exception(L.T("String length [{0}] exceeds the limit [{1}]", len, limit));
 
         return reader.ReadBytes(len).ToArray().ToStr();
     }
@@ -387,7 +387,7 @@ public class Command : IAccessor, IMessage
             stream.Write(hsBuf, 0, hsLen);
         }
         else
-            throw new NotSupportedException($"不支持[{type}]序列化");
+            throw new NotSupportedException(L.T("Serialization of [{0}] is not supported", type));
     }
 
     /// <summary>命令转字节数组</summary>
@@ -405,7 +405,7 @@ public class Command : IAccessor, IMessage
     /// <returns></returns>
     public IMessage CreateReply()
     {
-        if (Header == null || Reply || OneWay) throw new Exception("不能创建响应命令");
+        if (Header == null || Reply || OneWay) throw new Exception(L.T("Cannot create a response command."));
 
         var head = new Header
         {

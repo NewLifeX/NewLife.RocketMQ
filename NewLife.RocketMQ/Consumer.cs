@@ -146,7 +146,7 @@ public class Consumer : MqBase
     protected override void OnStart()
     {
         var allTopics = GetEffectiveTopics();
-        WriteLog("正在准备消费 {0}", allTopics.Join(","));
+        WriteLog("Preparing to consume {0}", allTopics.Join(","));
 
         var list = Data;
         if (list == null)
@@ -199,7 +199,7 @@ public class Consumer : MqBase
                 }
                 catch (Exception ex)
                 {
-                    WriteLog("获取主题[{0}]路由失败：{1}", topic, ex.Message);
+                    WriteLog("Failed to get route of topic [{0}]: {1}", topic, ex.Message);
                 }
             }
         }
@@ -287,7 +287,7 @@ public class Consumer : MqBase
         else
         {
             pr.Status = PullStatus.Unknown;
-            Log.Warn("[{0}]{1} 序列编号：{2} 序列偏移量：{3}", (ResponseCode)rs.Header.Code, rs.Header.Remark, mq.QueueId, offset);
+            Log.WritePrefixed(LogLevel.Warn, $"[{(ResponseCode)rs.Header.Code}]{rs.Header.Remark} ", "Queue id: {0}, queue offset: {1}", mq.QueueId, offset);
         }
 
         pr.Read(rs.Header?.ExtFields);
@@ -304,7 +304,7 @@ public class Consumer : MqBase
     /// <param name="error">解码失败信息</param>
     private void OnDecodeError(MessageQueue mq, MessageDecodeError error)
     {
-        WriteLog("解码消息失败，跳过 [{0}]：{1}", mq, error.Exception?.Message);
+        WriteLog("Failed to decode message, skipping [{0}]: {1}", mq, error.Exception?.Message);
 
         try
         {
@@ -462,11 +462,11 @@ public class Consumer : MqBase
                         if (!cs.Contains(clientId)) cs.Add(clientId);
                     }
 
-                    if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("在Broker[{0}]上查询消费组[{1}]消费者列表：{2}", item.Name, group, list.Count);
+                    if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("Queried consumer list of group [{1}] on Broker [{0}]: {2}", item.Name, group, list.Count);
                 }
                 else
                 {
-                    WriteLog("在Broker[{0}]上未查询到消费组[{1}]的消费者列表", item.Name, group);
+                    WriteLog("Consumer list of group [{1}] not found on Broker [{0}]", item.Name, group);
                 }
             }
             catch (Exception ex)
@@ -536,7 +536,7 @@ public class Consumer : MqBase
         catch (Exception ex)
         {
             span?.SetError(ex, null);
-            WriteLog("重置消费偏移失败：{0}", ex.Message);
+            WriteLog("Failed to reset consume offset: {0}", ex.Message);
             return false;
         }
     }
@@ -596,7 +596,7 @@ public class Consumer : MqBase
             catch (Exception ex)
             {
                 span?.SetError(ex, null);
-                WriteLog("锁定队列失败[{0}]：{1}", g.Key, ex.Message);
+                WriteLog("Failed to lock queue [{0}]: {1}", g.Key, ex.Message);
             }
         }
 
@@ -638,7 +638,7 @@ public class Consumer : MqBase
             catch (Exception ex)
             {
                 span?.SetError(ex, null);
-                WriteLog("解锁队列失败[{0}]：{1}", g.Key, ex.Message);
+                WriteLog("Failed to unlock queue [{0}]: {1}", g.Key, ex.Message);
             }
         }
     }
@@ -685,13 +685,13 @@ public class Consumer : MqBase
         }
 
         var source = new CancellationTokenSource();
-        WriteLog("正在创建[{0}]个消费线程，Group={1}，Topics={2}", qs.Length, Group, GetEffectiveTopics().Join(","));
+        WriteLog("Creating [{0}] consume threads, Group={1}, Topics={2}", qs.Length, Group, GetEffectiveTopics().Join(","));
 
         // 初始化并发限流信号量
         if (MaxConcurrentConsume > 0)
         {
             _concurrentSemaphore = new SemaphoreSlim(MaxConcurrentConsume, MaxConcurrentConsume);
-            WriteLog("消费限流已启用，最大并发数={0}", MaxConcurrentConsume);
+            WriteLog("Consume throttling enabled, max concurrency={0}", MaxConcurrentConsume);
         }
         else
         {
@@ -719,7 +719,7 @@ public class Consumer : MqBase
         var ts = _tasks;
         if (ts != null && ts.Length > 0)
         {
-            WriteLog("停止调度线程[{0}]", ts.Length);
+            WriteLog("Stopping [{0}] scheduling threads", ts.Length);
 
             // 预留一点退出时间
             Interlocked.Increment(ref _version);
@@ -750,7 +750,7 @@ public class Consumer : MqBase
     private async Task DoPull(QueueStore st, CancellationToken cancellationToken)
     {
         var mq = st.Queue;
-        WriteLog("开始消费[{0}]，Group={1}，{2}，Offset={3}，CommitOffset={4}", mq.Topic ?? Topic, Group, mq, st.Offset, st.CommitOffset);
+        WriteLog("Start consuming [{0}], Group={1}, {2}, Offset={3}, CommitOffset={4}", mq.Topic ?? Topic, Group, mq, st.Offset, st.CommitOffset);
 
         // 顺序消费时先锁定队列
         if (OrderConsume)
@@ -758,7 +758,7 @@ public class Consumer : MqBase
             var locked = await LockBatchMQAsync([mq], cancellationToken).ConfigureAwait(false);
             if (locked.Count == 0)
             {
-                WriteLog("顺序消费锁定队列失败[{0}]，跳过消费", mq);
+                WriteLog("Failed to lock queue [{0}] for ordered consumption, skipping", mq);
                 return;
             }
         }
@@ -818,7 +818,7 @@ public class Consumer : MqBase
                             {
                                 // 整批消息均无法解码时若不推进位点，同一批坏消息会被无限重拉，队列假死；
                                 // 按已消费处理，跳过该批并提交位点
-                                WriteLog("批次无可解码消息，跳过 [{0}] Offset={1:n0}, NextOffset={2:n0}", mq, st.Offset, pr.NextBeginOffset);
+                                WriteLog("No decodable message in the batch, skipping [{0}] Offset={1:n0}, NextOffset={2:n0}", mq, st.Offset, pr.NextBeginOffset);
                                 st.Offset = pr.NextBeginOffset;
                                 await UpdateOffset(mq, st.Offset, cancellationToken).ConfigureAwait(false);
                             }
@@ -831,13 +831,13 @@ public class Consumer : MqBase
                         case PullStatus.OffsetIllegal:
                             if (pr.NextBeginOffset >= 0)
                             {
-                                WriteLog("无效的offset，可能历史消息已过期 [{0}@{1}] Offset={2:n0}, NextOffset={3:n0}", mq.BrokerName, mq.QueueId, st.Offset, pr.NextBeginOffset);
+                                WriteLog("Invalid offset, historical messages may have expired [{0}@{1}] Offset={2:n0}, NextOffset={3:n0}", mq.BrokerName, mq.QueueId, st.Offset, pr.NextBeginOffset);
                                 st.Offset = pr.NextBeginOffset;
                             }
 
                             break;
                         case PullStatus.Unknown:
-                            Log.Error("未知响应类型消息，序列[{1}]偏移量{0}", st.Offset, st.Queue.QueueId);
+                            Log.Error("Unknown response type, queue [{1}] offset {0}", st.Offset, st.Queue.QueueId);
                             break;
                         default:
                             break;
@@ -869,7 +869,7 @@ public class Consumer : MqBase
             await UnlockBatchMQAsync([mq], cancellationToken).ConfigureAwait(false);
         }
 
-        WriteLog("消费[{0}]结束", mq.Topic ?? Topic);
+        WriteLog("Consumption of [{0}] finished", mq.Topic ?? Topic);
     }
 
     /// <summary>拉取到一批消息</summary>
@@ -919,13 +919,13 @@ public class Consumer : MqBase
                     }
                     catch (Exception ex)
                     {
-                        WriteLog("消息回退失败[{0}]：{1}", msg.MsgId, ex.Message);
+                        WriteLog("Failed to roll back message [{0}]: {1}", msg.MsgId, ex.Message);
                     }
                 }
                 else
                 {
                     // 超过最大重试次数，消息将进入死信队列 %DLQ%{ConsumerGroup}
-                    WriteLog("消息[{0}]超过最大重试次数[{1}]，将进入死信队列", msg.MsgId, MaxReconsumeTimes);
+                    WriteLog("Message [{0}] exceeded the max retry times [{1}] and will enter the dead letter queue", msg.MsgId, MaxReconsumeTimes);
                 }
             }
         }
@@ -966,7 +966,7 @@ public class Consumer : MqBase
             if (item.Offset >= 0 && item.Offset != item.CommitOffset)
             {
                 var mq = item.Queue;
-                WriteLog("队列[{0}@{1}]更新偏移[{2:n0}]", mq.BrokerName, mq.QueueId, item.Offset);
+                WriteLog("Queue [{0}@{1}] offset updated to [{2:n0}]", mq.BrokerName, mq.QueueId, item.Offset);
 
                 ts.Add(Task.Run(() => UpdateOffset(item.Queue, item.Offset, source.Token)));
 
@@ -1022,7 +1022,7 @@ public class Consumer : MqBase
             // 只有多地址（如raft多节点）才需要切换，单节点切换无意义
             if (bk.Servers == null || bk.Servers.Length <= 1) continue;
 
-            WriteLog("连续多轮未在Broker[{0}]上发现消费组[{1}]消费者，切换到下一个地址重试", item.Name, Group);
+            WriteLog("Consumer list of group [{1}] still absent on Broker [{0}] after several rounds, switching to the next address", item.Name, Group);
             if (bk.SwitchServer())
             {
                 // 连接重建后立即补发心跳注册
@@ -1032,7 +1032,7 @@ public class Consumer : MqBase
                 }
                 catch (Exception ex)
                 {
-                    WriteLog("切换Broker后注册心跳失败：{0}", ex.Message);
+                    WriteLog("Failed to register heartbeat after switching Broker: {0}", ex.Message);
                 }
 
                 break;
@@ -1050,7 +1050,7 @@ public class Consumer : MqBase
          * 3，各消费者平均分配队列，不采用环形，减少消费者到Broker连接数
          */
 
-        if (_Queues == null) WriteLog("准备从所有Broker服务器上获取消费者列表，以确定当前消费者应该负责消费的queue分片");
+        if (_Queues == null) WriteLog("Fetching consumer lists from all Brokers to determine the queue shards for this consumer");
 
         var cs = await GetConsumers(Group).ConfigureAwait(false);
         if (cs.Count == 0)
@@ -1088,7 +1088,7 @@ public class Consumer : MqBase
 
         var cs2 = cs.OrderBy(e => e).ToList();
 
-        if (_Queues == null) WriteLog("消费者列表[{0}]：{1}", cs2.Count, cs2.Join());
+        if (_Queues == null) WriteLog("Consumer list [{0}]: {1}", cs2.Count, cs2.Join());
 
         // 集群模式需要分配Queue，而广播模式不需要
         if (MessageModel == MessageModels.Clustering)
@@ -1134,7 +1134,7 @@ public class Consumer : MqBase
 
         var dic = qs.GroupBy(e => e.BrokerName).ToDictionary(e => e.Key, e => e.Join(",", x => x.QueueId));
         var str = dic.Join(";", e => $"{e.Key}[{e.Value}]");
-        WriteLog("消费重新平衡，当前消费者负责queue分片：{0}", str);
+        WriteLog("Consume rebalanced, queue shards assigned to this consumer: {0}", str);
 
         using var span = Tracer?.NewSpan($"mq:{Name}:Rebalance", str);
 
@@ -1209,7 +1209,7 @@ public class Consumer : MqBase
                 if (isExist && offset >= 0)
                 {
                     store.Offset = store.CommitOffset = offset;
-                    WriteLog("从本地加载offset[{0}@{1}] Offset={2:n0}", store.Queue.BrokerName, store.Queue.QueueId, store.Offset);
+                    WriteLog("Loaded offset [{0}@{1}] from local, Offset={2:n0}", store.Queue.BrokerName, store.Queue.QueueId, store.Offset);
                 }
                 else
                 {
@@ -1219,7 +1219,7 @@ public class Consumer : MqBase
                         : await QueryMinOffset(store.Queue, cancellationToken).ConfigureAwait(false);
 
                     store.Offset = store.CommitOffset = off;
-                    WriteLog("初始化offset[{0}@{1}] Offset={2:n0}（广播模式）", store.Queue.BrokerName, store.Queue.QueueId, store.Offset);
+                    WriteLog("Initialized offset [{0}@{1}] Offset={2:n0} (broadcast mode)", store.Queue.BrokerName, store.Queue.QueueId, store.Offset);
                 }
             }
 
@@ -1292,7 +1292,7 @@ public class Consumer : MqBase
                 catch (ResponseException ex) when (ex.Code == ResponseCode.TOPIC_NOT_EXIST)
                 {
                     // 主题尚未在Broker端创建，忽略偏移提交错误，首次消费后将自动提交偏移
-                    WriteLog("主题[{0}]在Broker端尚未创建，跳过初始偏移提交", store.Queue.Topic ?? Topic ?? "unknown");
+                    WriteLog("Topic [{0}] is not created on the Broker yet, skipping the initial offset commit", store.Queue.Topic ?? Topic ?? "unknown");
                 }
             }
             else
@@ -1303,7 +1303,7 @@ public class Consumer : MqBase
                 store.Offset = store.CommitOffset = offset;
             }
 
-            WriteLog("初始化offset[{0}@{1}] Offset={2:n0}", store.Queue.BrokerName, store.Queue.QueueId, store.Offset);
+            WriteLog("Initialized offset [{0}@{1}] Offset={2:n0}", store.Queue.BrokerName, store.Queue.QueueId, store.Offset);
         }
     }
 
@@ -1364,7 +1364,7 @@ public class Consumer : MqBase
 
         if (consumerStatesModel.OffsetTable.Count == 0)
         {
-            WriteLog("无法解析消费者状态，可能是服务端版本不兼容，响应如下：");
+            WriteLog("Failed to parse consumer status; the server version may be incompatible. Response:");
             WriteLog(cmdStr);
         }
 
@@ -1589,7 +1589,7 @@ public class Consumer : MqBase
         catch (Exception ex)
         {
             span?.SetError(ex, null);
-            WriteLog("消息回退失败：{0}", ex.Message);
+            WriteLog("Failed to roll back message: {0}", ex.Message);
             return false;
         }
     }
@@ -1694,7 +1694,7 @@ public class Consumer : MqBase
         catch (Exception ex)
         {
             span?.SetError(ex, null);
-            WriteLog("确认Pop消息失败：{0}", ex.Message);
+            WriteLog("Failed to acknowledge Pop message: {0}", ex.Message);
             return false;
         }
     }
@@ -1764,7 +1764,7 @@ public class Consumer : MqBase
         catch (Exception ex)
         {
             span?.SetError(ex, null);
-            WriteLog("修改不可见时间失败：{0}", ex.Message);
+            WriteLog("Failed to change invisible time: {0}", ex.Message);
             return false;
         }
     }
@@ -1820,7 +1820,7 @@ public class Consumer : MqBase
         catch (Exception ex)
         {
             span?.SetError(ex, null);
-            WriteLog("批量确认Pop消息失败：{0}", ex.Message);
+            WriteLog("Failed to acknowledge Pop messages in batch: {0}", ex.Message);
             return 0;
         }
     }

@@ -120,7 +120,7 @@ public class MessageExt : Message, IAccessor
 
         // 主体
         var len = reader.ReadInt32();
-        if (len < 0 || len > reader.Available) throw new InvalidDataException($"消息体长度[{len}]非法，剩余[{reader.Available}]");
+        if (len < 0 || len > reader.Available) throw new InvalidDataException(L.T("Invalid message body length [{0}], remaining [{1}]", len, reader.Available));
         Body = reader.ReadBytes(len).ToArray();
         if ((SysFlag & 1) == 1)
         {
@@ -132,11 +132,11 @@ public class MessageExt : Message, IAccessor
 
         // 主题
         len = reader.ReadByte();
-        if (len > reader.Available) throw new InvalidDataException($"主题长度[{len}]非法，剩余[{reader.Available}]");
+        if (len > reader.Available) throw new InvalidDataException(L.T("Invalid topic length [{0}], remaining [{1}]", len, reader.Available));
         Topic = reader.ReadBytes(len).ToArray().ToStr();
 
         var len2 = reader.ReadInt16();
-        if (len2 < 0 || len2 > reader.Available) throw new InvalidDataException($"属性长度[{len2}]非法，剩余[{reader.Available}]");
+        if (len2 < 0 || len2 > reader.Available) throw new InvalidDataException(L.T("Invalid properties length [{0}], remaining [{1}]", len2, reader.Available));
         var str = reader.ReadBytes(len2).ToArray().ToStr();
         ParseProperties(str);
 
@@ -211,7 +211,7 @@ public class MessageExt : Message, IAccessor
             if (storeSize <= 4 || offset + storeSize > buf.Length)
             {
                 // 长度非法时无法定位下一条消息边界，剩余数据全部放弃
-                ReportDecodeError(new InvalidDataException($"消息长度[{storeSize}]非法，剩余[{buf.Length - offset}]"), Slice(buf, offset, buf.Length - offset), offset, storeSize, onDecodeError);
+                ReportDecodeError(new InvalidDataException(L.T("Invalid message length [{0}], remaining [{1}]", storeSize, buf.Length - offset)), Slice(buf, offset, buf.Length - offset), offset, storeSize, onDecodeError);
                 break;
             }
 
@@ -258,7 +258,7 @@ public class MessageExt : Message, IAccessor
     {
         if (onDecodeError == null)
         {
-            XTrace.WriteLine("解码消息失败，跳过：{0}", ex.Message);
+            XTrace.WriteLine("Failed to decode message, skipping: {0}", ex.Message);
             return;
         }
 

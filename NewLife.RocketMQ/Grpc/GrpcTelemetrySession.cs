@@ -136,7 +136,7 @@ public class GrpcTelemetrySession : DisposeBase
 
                 // 等待连接建立：连接不可达时不会完成，连接被拒绝时 Completion 先行结束
                 var connected = await Task.WhenAny(stream.Connected, stream.Completion, Task.Delay(ConnectTimeout, cancellationToken)).ConfigureAwait(false);
-                if (connected != stream.Connected) throw new InvalidOperationException($"Telemetry长连接失败：{stream.Error?.Message}");
+                if (connected != stream.Connected) throw new InvalidOperationException(L.T("Telemetry stream failed: {0}", stream.Error?.Message));
 
                 // 等待设置帧被 Proxy 处理，避免紧随其后的接收请求取不到订阅关系
                 if (RegistrationDelay > TimeSpan.Zero) await Task.Delay(RegistrationDelay, cancellationToken).ConfigureAwait(false);
@@ -154,7 +154,7 @@ public class GrpcTelemetrySession : DisposeBase
             {
                 ErrorCount++;
                 span?.SetError(ex, null);
-                Log.Warn("Telemetry长连接异常[{0}]：{1}", Service.Client?.Address, ex.Message);
+                Log.Warn("Telemetry stream error on [{0}]: {1}", Service.Client?.Address, ex.Message);
             }
             finally
             {

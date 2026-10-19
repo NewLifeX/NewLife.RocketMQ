@@ -40,7 +40,7 @@ public class ZlibMessageCompressor : IMessageCompressor
     /// </remarks>
     public Int32 MaxDecompressSize { get; set; } = 64 * 1024 * 1024;
 
-    private InvalidDataException TooLargeException() => new($"解压数据超过上限[{MaxDecompressSize}]");
+    private InvalidDataException TooLargeException() => new(L.T("Decompressed data exceeds the limit [{0}]", MaxDecompressSize));
 
     /// <summary>压缩，输出 RFC1950 ZLIB 格式（2字节头 + deflate + Adler-32尾）</summary>
     /// <param name="data">原始字节</param>

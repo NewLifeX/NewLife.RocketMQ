@@ -72,7 +72,7 @@ public class MqCodec : IMessageCodec, IMessageMatcher
         if (message is not Command cmd) return null;
 
         // 流式体不在 Payload，整帧构建只会写出声明体长为 0 的截断帧
-        if (cmd.Body is { IsStreaming: true }) throw new InvalidOperationException("流式消息体无法整帧构建，请使用 BuildHeader + 流式发送");
+        if (cmd.Body is { IsStreaming: true }) throw new InvalidOperationException(L.T("A streaming message body cannot be built as a whole frame; use BuildHeader with streaming send."));
 
         var ms = new MemoryStream();
         cmd.Write(ms);

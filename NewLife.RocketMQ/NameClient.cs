@@ -89,7 +89,7 @@ public class NameClient : ClusterClient
             _lastBrokers = str;
             foreach (var item in rs)
             {
-                WriteLog("发现Broker[{0}]: {1}, reads={2}, writes={3}", item.Name, item.Addresses.Join(), item.ReadQueueNums, item.WriteQueueNums);
+                WriteLog("Discovered Broker [{0}]: {1}, reads={2}, writes={3}", item.Name, item.Addresses.Join(), item.ReadQueueNums, item.WriteQueueNums);
             }
         }
 
@@ -107,7 +107,7 @@ public class NameClient : ClusterClient
                     }
                     catch (Exception ex)
                     {
-                        WriteLog("获取主题[{0}]路由失败：{1}", topic, ex.Message);
+                        WriteLog("Failed to get route of topic [{0}]: {1}", topic, ex.Message);
                     }
                 }
             }
@@ -202,7 +202,7 @@ public class NameClient : ClusterClient
             // 结果检查
             if (list.Count == 0)
             {
-                WriteLog("未能找到主题[{0}]的任何Broker信息，可能是Topic或NameServer错误，也可能是不支持的服务端版本。服务端返回如下：", topic);
+                WriteLog("No Broker information found for topic [{0}]. The topic or NameServer may be wrong, or the server version is unsupported. Server response:", topic);
                 WriteLog(rs.Payload?.ToStr());
             }
 
@@ -215,7 +215,7 @@ public class NameClient : ClusterClient
         {
             if (!MqBase.DefaultTopic.Equals(topic) && ResponseCode.TOPIC_NOT_EXIST.Equals(ex.Code))
             {
-                WriteLog("未能找到主题[{0}]，将读取默认主题[TBW102]的替代。", topic);
+                WriteLog("Topic [{0}] was not found; falling back to the default topic [TBW102].", topic);
                 var rs = GetRouteInfo(MqBase.DefaultTopic);
                 if (rs != null && rs.Count() > 0)
                 {

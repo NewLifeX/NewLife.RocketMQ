@@ -359,7 +359,7 @@ Check("压缩·解压输出上限", () =>
     }
     catch (InvalidDataException ex)
     {
-        caught = ex.Message.Contains("上限");
+        caught = ex.Message.Contains("limit");
     }
 
     Assert(caught, "超出解压上限未按预期拦截");

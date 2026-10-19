@@ -134,12 +134,12 @@ public class BrokerClient : ClusterClient
             if (code == 0)
             {
                 HeartbeatOK = true;
-                if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("心跳[{0}]成功", Name);
+                if (Log != null && Log.Level <= LogLevel.Debug) WriteLog("Heartbeat [{0}] succeeded", Name);
             }
             else
             {
                 HeartbeatOK = false;
-                WriteLog("心跳[{0}]失败：{1} {2}", Name, code, rs?.Header?.Remark);
+                WriteLog("Heartbeat [{0}] failed: {1} {2}", Name, code, rs?.Header?.Remark);
             }
         }
         catch (Exception ex)

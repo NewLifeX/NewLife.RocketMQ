@@ -215,7 +215,7 @@ public class GrpcMessagingService : IDisposable
         var invisible = invisibleDuration ?? TimeSpan.FromSeconds(30);
         if (invisible < MinimumInvisibleTime)
         {
-            Log.Warn("不可见时间 {0} 小于 Broker 下限 {1}，按 {1} 发送", invisible, MinimumInvisibleTime);
+            Log.Warn("Invisible time {0} is less than the Broker minimum {1}; using {1}", invisible, MinimumInvisibleTime);
             invisible = MinimumInvisibleTime;
         }
 
@@ -267,13 +267,13 @@ public class GrpcMessagingService : IDisposable
                 // 已收到消息时以结果为先，避免丢弃已投递消息（确认句柄在不可见时间内仍然有效）
                 if (messages.Count > 0)
                 {
-                    Log.Warn("gRPC接收中断，返回已收到的 {0} 条：{1}", messages.Count, ex.Message);
+                    Log.Warn("gRPC receive interrupted, returning the {0} messages already received: {1}", messages.Count, ex.Message);
                     return messages;
                 }
 
                 if (attempt > 0) throw;
 
-                Log.Warn("gRPC接收失败，稍后重试：{0}", ex.Message);
+                Log.Warn("gRPC receive failed, retrying later: {0}", ex.Message);
                 await Task.Delay(RetryDelay, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -406,7 +406,7 @@ public class GrpcMessagingService : IDisposable
     {
         if (invisibleDuration < MinimumInvisibleTime)
         {
-            Log.Warn("延长可见时间 {0} 小于 Broker 下限 {1}，按 {1} 发送", invisibleDuration, MinimumInvisibleTime);
+            Log.Warn("Invisible time extension {0} is less than the Broker minimum {1}; using {1}", invisibleDuration, MinimumInvisibleTime);
             invisibleDuration = MinimumInvisibleTime;
         }
 

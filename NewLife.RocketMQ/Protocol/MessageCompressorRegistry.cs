@@ -57,9 +57,9 @@ public static class MessageCompressorRegistry
         {
             var hint = type switch
             {
-                1 => "LZ4 压缩需引用 NewLife.RocketMQ.Extensions 并调用 MessageCompressorRegistry.Register(1, new LZ4MessageCompressor())",
-                2 => "ZSTD 压缩需引用 NewLife.RocketMQ.Extensions 并调用 MessageCompressorRegistry.Register(2, new ZstdMessageCompressor())",
-                _ => $"压缩类型 {type} 未注册，请调用 MessageCompressorRegistry.Register({type}, ...) 提供实现",
+                1 => L.T("LZ4 compression requires the NewLife.RocketMQ.Extensions package. Add it and call MessageCompressorRegistry.Register(1, new LZ4MessageCompressor())."),
+                2 => L.T("ZSTD compression requires the NewLife.RocketMQ.Extensions package. Add it and call MessageCompressorRegistry.Register(2, new ZstdMessageCompressor())."),
+                _ => L.T("Compression type {0} is not registered. Call MessageCompressorRegistry.Register({0}, ...) to provide an implementation.", type),
             };
             throw new NotSupportedException(hint);
         }
