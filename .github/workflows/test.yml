@@ -609,3 +609,10 @@ jobs:
     - name: Check README languages
       shell: pwsh
       run: pwsh -File ./sync-readme-languages.ps1 -Check
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+    # 词表一致性脚本看不到“译文是否真的能查到”，这里跑本地化用例补上运行时验证（无需 Broker）
+    - name: Localization tests
+      run: dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --filter "FullyQualifiedName~LocalizationTests"
