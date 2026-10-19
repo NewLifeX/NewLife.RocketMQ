@@ -8,26 +8,26 @@ namespace NewLife.RocketMQ;
 public class MqSetting : Config<MqSetting>
 {
     /// <summary>名称服务器。将从该地址获取Broker</summary>
-    [Description("名称服务器。将从该地址获取Broker")]
+    [Description("NameServer address. Brokers are discovered from it.")]
     public String NameServer { get; set; }
 
     /// <summary>主题</summary>
-    [Description("主题")]
+    [Description("Topic")]
     public String Topic { get; set; }
 
     /// <summary>消费组</summary>
-    [Description("消费组")]
+    [Description("Consumer group")]
     public String Group { get; set; }
 
     /// <summary>获取名称服务器地址的http地址，阿里云专用 http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet</summary>
-    [Description("获取名称服务器地址的http地址，阿里云专用 http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet")]
+    [Description("HTTP address that returns the NameServer address; Aliyun only. http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet")]
     public String Server { get; set; }
 
     /// <summary>访问令牌，阿里云专用</summary>
-    [Description("访问令牌，阿里云专用")]
+    [Description("Access token; Aliyun only.")]
     public String AccessKey { get; set; }
 
     /// <summary>访问密钥，阿里云专用</summary>
-    [Description("访问密钥，阿里云专用")]
+    [Description("Secret key; Aliyun only.")]
     public String SecretKey { get; set; }
 }

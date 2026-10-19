@@ -1899,7 +1899,7 @@ public class Consumer : MqBase
         TimeSpan? longPollingTimeout = null,
         CancellationToken cancellationToken = default)
     {
-        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+        if (_GrpcService == null) throw new InvalidOperationException(L.T("gRPC service not initialized. Set GrpcProxyAddress first."));
 
         // Proxy 侧的订阅关系由资源上报长连接维护，等它就绪后再接收，避免启动后立即消费时失败
         if (_GrpcTelemetry != null && !_GrpcTelemetry.Active) await _GrpcTelemetry.WaitReadyAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
@@ -1934,7 +1934,7 @@ public class Consumer : MqBase
         IList<Grpc.AckMessageEntry> entries,
         CancellationToken cancellationToken = default)
     {
-        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+        if (_GrpcService == null) throw new InvalidOperationException(L.T("gRPC service not initialized. Set GrpcProxyAddress first."));
 
         using var span = Tracer?.NewSpan($"mq:{Name}:AckMessage:grpc");
         try
@@ -1954,7 +1954,7 @@ public class Consumer : MqBase
     /// <returns>分配结果</returns>
     public async Task<Grpc.QueryAssignmentResponse> QueryAssignmentViaGrpcAsync(String topic = null, CancellationToken cancellationToken = default)
     {
-        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+        if (_GrpcService == null) throw new InvalidOperationException(L.T("gRPC service not initialized. Set GrpcProxyAddress first."));
 
         return await _GrpcService.QueryAssignmentAsync(topic ?? Topic, Group, cancellationToken).ConfigureAwait(false);
     }
@@ -1976,7 +1976,7 @@ public class Consumer : MqBase
         Int32 maxDeliveryAttempts,
         CancellationToken cancellationToken = default)
     {
-        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+        if (_GrpcService == null) throw new InvalidOperationException(L.T("gRPC service not initialized. Set GrpcProxyAddress first."));
 
         using var span = Tracer?.NewSpan($"mq:{Name}:ForwardDlq:grpc");
         try
@@ -2011,7 +2011,7 @@ public class Consumer : MqBase
         TimeSpan invisibleDuration,
         CancellationToken cancellationToken = default)
     {
-        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+        if (_GrpcService == null) throw new InvalidOperationException(L.T("gRPC service not initialized. Set GrpcProxyAddress first."));
 
         return await _GrpcService.ChangeInvisibleDurationAsync(topic, Group, receiptHandle, messageId, invisibleDuration, cancellationToken).ConfigureAwait(false);
     }
@@ -2021,7 +2021,7 @@ public class Consumer : MqBase
     /// <returns></returns>
     public async Task<Grpc.HeartbeatResponse> HeartbeatViaGrpcAsync(CancellationToken cancellationToken = default)
     {
-        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+        if (_GrpcService == null) throw new InvalidOperationException(L.T("gRPC service not initialized. Set GrpcProxyAddress first."));
 
         return await _GrpcService.HeartbeatAsync(Group, Grpc.GrpcClientType.SIMPLE_CONSUMER, cancellationToken).ConfigureAwait(false);
     }
@@ -2041,11 +2041,11 @@ public class Consumer : MqBase
         // 检查是否有回复地址
         var replyToClient = requestMessage.ReplyToClient;
         if (String.IsNullOrEmpty(replyToClient))
-            throw new InvalidOperationException("Request message does not have ReplyToClient property");
+            throw new InvalidOperationException(L.T("Request message does not have ReplyToClient property."));
 
         var correlationId = requestMessage.CorrelationId;
         if (String.IsNullOrEmpty(correlationId))
-            throw new InvalidOperationException("Request message does not have CorrelationId property");
+            throw new InvalidOperationException(L.T("Request message does not have CorrelationId property."));
 
         // 优先：进程内直接交付，无需经过 Broker，避免回复 Topic 路由延迟问题
         if (Producer.InProcessReplyCallbacks.TryGetValue(correlationId, out var tcs))
@@ -2093,11 +2093,11 @@ public class Consumer : MqBase
         // 检查是否有回复地址
         var replyToClient = requestMessage.ReplyToClient;
         if (String.IsNullOrEmpty(replyToClient))
-            throw new InvalidOperationException("Request message does not have ReplyToClient property");
+            throw new InvalidOperationException(L.T("Request message does not have ReplyToClient property."));
 
         var correlationId = requestMessage.CorrelationId;
         if (String.IsNullOrEmpty(correlationId))
-            throw new InvalidOperationException("Request message does not have CorrelationId property");
+            throw new InvalidOperationException(L.T("Request message does not have CorrelationId property."));
 
         // 优先：进程内直接交付，无需经过 Broker，避免回复 Topic 路由延迟问题
         if (Producer.InProcessReplyCallbacks.TryGetValue(correlationId, out var tcs))

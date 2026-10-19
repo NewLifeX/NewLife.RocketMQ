@@ -462,7 +462,7 @@ public class Producer : MqBase
             ).ConfigureAwait(false);
 
             if (rs.Status?.Code != GrpcCode.OK)
-                throw new InvalidOperationException($"gRPC SendMessage failed: {rs.Status}");
+                throw new InvalidOperationException(L.T("gRPC SendMessage failed: {0}", rs.Status));
 
             var entry = rs.Entries.FirstOrDefault();
             var result = new SendResult
@@ -649,7 +649,7 @@ public class Producer : MqBase
     /// <returns></returns>
     public virtual SendResult PublishBatch(IList<Message> messages, Int32 timeout = -1)
     {
-        if (messages == null || messages.Count == 0) throw new ArgumentException("消息集合不能为空", nameof(messages));
+        if (messages == null || messages.Count == 0) throw new ArgumentException(L.T("The message collection cannot be empty."), nameof(messages));
 
         // 编码批量消息体
         // 按照 RocketMQ 批量消息编码格式（大端序）：
@@ -878,8 +878,8 @@ public class Producer : MqBase
     public virtual void EndTransaction(SendResult result, TransactionState state, Boolean fromTransactionCheck = false)
     {
         if (result is null) throw new ArgumentNullException(nameof(result));
-        if (result.Queue == null) throw new ArgumentNullException(nameof(result), "缺少队列信息");
-        if (result.Queue.BrokerName.IsNullOrEmpty()) throw new ArgumentNullException(nameof(result), "缺少BrokerName");
+        if (result.Queue == null) throw new ArgumentNullException(nameof(result), L.T("Missing queue information."));
+        if (result.Queue.BrokerName.IsNullOrEmpty()) throw new ArgumentNullException(nameof(result), L.T("Missing BrokerName."));
 
         var header = new EndTransactionRequestHeader
         {
@@ -905,8 +905,8 @@ public class Producer : MqBase
     public virtual async Task EndTransactionAsync(SendResult result, TransactionState state, Boolean fromTransactionCheck = false, CancellationToken cancellationToken = default)
     {
         if (result is null) throw new ArgumentNullException(nameof(result));
-        if (result.Queue == null) throw new ArgumentNullException(nameof(result), "缺少队列信息");
-        if (result.Queue.BrokerName.IsNullOrEmpty()) throw new ArgumentNullException(nameof(result), "缺少BrokerName");
+        if (result.Queue == null) throw new ArgumentNullException(nameof(result), L.T("Missing queue information."));
+        if (result.Queue.BrokerName.IsNullOrEmpty()) throw new ArgumentNullException(nameof(result), L.T("Missing BrokerName."));
 
         var header = new EndTransactionRequestHeader
         {
@@ -933,7 +933,7 @@ public class Producer : MqBase
     protected virtual Message CreateMessage(Object body)
     {
         if (body is null) throw new ArgumentNullException(nameof(body));
-        if (body is Message) throw new ArgumentOutOfRangeException(nameof(body), "body不能是Message类型");
+        if (body is Message) throw new ArgumentOutOfRangeException(nameof(body), L.T("The body cannot be of type Message."));
 
         if (!body.GetType().IsBaseType()) body = JsonHost.Write(body);
 
@@ -946,7 +946,7 @@ public class Producer : MqBase
     private SendMessageRequestHeader CreateHeader(Message message)
     {
         var max = MaxMessageSize;
-        if (max > 0 && message.Body.Length > max) throw new InvalidOperationException($"主题[{Topic}]的数据包大小[{message.Body.Length}]超过最大限制[{max}]，大key会拖累整个队列，可通过MaxMessageSize调节。");
+        if (max > 0 && message.Body.Length > max) throw new InvalidOperationException(L.T("The packet size [{0}] of topic [{1}] exceeds the maximum limit [{2}]. Large keys slow down the whole queue; adjust it via MaxMessageSize.", message.Body.Length, Topic, max));
 
         // 消息压缩
         var sysFlag = 0;
@@ -1055,7 +1055,7 @@ public class Producer : MqBase
             }
             else
             {
-                throw new TimeoutException($"Request timeout after {timeout}ms, correlationId={correlationId}");
+                throw new TimeoutException(L.T("Request timeout after {0}ms, correlationId={1}", timeout, correlationId));
             }
         }
         finally
@@ -1109,12 +1109,12 @@ public class Producer : MqBase
             }
             else
             {
-                throw new TimeoutException($"Request timeout after {timeout}ms, correlationId={correlationId}");
+                throw new TimeoutException(L.T("Request timeout after {0}ms, correlationId={1}", timeout, correlationId));
             }
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new TimeoutException($"Request timeout after {timeout}ms, correlationId={correlationId}");
+            throw new TimeoutException(L.T("Request timeout after {0}ms, correlationId={1}", timeout, correlationId));
         }
         finally
         {
@@ -1235,7 +1235,7 @@ public class Producer : MqBase
         IList<String> keys = null,
         CancellationToken cancellationToken = default)
     {
-        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+        if (_GrpcService == null) throw new InvalidOperationException(L.T("gRPC service not initialized. Set GrpcProxyAddress first."));
 
         var message = CreateMessage(body);
         using var span = Tracer?.NewSpan($"mq:{Name}:PublishDelay:grpc", new Dictionary<String, Object> { ["deliveryTimestamp"] = deliveryTimestamp, ["body"] = message.BodyString });
@@ -1251,7 +1251,7 @@ public class Producer : MqBase
             ).ConfigureAwait(false);
 
             if (rs.Status?.Code != GrpcCode.OK)
-                throw new InvalidOperationException($"gRPC SendMessage (delay) failed: {rs.Status}");
+                throw new InvalidOperationException(L.T("gRPC SendMessage (delay) failed: {0}", rs.Status));
 
             var entry = rs.Entries.FirstOrDefault();
             return new SendResult
@@ -1281,7 +1281,7 @@ public class Producer : MqBase
         IList<String> keys = null,
         CancellationToken cancellationToken = default)
     {
-        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+        if (_GrpcService == null) throw new InvalidOperationException(L.T("gRPC service not initialized. Set GrpcProxyAddress first."));
 
         var message = CreateMessage(body);
         using var span = Tracer?.NewSpan($"mq:{Name}:PublishTransaction:grpc", message.BodyString);
@@ -1296,7 +1296,7 @@ public class Producer : MqBase
             ).ConfigureAwait(false);
 
             if (rs.Status?.Code != GrpcCode.OK)
-                throw new InvalidOperationException($"gRPC SendTransactionMessage failed: {rs.Status}");
+                throw new InvalidOperationException(L.T("gRPC SendTransactionMessage failed: {0}", rs.Status));
 
             var entry = rs.Entries.FirstOrDefault();
             return new SendResult
@@ -1326,7 +1326,7 @@ public class Producer : MqBase
         Boolean commit,
         CancellationToken cancellationToken = default)
     {
-        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+        if (_GrpcService == null) throw new InvalidOperationException(L.T("gRPC service not initialized. Set GrpcProxyAddress first."));
 
         return await _GrpcService.EndTransactionAsync(
             Topic,
@@ -1343,7 +1343,7 @@ public class Producer : MqBase
     /// <returns>路由信息</returns>
     public override async Task<QueryRouteResponse> QueryRouteViaGrpcAsync(String topic = null, CancellationToken cancellationToken = default)
     {
-        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+        if (_GrpcService == null) throw new InvalidOperationException(L.T("gRPC service not initialized. Set GrpcProxyAddress first."));
 
         return await _GrpcService.QueryRouteAsync(topic ?? Topic, cancellationToken).ConfigureAwait(false);
     }

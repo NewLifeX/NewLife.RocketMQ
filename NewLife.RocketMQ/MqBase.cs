@@ -102,7 +102,7 @@ public abstract class MqBase : DisposeBase
     public ICloudProvider CloudProvider { get; set; }
 
     /// <summary>阿里云选项。使用阿里云RocketMQ的参数有些不一样</summary>
-    [Obsolete("请使用 CloudProvider = new AliyunProvider { ... } 替代")]
+    [Obsolete("Use CloudProvider = new AliyunProvider { ... } instead.")]
     public AliyunOptions Aliyun
     {
         get => _aliyunOptions;
@@ -117,7 +117,7 @@ public abstract class MqBase : DisposeBase
     private AliyunOptions _aliyunOptions;
 
     /// <summary>Apache RocketMQ ACL 客户端配置。在Borker服务器配置设置为AclEnable = true 时配置生效。</summary>
-    [Obsolete("请使用 CloudProvider = new AclProvider { ... } 替代")]
+    [Obsolete("Use CloudProvider = new AclProvider { ... } instead.")]
     public AclOptions AclOptions
     {
         get => _aclOptions;
@@ -329,7 +329,7 @@ public abstract class MqBase : DisposeBase
             // 查询路由验证连通性
             var route = svc.QueryRouteAsync(Topic).ConfigureAwait(false).GetAwaiter().GetResult();
             if (route.Status?.Code != Grpc.GrpcCode.OK)
-                throw new InvalidOperationException($"gRPC QueryRoute failed: {route.Status}");
+                throw new InvalidOperationException(L.T("gRPC QueryRoute failed: {0}", route.Status));
 
             WriteLog("gRPC route query succeeded, [{0}] queues found", route.MessageQueues.Count);
             _GrpcService = svc;
@@ -455,7 +455,7 @@ public abstract class MqBase : DisposeBase
     /// <returns></returns>
     protected BrokerClient GetBroker(String name)
     {
-        if (String.IsNullOrEmpty(name)) throw new ArgumentException($"“{nameof(name)}”不能为 null 或空。", nameof(name));
+        if (String.IsNullOrEmpty(name)) throw new ArgumentException(L.T("\"{0}\" cannot be null or empty.", nameof(name)), nameof(name));
 
         if (_Brokers.TryGetValue(name, out var client)) return client;
 
@@ -537,7 +537,7 @@ public abstract class MqBase : DisposeBase
     {
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
         if (_GrpcService != null)
-            throw new NotSupportedException($"gRPC模式下不支持{operation}，请改用 NameServerAddress 直连 Broker，或先由 Remoting 客户端与控制台完成");
+            throw new NotSupportedException(L.T("gRPC mode does not support {0}. Use NameServerAddress to connect to the Broker directly, or complete it with a Remoting client or console first.", operation));
 #endif
     }
 
@@ -548,7 +548,7 @@ public abstract class MqBase : DisposeBase
     /// <param name="topicMessageType">Topic消息类型，默认Normal。发送FIFO或事务消息时主题类型必须匹配，否则 Broker 拒绝；Lite 需 RocketMQ 5.5.0+（RIP-83）</param>
     public virtual Int32 CreateTopic(String topic, Int32 queueNum, Int32 topicSysFlag = 0, TopicMessageType topicMessageType = TopicMessageType.Normal)
     {
-        ThrowIfGrpcMode("建主题");
+        ThrowIfGrpcMode("creating a topic");
 
         // 5.x Broker 把主题类型存在 attributes 的 message.type（取值 NORMAL/FIFO/TRANSACTION/DELAY），
         // 单独的同名字段会被忽略；Lite Topic（RIP-83，5.5.0+）仍按 topicMessageType 字段识别，
@@ -604,7 +604,7 @@ public abstract class MqBase : DisposeBase
     /// <param name="topic">主题</param>
     public virtual Int32 DeleteTopic(String topic)
     {
-        ThrowIfGrpcMode("删主题");
+        ThrowIfGrpcMode("deleting a topic");
 
         var count = 0;
         using var span = Tracer?.NewSpan($"mq:{Name}:DeleteTopic", topic);
@@ -652,7 +652,7 @@ public abstract class MqBase : DisposeBase
     /// <param name="retryQueueNums">重试队列数</param>
     public virtual Int32 CreateSubscriptionGroup(String groupName, Boolean consumeBroadcastEnable = true, Int32 retryMaxTimes = 16, Int32 retryQueueNums = 1)
     {
-        ThrowIfGrpcMode("建订阅组");
+        ThrowIfGrpcMode("creating a subscription group");
 
         var count = 0;
         using var span = Tracer?.NewSpan($"mq:{Name}:CreateSubscriptionGroup", groupName);        try
@@ -694,7 +694,7 @@ public abstract class MqBase : DisposeBase
     /// <param name="groupName">消费组名</param>
     public virtual Int32 DeleteSubscriptionGroup(String groupName)
     {
-        ThrowIfGrpcMode("删订阅组");
+        ThrowIfGrpcMode("deleting a subscription group");
 
         var count = 0;
         using var span = Tracer?.NewSpan($"mq:{Name}:DeleteSubscriptionGroup", groupName);
@@ -729,7 +729,7 @@ public abstract class MqBase : DisposeBase
     /// <returns></returns>
     public virtual MessageExt ViewMessage(String msgId)
     {
-        ThrowIfGrpcMode("查看消息");
+        ThrowIfGrpcMode("viewing a message");
 
         using var span = Tracer?.NewSpan($"mq:{Name}:ViewMessage", msgId);
         try
@@ -783,7 +783,7 @@ public abstract class MqBase : DisposeBase
     /// <returns>消费统计数据的JSON字典</returns>
     public virtual IDictionary<String, Object> GetConsumeStats(String group, String topic = null)
     {
-        ThrowIfGrpcMode("查询消费统计");
+        ThrowIfGrpcMode("querying consume statistics");
 
         if (String.IsNullOrEmpty(group)) group = Group;
         if (String.IsNullOrEmpty(topic)) topic = Topic;
@@ -820,7 +820,7 @@ public abstract class MqBase : DisposeBase
     /// <returns>主题统计数据的JSON字典</returns>
     public virtual IDictionary<String, Object> GetTopicStatsInfo(String topic = null)
     {
-        ThrowIfGrpcMode("查询主题统计");
+        ThrowIfGrpcMode("querying topic statistics");
 
         if (String.IsNullOrEmpty(topic)) topic = Topic;
 
@@ -856,7 +856,7 @@ public abstract class MqBase : DisposeBase
     /// <returns>匹配的消息列表</returns>
     public virtual IList<MessageExt> QueryMessageByKey(String topic, String key, Int32 maxNum = 32, Int64 beginTimestamp = 0, Int64 endTimestamp = 0)
     {
-        ThrowIfGrpcMode("按Key查询消息");
+        ThrowIfGrpcMode("querying messages by key");
 
         if (String.IsNullOrEmpty(key)) throw new ArgumentNullException(nameof(key));
         if (String.IsNullOrEmpty(topic)) topic = Topic;
@@ -900,7 +900,7 @@ public abstract class MqBase : DisposeBase
     /// <returns>注册成功的Broker数量</returns>
     public virtual Int32 RegisterFilterServer(String filterServerAddr)
     {
-        ThrowIfGrpcMode("注册过滤服务器");
+        ThrowIfGrpcMode("registering a filter server");
 
         if (String.IsNullOrEmpty(filterServerAddr)) throw new ArgumentNullException(nameof(filterServerAddr));
 
@@ -941,7 +941,7 @@ public abstract class MqBase : DisposeBase
     /// <returns>路由查询结果</returns>
     public virtual async Task<Grpc.QueryRouteResponse> QueryRouteViaGrpcAsync(String topic = null, CancellationToken cancellationToken = default)
     {
-        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+        if (_GrpcService == null) throw new InvalidOperationException(L.T("gRPC service not initialized. Set GrpcProxyAddress first."));
 
         return await _GrpcService.QueryRouteAsync(topic ?? Topic, cancellationToken).ConfigureAwait(false);
     }
@@ -952,7 +952,7 @@ public abstract class MqBase : DisposeBase
     /// <returns>服务端返回的Telemetry命令</returns>
     public async Task<Grpc.TelemetryCommand> TelemetryViaGrpcAsync(Grpc.GrpcSettings settings, CancellationToken cancellationToken = default)
     {
-        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+        if (_GrpcService == null) throw new InvalidOperationException(L.T("gRPC service not initialized. Set GrpcProxyAddress first."));
 
         using var span = Tracer?.NewSpan($"mq:{Name}:Telemetry:grpc");
         try
@@ -972,7 +972,7 @@ public abstract class MqBase : DisposeBase
     /// <returns></returns>
     public async Task<Grpc.NotifyClientTerminationResponse> NotifyClientTerminationViaGrpcAsync(String group = null, CancellationToken cancellationToken = default)
     {
-        if (_GrpcService == null) throw new InvalidOperationException("gRPC service not initialized. Set GrpcProxyAddress first.");
+        if (_GrpcService == null) throw new InvalidOperationException(L.T("gRPC service not initialized. Set GrpcProxyAddress first."));
 
         using var span = Tracer?.NewSpan($"mq:{Name}:NotifyTermination:grpc");
         try

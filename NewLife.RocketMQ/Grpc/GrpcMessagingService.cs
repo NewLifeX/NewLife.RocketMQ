@@ -252,7 +252,7 @@ public class GrpcMessagingService : IDisposable
                     {
                         // 消息未找到不算错误
                         if (response.Status.Code == GrpcCode.MESSAGE_NOT_FOUND) break;
-                        throw new InvalidOperationException($"ReceiveMessage error: {response.Status}");
+                        throw new InvalidOperationException(L.T("ReceiveMessage error: {0}", response.Status));
                     }
 
                     if (response.Message != null)

@@ -479,7 +479,7 @@ public class GrpcClient : IDisposable
         // grpc-status: 0 = OK
         if (grpcStatus > 0)
         {
-            throw new InvalidOperationException($"gRPC error {grpcStatus}: {grpcMessage ?? "Unknown error"}");
+            throw new InvalidOperationException(L.T("gRPC error {0}: {1}", grpcStatus, grpcMessage ?? L.T("Unknown error")));
         }
     }
 
