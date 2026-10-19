@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using NewLife;
 using NewLife.Log;
 using NewLife.RocketMQ;
@@ -86,6 +87,68 @@ public class LocalizationTests
 
             Assert.Single(logger.Messages);
             Assert.Contains("Failed to reset consume offset: timeout", logger.Messages[0]);
+        }
+        finally
+        {
+            Localization.Culture = saved;
+        }
+    }
+
+    [Fact(DisplayName = "公开 API 异常：按当前语言输出中文")]
+    public void PublicApiExceptionIsLocalized()
+    {
+        var saved = Localization.Culture;
+        try
+        {
+            Localization.Culture = CultureInfo.GetCultureInfo("zh-CN");
+
+            var producer = new Producer();
+            var ex = Assert.Throws<ArgumentException>(() => producer.PublishBatch(new List<NewLife.RocketMQ.Protocol.Message>()));
+            Assert.StartsWith("消息集合不能为空。", ex.Message);
+        }
+        finally
+        {
+            Localization.Culture = saved;
+        }
+    }
+
+    [Fact(DisplayName = "公开 API 异常：协议层与 gRPC 提示同样可翻译")]
+    public void ProtocolAndGrpcMessagesAreLocalized()
+    {
+        var saved = Localization.Culture;
+        try
+        {
+            Localization.Culture = CultureInfo.GetCultureInfo("zh-CN");
+
+            var ex = Assert.Throws<NotSupportedException>(() => NewLife.RocketMQ.Protocol.MessageCompressorRegistry.GetOrThrow(5));
+            Assert.Contains("未注册", ex.Message);
+
+            var grpc = Localization.Translate("gRPC service not initialized. Set GrpcProxyAddress first.");
+            Assert.Contains("GrpcProxyAddress", grpc);
+            Assert.NotEqual("gRPC service not initialized. Set GrpcProxyAddress first.", grpc);
+        }
+        finally
+        {
+            Localization.Culture = saved;
+        }
+    }
+
+    [Fact(DisplayName = "配置注释：英文源文可被词表翻译")]
+    public void ConfigDescriptionIsTranslatable()
+    {
+        var saved = Localization.Culture;
+        try
+        {
+            var description = typeof(MqSetting).GetProperty(nameof(MqSetting.NameServer))!
+                .GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), false)
+                .Cast<System.ComponentModel.DescriptionAttribute>()
+                .FirstOrDefault();
+            Assert.NotNull(description);
+            Assert.Equal("NameServer address. Brokers are discovered from it.", description!.Description);
+
+            // 英文源文 + 词表译文；NewLife.Core 写 ini/xml 注释时按此翻译
+            Localization.Culture = CultureInfo.GetCultureInfo("zh-CN");
+            Assert.Contains("名称服务器", Localization.Translate(description.Description));
         }
         finally
         {
