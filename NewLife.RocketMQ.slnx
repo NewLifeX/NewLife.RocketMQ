@@ -14,7 +14,7 @@
     <File Path=".github/workflows/test.yml" />
     <File Path="Doc/架构设计.md" />
     <File Path="Doc/需求文档.md" />
-    <File Path="Readme.MD" />
+    <File Path="README.md" />
   </Folder>
   <Project Path="AotSmoke/AotSmoke.csproj" />
   <Project Path="NewLife.RocketMQ/NewLife.RocketMQ.csproj" />
