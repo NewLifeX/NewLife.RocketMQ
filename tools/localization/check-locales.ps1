@@ -1,11 +1,11 @@
 # 多语言词表一致性校验：键集合、占位符、格式说明符，以及「源码使用但词表缺失」
 # 以基准语言文件（默认 zh-Hans.yml）为准，所有语言必须提供完全相同的键集合
 #
-# 用法：
-#   pwsh -File check-locales.ps1                                      # Core 默认目录
-#   pwsh -File check-locales.ps1 -LocaleDir src\Lib\Locales -SourceDir src\Lib
-#   pwsh -File check-locales.ps1 -LocaleDir src\Lib\Locales -SkipOrphan   # 下游只想校验词表内部一致性
-#   pwsh -File check-locales.ps1 -LocaleDir src\Lib\Locales -SkipUsage    # 跳过“源码使用但词表缺失”检查
+# 用法（路径均相对仓库根目录解析）：
+#   pwsh -File tools/localization/check-locales.ps1                                      # Core 默认目录
+#   pwsh -File tools/localization/check-locales.ps1 -LocaleDir src\Lib\Locales -SourceDir src\Lib
+#   pwsh -File tools/localization/check-locales.ps1 -LocaleDir src\Lib\Locales -SkipOrphan   # 下游只想校验词表内部一致性
+#   pwsh -File tools/localization/check-locales.ps1 -LocaleDir src\Lib\Locales -SkipUsage    # 跳过“源码使用但词表缺失”检查
 param(
     [String]$LocaleDir = "NewLife.Core\Locales",
     [String]$Baseline = "zh-Hans.yml",
@@ -16,7 +16,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$root = $PSScriptRoot
+# 脚本位于 tools/localization，默认路径与相对路径统一按仓库根目录解析
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $localeDir = if ([IO.Path]::IsPathRooted($LocaleDir)) { $LocaleDir } else { Join-Path $root $LocaleDir }
 if (!(Test-Path $localeDir)) {
     Write-Host "未找到语言目录：$localeDir" -ForegroundColor Red

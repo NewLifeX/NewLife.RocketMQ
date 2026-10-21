@@ -601,14 +601,14 @@ jobs:
         Get-ChildItem -Path . -Recurse -Directory -Filter Locales | ForEach-Object {
           if (Test-Path (Join-Path $_.FullName 'zh-Hans.yml')) {
             $src = Split-Path $_.FullName -Parent
-            pwsh -File ./check-locales.ps1 -LocaleDir $_.FullName -Baseline zh-Hans.yml -SourceDir $src
+            pwsh -File ./tools/localization/check-locales.ps1 -LocaleDir $_.FullName -Baseline zh-Hans.yml -SourceDir $src
             if ($LASTEXITCODE -ne 0) { $failed = $true }
           }
         }
         if ($failed) { exit 1 }
     - name: Check README languages
       shell: pwsh
-      run: pwsh -File ./sync-readme-languages.ps1 -Check
+      run: pwsh -File ./tools/readme/sync-readme-languages.ps1 -Check
     - name: Setup dotNET
       uses: actions/setup-dotnet@v4
       with:
