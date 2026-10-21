@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net45;net461;netstandard2.0;netstandard2.1;net10.0</TargetFrameworks>
-    <AssemblyTitle>RocketMQ纯托管客户端</AssemblyTitle>
-    <Description>企业级纯托管 RocketMQ 客户端，双协议支持 Remoting 4.x/5.x 和 gRPC 5.x Proxy，零外部依赖，无需 Java、gRPC、Protobuf 第三方库，统一适配阿里云、华为云、腾讯云及 Apache ACL，完整企业级特性（消费重试、死信队列、事务消息、顺序消费、Pop 消费），十亿级项目验证</Description>
+    <AssemblyTitle>Enterprise RocketMQ Client</AssemblyTitle>
+    <Description>Enterprise-grade fully managed RocketMQ client with dual-protocol support for Remoting 4.x/5.x and gRPC 5.x Proxy. Zero external dependencies: no Java, gRPC or Protobuf runtime required. Unified adapters for Alibaba Cloud, Huawei Cloud, Tencent Cloud and Apache ACL, with consume retry, dead-letter queue, transactional messages, ordered consumption and Pop consumption. Proven in billion-scale production systems.</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2026 新生命开发团队</Copyright>
     <VersionPrefix>3.2</VersionPrefix>
@@ -30,12 +30,13 @@
 
   <PropertyGroup>
     <PackageId>$(AssemblyName)</PackageId>
+    <PackageDescription>Enterprise-grade fully managed RocketMQ client with dual-protocol support for Remoting 4.x/5.x and gRPC 5.x Proxy. Zero external dependencies, unified cloud adapters, and complete enterprise features. 企业级纯托管 RocketMQ 客户端，双协议支持，零外部依赖，统一适配阿里云、华为云、腾讯云及 Apache ACL，完整企业级特性。</PackageDescription>
     <Authors>$(Company)</Authors>
     <PackageProjectUrl>https://newlifex.com/core/rocketmq</PackageProjectUrl>
     <PackageIcon>leaf.png</PackageIcon>
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.RocketMQ</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>新生命团队;X组件;NewLife;RocketMQ;纯托管;零依赖;Remoting;gRPC;阿里云;华为云;腾讯云;消息队列;MQ;分布式;事务消息;延迟消息;顺序消息;死信队列;$(AssemblyName)</PackageTags>
+    <PackageTags>新生命团队;X组件;NewLife;RocketMQ;纯托管;零依赖;Remoting;gRPC;阿里云;华为云;腾讯云;消息队列;MQ;分布式;事务消息;延迟消息;顺序消息;死信队列;MessageQueue;Queuing;Cloud;AOT;dotnet;csharp;$(AssemblyName)</PackageTags>
     <PackageReleaseNotes>新增 MessageConverter 双协议消息模型转换助手，支持 Remoting 与 gRPC 消息互转；优化 gRPC 协议解析健壮性与并发安全，修复枚举偏移与字段编号问题，提升 PushConsumer 稳定性；统一云厂商 Provider 适配并升级依赖；修复 WriteLog 空引用与 TOPIC_NOT_EXIST 日志场景；新增 17 个云厂商单元测试及 gRPC 健壮性测试；优化 GitHub Actions 流程与集成测试自动启动</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
