@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using NewLife;
+using NewLife.Configuration;
 using NewLife.Log;
 using NewLife.RocketMQ;
 using Xunit;
@@ -153,6 +154,29 @@ public class LocalizationTests
         finally
         {
             Localization.Culture = saved;
+        }
+    }
+
+    [Fact(DisplayName = "配置注释：写配置时按日志语言翻译")]
+    public void ConfigCommentIsLocalized()
+    {
+        var savedCulture = Localization.Culture;
+        var savedLogCulture = Localization.LogCulture;
+        try
+        {
+            Localization.Culture = null;
+            Localization.LogCulture = CultureInfo.GetCultureInfo("zh-CN");
+
+            const String source = "NameServer address. Brokers are discovered from it.";
+            var comment = ConfigHelper.LocalizeComment(source);
+
+            Assert.NotEqual(source, comment);
+            Assert.Contains("名称服务器", comment);
+        }
+        finally
+        {
+            Localization.Culture = savedCulture;
+            Localization.LogCulture = savedLogCulture;
         }
     }
 
