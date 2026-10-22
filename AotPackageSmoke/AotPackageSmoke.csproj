@@ -30,7 +30,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.RocketMQ" Version="3.2.2026.1019-beta0430" />
+    <!-- 版本必须引用上面的属性：CI 通过 -p:NewLifeRocketMQVersion 指向本次打包产物，写死版本会退回 nuget.org 上的旧包 -->
+    <PackageReference Include="NewLife.RocketMQ" Version="$(NewLifeRocketMQVersion)" />
   </ItemGroup>
 
 </Project>
