@@ -1,4 +1,6 @@
-# NewLife.RocketMQ - Enterprise-RocketMQ-Client in rein verwaltetem Code
+# NewLife.RocketMQ - Vollständig verwalteter RocketMQ-Client in Enterprise-Qualität
+
+![GitHub top language](https://img.shields.io/github/languages/top/newlifex/newlife.rocketmq?logo=github)
 
 ![GitHub License](https://img.shields.io/github/license/NewLifeX/NewLife.RocketMQ?logo=github)
 ![NuGet Downloads](https://img.shields.io/nuget/dt/NewLife.RocketMQ?logo=nuget)
@@ -16,31 +18,521 @@
 
 > Diese Übersetzung kann hinter der [englischen Version](README.md) zurückliegen.
 
-NewLife.RocketMQ ist ein rein verwalteter RocketMQ-Client für Apache RocketMQ und Alibaba Cloud mit normalen, geordneten, transaktionalen und verzögerten Nachrichten.
+**Ein RocketMQ-Client in Enterprise-Qualität, vollständig verwaltet**, unterstützt `.NET Framework 4.5+` / `.NET Standard 2.0+` / `.NET Core` / `.NET 5+`.  
+**Vollständig in C# implementiert, ohne externe Abhängigkeiten (keine Java-, gRPC- oder Protobuf-Bibliotheken von Drittanbietern erforderlich).**
+
+---
+
+## Produktübersicht
+
+NewLife.RocketMQ ist ein **vollständig verwalteter RocketMQ-Client in Enterprise-Qualität**, entwickelt vom NewLife-Team für das .NET-Ökosystem. Er unterstützt sowohl das RocketMQ-**Remoting-Protokoll (4.x/5.x Broker)** als auch das **gRPC-Proxy-Protokoll (5.x Proxy)** und deckt alle Kernfunktionen von Producer und Consumer sowie Enterprise-Funktionen ab, mit einheitlichen Adaptern für Alibaba Cloud, Huawei Cloud, Tencent Cloud und das Apache-ACL-Authentifizierungssystem.
+
+**Zentrale Vorteile**:
+
+| Funktion | Beschreibung |
+|---------|-------------|
+| **Dual-Protokoll-Unterstützung** | Remoting (ausgereift und stabil auf 4.x) + gRPC (zukunftssicher auf 5.x), mit automatischem Routing |
+| **Keine externen Abhängigkeiten** | Eingebauter Protobuf-Feld-Codec (handgeschrieben auf SpanWriter/SpanReader von NewLife.Core), keine Java- oder gRPC-Laufzeit erforderlich |
+| **Multi-Cloud-Unterstützung** | Einheitliche `ICloudProvider`-Schnittstelle mit eingebauten Adaptern für Alibaba Cloud, Huawei Cloud, Tencent Cloud und Apache ACL |
+| **Produktionsreif** | Vollständige Enterprise-Funktionen: Consume-Retry, Dead-Letter-Queue, Transaktions-Checkback, geordnete Verarbeitung, Pop-Consumption und mehr |
+| **Breiteste Framework-Abdeckung** | Von .NET Framework 4.5+ bis .NET 10; gRPC-Funktionen sind ab .NET Standard 2.1+ verfügbar |
+| **AOT-freundlich** | Das Ziel net10.0 unterstützt NativeAOT/Trimming: Frame-Codierung/-Decodierung, JSON-Serialisierung und Nachrichtenkomprimierung benötigen keine Laufzeitreflexion. Das Repository enthält einen AOT-Smoke-Test sowie einen AOT-Smoke-Test für die Nutzung des NuGet-Pakets; CI validiert AOT-Publishing und -Ausführung auf einer RID-Matrix gängiger Plattformen (win/linux/osx, musl und Loongson LA64) |
+| **Laufzeit-Lokalisierung** | Logs, Ausnahmen der Protokollanalyse, Ausnahmen öffentlicher APIs und Konfigurationsbeschreibungen verwenden Englisch als Quelltext, mit eingebauten Wortlisten für 31 Sprachen (132 Einträge), automatisch übersetzt gemäß `Localization.Culture` mit englischem Fallback; Logs mit Präfix werden vor dem Anhängen des Präfixes übersetzt, und das Präfix nimmt nicht an der Wortlistensuche teil |
+| **Hohe Leistung** | Aufgebaut auf der Hochleistungs-Netzwerkschicht von NewLife.Net: Verbindungswiederverwendung, VIP-Kanal, Nachrichtenkomprimierung und Nebenläufigkeitskontrolle |
+
+---
 
 ## Installation
 
-```bash
+```powershell
+# NuGet-Paketmanager
+Install-Package NewLife.RocketMQ
+
+# .NET CLI
 dotnet add package NewLife.RocketMQ
 ```
 
-## Schnellstart
-
-```csharp
-var mq = new RocketMQClient("127.0.0.1:9876");
-mq.Start();
-mq.Send("TopicTest", "hello".GetBytes());
+```xml
+<!-- PackageReference -->
+<PackageReference Include="NewLife.RocketMQ" Version="3.0.*" />
 ```
 
-## Funktionen
+---
 
-- Breite Abdeckung gängiger Protokoll- und Formatversionen
-- Kompatibel mit gängigen Cloud-Diensten und Managed Middleware
-- Langjährig in Produktivumgebungen erprobt
+## Schnellstart
 
-## Dokumentation
+### Nachrichten senden
 
-> 📖 Vollständige Dokumentation (Chinesisch): [Repository-Dokumente](Doc)
+```csharp
+using NewLife.RocketMQ;
+
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "127.0.0.1:9876",
+    Group = "producer_group"
+};
+producer.Start();
+
+// Synchrones Senden
+var result = producer.Publish("Hello RocketMQ!");
+Console.WriteLine($"Message ID: {result.MsgId}");
+
+// Asynchrones Senden
+await producer.PublishAsync("async message");
+
+// Batch-Versand
+await producer.PublishBatch(new[] { "message1", "message2", "message3" });
+```
+
+### Nachrichten empfangen
+
+```csharp
+var consumer = new Consumer
+{
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876"
+};
+
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        Console.WriteLine($"Received message: {msg.BodyString}");
+    }
+    return true; // true signalisiert eine erfolgreiche Verarbeitung
+};
+
+consumer.Start();
+```
+
+### gRPC-Zugang (5.x Proxy)
+
+```csharp
+// Producer: Mit GrpcProxyAddress wird der Datenverkehr über den gRPC-Pfad von 5.x geleitet (erfordert netstandard2.1+)
+var producer = new Producer
+{
+    Topic = "test_topic",
+    Group = "producer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    GrpcProxyAddress = "http://127.0.0.1:8081",
+};
+producer.Start();
+await producer.PublishAsync("gRPC message");
+
+// Consumer: Abonnementbeziehungen werden beim Start automatisch gemeldet (Telemetry-Langverbindung); Empfang und Bestätigung laufen über gRPC
+var consumer = new Consumer
+{
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    GrpcProxyAddress = "http://127.0.0.1:8081",
+};
+consumer.Start();
+
+var route = await consumer.QueryRouteViaGrpcAsync();
+var messages = await consumer.ReceiveMessageViaGrpcAsync(route.MessageQueues[0], batchSize: 8);
+// ... Geschäftsverarbeitung ...
+await consumer.AckMessageViaGrpcAsync("test_topic",
+[
+    .. messages.Select(m => new AckMessageEntry
+    {
+        ReceiptHandle = m.SystemProperties?.ReceiptHandle,
+        MessageId = m.SystemProperties?.MessageId,
+    }),
+]);
+```
+
+> Lang-Polling-Consumption kann auch direkt `GrpcPushConsumer` verwenden (PUSH_CONSUMER-Semantik mit eingebautem automatischem Ack und Retry).
+>
+> **5.x POP-Retry und Dead Letters**: Nachrichten, deren Verarbeitung fehlschlägt, werden vom Broker nach `%RETRY%{group}_{topic}` geschrieben und gemäß `popFromRetryProbability` wieder in die Pull-Antwort des ursprünglichen Topics eingefügt; der Client muss nur das ursprüngliche Topic konsumieren. Wenn die Zustellungsanzahl `GrpcPushConsumer.MaxDeliveryAttempts` erreicht (Standard 16), wird die Nachricht nach `%DLQ%{group}` verschoben; im Szenario des manuellen Empfangs rufen Sie `Consumer.ForwardToDeadLetterQueueViaGrpcAsync` auf (`GetGrpcDlqTopic()` liefert den Namen des Dead-Letter-Topics). Die Untergrenze der Unsichtbarkeitszeit beträgt 10 Sekunden (wird innerhalb der Bibliothek automatisch angeglichen); kleinere Werte lehnt der Broker ab.
+>
+> Dead-Letter-Nachrichten müssen in einem Durchgang verarbeitet werden: `dotnet run --file scripts/DlqTool.cs -- --group <consumer group> --to <original topic>` veröffentlicht Nachrichten aus der Dead-Letter-Queue erneut im angegebenen Topic und bestätigt nur die erfolgreich erneut veröffentlichten Nachrichten. Das Abrufen von Dead-Letter-Nachrichten erhöht den Consume-Offset, und nicht bestätigte Nachrichten werden vom Broker nach `%RETRY%{group}_%DLQ%{group}` verschoben; daher wird das rein lesende Durchsuchen der Dead-Letter-Queue nicht unterstützt.
+>
+> **FIFO-geordnete Nachrichten und transaktionale Nachrichten**: Der Topic-Typ muss zum Nachrichtentyp passen; erstellen Sie ihn mit `CreateTopic(topic, queueNum, 0, TopicMessageType.Fifo/Transaction)`. Für FIFO-Versand setzen Sie `Message.MessageGroup`; auf der Consumer-Seite setzen Sie `GrpcPushConsumer.Orderly = true`, um seriell und reihenfolgetreu zu verarbeiten. Für transaktionale Nachrichten verwenden Sie `PublishTransactionViaGrpcAsync` zum Senden der halben Nachricht und `EndTransactionViaGrpcAsync` zum Commit oder Rollback (ohne Commit führt der Broker nach einem Timeout einen Rollback durch).
+
+### Verzögerte Nachrichten
+
+```csharp
+// 18 voreingestellte Verzögerungsstufen
+producer.PublishDelay("delayed message", DelayTimeLevels.s30);
+
+// Der gRPC-Modus unterstützt beliebige Verzögerungen (erfordert netstandard2.1+)
+producer.GrpcProxyAddress = "http://127.0.0.1:8081";
+await producer.PublishDelayViaGrpcAsync("arbitrary delay", DateTime.Now.AddMinutes(30));
+```
+
+### Transaktionale Nachrichten
+
+```csharp
+var producer = new Producer
+{
+    Topic = "tx_topic",
+    Group = "tx_group",
+    NameServerAddress = "127.0.0.1:9876"
+};
+
+// Callback für die Transaktionsprüfung
+producer.OnCheckTransaction = (msg, transactionId) =>
+{
+    var success = CheckLocalTransaction(transactionId);
+    return success ? TransactionState.Commit : TransactionState.Rollback;
+};
+producer.Start();
+
+// Halbe Nachricht senden -> lokale Transaktion ausführen -> Commit/Rollback
+var sendResult = producer.PublishTransaction("order created");
+try
+{
+    ExecuteLocalTransaction(sendResult.TransactionId);
+    producer.EndTransaction(sendResult, TransactionState.Commit);
+}
+catch
+{
+    producer.EndTransaction(sendResult, TransactionState.Rollback);
+}
+```
+
+### Geordnete Nachrichten
+
+```csharp
+// Nachrichten mit demselben Schlüssel gelangen in dieselbe Warteschlange
+var queue = producer.SelectQueue("order_123");
+producer.Publish("ordered message 1", queue);
+producer.Publish("ordered message 2", queue);
+
+// Auf der Consumer-Seite die geordnete Verarbeitung aktivieren
+consumer.OrderConsume = true;
+```
+
+### Request-Reply-Muster
+
+```csharp
+// Producer sendet eine Anfrage (synchron/asynchron)
+var response = producer.Request("request message", timeout: 5000);
+var reply = await producer.RequestAsync("async request", timeout: 5000);
+
+// Consumer antwortet
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        if (!String.IsNullOrEmpty(msg.CorrelationId))
+            consumer.SendReply(msg, "processing result");
+    }
+    return true;
+};
+```
+
+### Dual-Protokoll-Nachrichtenkonvertierung
+
+```csharp
+// Eine Remoting-Nachricht in eine gRPC-Nachricht konvertieren (erfordert netstandard2.1+)
+var grpcMsg = message.ToGrpcMessage();
+
+// Eine gRPC-Nachricht in eine erweiterte Remoting-Nachricht / Basisnachricht konvertieren
+var ext = grpcMsg.ToMessageExt();   // MessageExt (enthält alle Systemeigenschaften)
+var msg = grpcMsg.ToMessage();      // Message (Basisfelder)
+```
+
+---
+
+## Erweiterte Consumer-Funktionen
+
+### Consume-Retry und Dead-Letter-Queue
+
+```csharp
+var consumer = new Consumer
+{
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    EnableRetry = true,           // Consume-Retry aktivieren
+    MaxReconsumeTimes = 3         // Maximale Wiederholungsanzahl; darüber hinausgehende Nachrichten landen in der Dead-Letter-Queue %DLQ%
+};
+
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        try { ProcessMessage(msg); }
+        catch { return false; } // false zurückgeben löst einen erneuten Versuch aus
+    }
+    return true;
+};
+```
+
+### Tag-/SQL92-Filterung
+
+```csharp
+// Tag-Filterung
+consumer.Tags = "TagA || TagB";
+
+// SQL92-Ausdrucksfilterung
+consumer.ExpressionType = "SQL92";
+consumer.Subscription = "age > 18 AND city = 'Shanghai'";
+```
+
+### Multi-Topic-Abonnement
+
+```csharp
+consumer.Topics = "topic1;topic2;topic3";
+```
+
+### Pop-Consumption-Modus
+
+```csharp
+// Pop-Consumption (manuelle Bestätigung)
+var messages = await consumer.PopMessageAsync(timeout: 10000);
+foreach (var msg in messages)
+{
+    try
+    {
+        ProcessMessage(msg);
+        await consumer.AckMessageAsync(msg);
+    }
+    catch
+    {
+        await consumer.ChangeInvisibleTimeAsync(msg, 30000); // Verarbeitungszeit verlängern
+    }
+}
+```
+
+### Consume-Drosselung / VIP-Kanal / Nachrichtenkomprimierung
+
+```csharp
+consumer.MaxConcurrentConsume = 10; // Höchstens 10 Nachrichten gleichzeitig verarbeiten
+
+producer.VipChannelEnabled = true;  // VIP-Kanal aktivieren (BrokerPort - 2)
+producer.CompressOverBytes = 4096;  // Nachrichtenkörper über 4 KB automatisch mit ZLIB komprimieren
+```
+
+### HTTP-Bridge (MQ -> WebAPI)
+
+Um konsumierte Nachrichten an eine WebAPI weiterzuleiten oder eine WebAPI für die externe Veröffentlichung von Nachrichten bereitzustellen, können Sie die vorhandenen APIs kombinieren; siehe [HTTP-Bridge-Anleitung](Doc/HttpBridge_Guide.md).
+
+---
+
+## Cloud-Provider-Zugang
+
+### Alibaba Cloud ApsaraMQ for RocketMQ
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "http://MQ_INST_xxx.aliyuncs.com:80",
+    CloudProvider = new AliyunProvider
+    {
+        AccessKey = "your AccessKey",
+        SecretKey = "your SecretKey",
+        InstanceId = "MQ_INST_xxx"  // Optional; wird automatisch aus der Adresse ermittelt
+    }
+};
+```
+
+### Huawei Cloud DMS for RocketMQ
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "Huawei Cloud instance address:9876",
+    CloudProvider = new HuaweiProvider
+    {
+        AccessKey = "your AK",
+        SecretKey = "your SK",
+        InstanceId = "instance ID",
+        EnableSsl = true
+    }
+};
+```
+
+### Tencent Cloud TDMQ RocketMQ
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "Tencent Cloud instance address:9876",
+    CloudProvider = new TencentProvider
+    {
+        AccessKey = "Tencent Cloud SecretId",
+        SecretKey = "Tencent Cloud SecretKey",
+        Namespace = "namespace"
+    }
+};
+```
+
+### Apache RocketMQ ACL-Authentifizierung
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "127.0.0.1:9876",
+    CloudProvider = new AclProvider
+    {
+        AccessKey = "RocketMQ AccessKey",
+        SecretKey = "RocketMQ SecretKey"
+    }
+};
+```
+
+---
+
+## NativeAOT-Publishing
+
+Nur das Ziel `net10.0` unterstützt NativeAOT/Trimming (ältere Zielframeworks kennen kein Trimming und verhalten sich unverändert). Das Paket enthält bereits quellgenerierte Member-Accessoren und Metadaten-Roots, daher ist bei der Nutzung keine zusätzliche Konfiguration erforderlich:
+
+```xml
+<PropertyGroup>
+  <PublishAot>true</PublishAot>
+</PropertyGroup>
+```
+
+```powershell
+dotnet publish -c Release -r linux-x64
+```
+
+Überprüfte Szenarien (mit nativen ausführbaren Dateien gemessen): Frame-Codierung/-Decodierung, Eigenschaftswörterbücher der Anfrage-Header, JSON-Serialisierung, Nachrichtenkomprimierung (ZLIB-Roundtrip und Dekomprimierungsgrenzen), LMQ-Eigenschaften, ACL-Signierung, Cloud-Provider-Adapter, Dual-Protokoll-Konvertierung sowie End-to-End-Senden/-Empfangen (normal/Objektkörper/Batch/verzögert/Komprimierung großer Nachrichten, Konsum, Offset-Abfrage, geordnete Sperre, POP) sowie der gRPC-5.x-Pfad (Routing, Sende-/Empfangsbestätigung, Push-Consumption, Dead-Letter-Weiterleitung, FIFO-geordnete Verarbeitung).
+
+CI-Abdeckung: win-x64 (einschließlich vollständigem lokalem RocketMQ-End-to-End), linux-x64, linux-arm64, win-arm64, osx-x64/osx-arm64, linux-musl-x64/arm64 werden jeweils nativ veröffentlicht und ausgeführt; Loongson linux-loongarch64 läuft über QEMU-Benutzermodus-Emulation plus Loongson-SDK (für diese Plattform gibt es derzeit keine offizielle NativeAOT-Unterstützung, daher dient ein AOT-artiger JIT-Smoke-Test als Kriterium).
+
+**Benutzerdefinierte Objektkörper müssen registriert werden**: Wenn ein benutzerdefinierter Typ (POCO) als Nachrichtenkörper verwendet wird, entfernt der Trimmer standardmäßig seine öffentlichen Eigenschaften, und der Objektkörper wird stillschweigend als leeres Objekt `{}` serialisiert. Registrieren Sie jeden als Nachrichtenkörper verwendeten Typ einmal beim Anwendungsstart:
+
+```csharp
+MqAot.RegisterBodyType<MyOrder>();
+MqAot.RegisterBodyType<MyEvent>();
+```
+
+`MqAot.RegisterBodyType<T>()` hat nur auf net10.0 Trimming-Erhaltungssemantik; auf anderen Zielen ist es ein No-Op, sodass Multi-Target-Projekte denselben Startcode verwenden können. Sie können auch eigene Metadaten-Roots nach demselben Muster wie die Bibliothek deklarieren (`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`).
+
+---
+
+## Architekturübersicht
+
+```
+MqBase (Geschäftsbasisklasse)
+├── Producer
+└── Consumer
+
+Kommunikationsschicht
+├── Remoting-Protokoll (4.x/5.x Broker)
+│   ├── ClusterClient (TCP-Langverbindung, Opaque-Wiederverwendung)
+│   ├── NameClient (Routenermittlung, 30-s-Polling)
+│   └── BrokerClient (Heartbeat/Unregister)
+│
+└── gRPC-Protokoll (5.x Proxy, netstandard2.1+)
+    ├── GrpcClient (HTTP/2, Unary + Server Streaming + schreibgeschützte Langverbindung)
+    ├── GrpcMessagingService (11 RPC-Methoden)
+    ├── GrpcTelemetrySession (Langverbindung zur Ressourcenmeldung: periodisches erneutes Senden + Wiederverbindung bei Abbruch)
+    ├── MessageConverter (Konvertierung zwischen Remoting- und gRPC-Nachrichten)
+    └── Feld-Codec (handgeschriebenes Protobuf auf Basis von SpanWriter/SpanReader)
+
+Cloud-Provider-Adapterschicht
+├── AliyunProvider  (Alibaba Cloud: Instanz-ID-Routing + HTTP-NameServer)
+├── HuaweiProvider  (Huawei Cloud: SSL/TLS + Instanz-ID-Routing)
+├── TencentProvider (Tencent Cloud: Namespace-Präfix-Routing)
+└── AclProvider     (Apache ACL: HMAC-SHA1-Signierung)
+```
+
+Siehe [Anforderungsdokument](Doc/需求文档.md), [Funktionsliste](Doc/功能清单.md), [Architekturdesign](Doc/架构设计.md), [Wettbewerbsanalyse](Doc/竞品分析.md), [HTTP-Bridge-Anleitung](Doc/HttpBridge_Guide.md) und [Lokalisierung](Doc/多语言本地化.md).
+
+---
+
+## Funktionsübersicht
+
+### Producer
+
+| Funktion | Status | Beschreibung |
+|---------|:------:|-------------|
+| Synchroner/asynchroner/One-Way-Versand | ✅ | Publish / PublishAsync / PublishOneway |
+| Batch-Nachrichtenversand | ✅ | PublishBatch, fasst mehrere Nachrichten zu einer Anfrage zusammen |
+| Verzögerte Nachrichten | ✅ | 18 voreingestellte Stufen + beliebige Verzögerungen über gRPC |
+| Transaktionale Nachrichten | ✅ | Halbe Nachricht + Commit/Rollback + Checkback-Callback |
+| Geordnete Nachrichten | ✅ | Versand an eine angegebene MessageQueue |
+| Request-Reply | ✅ | Synchrone/asynchrone Anfrage-Antwort |
+| Nachrichtenkomprimierung | ✅ | Automatisches ZLIB oberhalb der Schwelle CompressOverBytes |
+| Message Trace | ✅ | AsyncTraceDispatcher + MessageTraceHook |
+
+### Consumer
+
+| Funktion | Status | Beschreibung |
+|---------|:------:|-------------|
+| Pull-Consumption / Consume-Planung | ✅ | Long-Polling-Pull mit automatischer Warteschlangenzuweisung |
+| Clustered-/Broadcast-Consumption | ✅ | Rebalance mit gleichmäßiger Zuweisung / lokale Offset-Persistenz |
+| Tag-/SQL92-Filterung | ✅ | Filterung per Ausdruck |
+| Multi-Topic-Abonnement | ✅ | Eigenschaft Topics; Rebalance je Topic |
+| Consume-Retry + Dead-Letter-Queue | ✅ | EnableRetry + MaxReconsumeTimes |
+| Geordnete Verarbeitung | ✅ | Warteschlangensperre (OrderConsume) |
+| Pop-Consumption | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
+| Consume-Drosselung | ✅ | Semaphorsteuerung über MaxConcurrentConsume |
+
+### Verwaltung und Betrieb
+
+| Funktion | Status | Beschreibung |
+|---------|:------:|-------------|
+| Topic-/Consumer-Group-CRUD | ✅ | Erstellen/Aktualisieren/Löschen |
+| Nachrichtenabfrage | ✅ | Nach ID / nach Key |
+| Consume-Statistik / Clusterinformationen | ✅ | GetConsumeStats / GetClusterInfo |
+| Offset-Verwaltung und -Zurücksetzen | ✅ | Abfragen/Aktualisieren/Zurücksetzen |
+
+### Protokolle und Kompatibilität
+
+| Serverversion | Remoting | gRPC | Beschreibung |
+|----------------|:--------:|:----:|-------------|
+| RocketMQ 4.0 ~ 4.9 | ✅ | — | Vollständig kompatibel |
+| RocketMQ 5.x (Broker) | ✅ | — | Remoting ist abwärtskompatibel |
+| RocketMQ 5.x (Proxy) | — | ✅ | Aktiviert über GrpcProxyAddress |
+| Alibaba Cloud 4.x | ✅ | — | AliyunProvider-Adapter |
+| Huawei Cloud DMS | ✅ | — | HuaweiProvider-Adapter |
+| Tencent Cloud TDMQ | ✅ | — | TencentProvider-Adapter |
+
+---
+
+## Testabdeckung
+
+Die xUnit-Test-Suite deckt Kernfunktionen, erweiterte Funktionen, Protokollkompatibilität, Cloud-Provider-Adapter und E2E-Integrationstests ab (gRPC-Integrationsfälle werden automatisch übersprungen, wenn kein Proxy konfiguriert ist); sie prüft zudem die Authentifizierungssemantik von Apache ACL 2.0 sowohl über Remoting als auch über gRPC (Anfragen ohne Anmeldeinformationen, von Nicht-Administratoren oder mit falschen Schlüsseln werden abgelehnt, während Administratoren normal senden und empfangen können). Unit-Tests laufen parallel je Testklasse, und `dotnet test XUnitTestRocketMQ/XUnitTest.csproj --filter "Category!=Integration"` ist in etwa 4 Sekunden abgeschlossen; Integrationsfälle, die einen echten Broker benötigen, liegen in der RocketMQ-Collection und laufen seriell, um Störungen durch gemeinsam genutzte Topics und Consumer-Gruppen zu vermeiden; setzen Sie `ROCKETMQ_TEST_VERBOSE=1`, um bei der Fehlersuche die Framework-Logs wiederherzustellen. CI läuft als RID-Matrix: Unit-Tests und AOT-Smoke-Tests decken win-x64 / linux-x64 / linux-arm64 / Loongson LA64 (QEMU-Emulation, erforderlich) ab, während win-arm64, beide osx-Architekturen und beide linux-musl-Architekturen in der Beobachtungsphase sind; alles unterstützt die manuelle Auslösung.
+
+Ebenfalls enthalten: NativeAOT-Smoke-Tests (`AotSmoke`, 33 Fälle, einschließlich Nachrichtenkomprimierung, LMQ, ACL-Signierung, gRPC-Pfad, Dead-Letter-Weiterleitung und FIFO-geordneter Verarbeitung), AOT-Smoke-Tests für die Nutzung des NuGet-Pakets (`AotPackageSmoke`, nutzt die gepackten Artefakte über PackageReference und deckt Paketinhalte, quellgenerierte Serialisierung, Komprimierung und End-to-End-Senden/-Empfangen ab), Erfassung einer Publishing-Baseline (`scripts/AotBaseline.cs`, meldet Größe/Startaufwand/Durchsatz mit Schwellenwertprüfungen und schreibt in die Pipeline-Zusammenfassung in CI), AOT/JIT-Leistungsvergleichsbenchmarks (das Projekt `Benchmark` auf Basis von BenchmarkDotNet, einschließlich Allokationsstatistiken; die AOT-Seite verwendet mehrrundige Stichproben über `AotSmoke --bench`), ein Dead-Letter-Werkzeug (`scripts/DlqTool.cs`, veröffentlicht Nachrichten aus `%DLQ%{group}` erneut in einem angegebenen Topic) und ein gRPC-Stabilitätsabnahmeskript (`scripts/GrpcStability.cs`, läuft nachts in CI mit einem injizierten Proxy-Neustart).
+
+### Lokale Integrationstests (Windows)
+
+```powershell
+# Installation und Start von NameServer + Broker + Proxy in einem Schritt (der Store wird bei jedem Start geleert)
+dotnet run --file scripts/RocketMqSetup.cs
+
+$env:ROCKETMQ_NAMESERVER = "127.0.0.1:9876"
+dotnet test XUnitTestRocketMQ\XUnitTest.csproj -c Release
+
+# Stoppen / Status
+dotnet run --file scripts/RocketMqSetup.cs -- --stop
+dotnet run --file scripts/RocketMqSetup.cs -- --status
+```
+
+Der lokale Start verwendet standardmäßig den ressourcenschonenden Modus: Die Logs der drei JVMs werden auf WARN reduziert (nicht mehr nach `%USERPROFILE%\logs\rocketmqlogs` geschrieben), das asynchrone Flush-Intervall beträgt 5 Sekunden, das Commitlog 64 MB, Thread-Pools werden gestrafft, und der Store wird bei jedem Start geleert, sodass der Broker immer in einem frischen Zustand ist. Verwenden Sie bei der Fehlersuche `--log-level INFO` (oder `$env:ROCKETMQ_TEST_LOG_LEVEL="INFO"`), um ausführliche Logs wiederherzustellen (das Protokollvolumen steigt deutlich); wenn gRPC nicht benötigt wird, starten Sie mit `--no-proxy` eine JVM weniger; um den Store auf ein RAM-Laufwerk zu legen, verwenden Sie `--store-dir R:\RocketMQ\store`.
+
+---
+
+## Mitwirken
+
+Issues und Pull Requests sind willkommen!
+
+1. Forken Sie dieses Repository
+2. Erstellen Sie einen Feature-Branch (`git checkout -b feature/AmazingFeature`)
+3. Committen Sie Ihre Änderungen (`git commit -m 'Add some AmazingFeature'`)
+4. Pushen Sie den Branch (`git push origin feature/AmazingFeature`)
+5. Öffnen Sie einen Pull Request
+
+---
+
+## Lizenz
+
+Dieses Projekt wird unter der [MIT-Lizenz](LICENSE) veröffentlicht.
+
+---
 
 ## Ökosystem-Karte
 
@@ -108,9 +600,3 @@ Website: https://newlifex.com · Open-Source-Organisation: https://github.com/Ne
 ![智能大石头](https://newlifex.com/stone.jpg)
 
 </details>
-
-## Lizenz
-
-MIT License © 2002-2026 NewLife-Team
-
-[GitHub](https://github.com/NewLifeX/NewLife.RocketMQ) | [Website](https://newlifex.com)
