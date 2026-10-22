@@ -1,5 +1,6 @@
 # 多语言词表一致性校验：键集合、占位符、格式说明符，以及「源码使用但词表缺失」
 # 以基准语言文件（默认 zh-Hans.yml）为准，所有语言必须提供完全相同的键集合
+# 孤儿键扫描同时检查 .cs 与 .csproj/.props：程序集标题与描述写在工程文件里，也是词表的合法使用方
 #
 # 用法（路径均相对仓库根目录解析）：
 #   pwsh -File tools/localization/check-locales.ps1                                      # Core 默认目录
@@ -128,7 +129,6 @@ foreach ($file in Get-ChildItem $localeDir -Filter *.yml | Sort-Object Name) {
     }
 }
 
-foreach ($e in $allErrors) { Write-Host $e -ForegroundColor Red }
 foreach ($w in $allWarnings) { Write-Host $w -ForegroundColor Yellow }
 
 # 源码文本只读取一次，供「孤儿键」与「词表缺键」两个方向共用
@@ -138,10 +138,14 @@ $sourceDirs = @($SourceDir | ForEach-Object {
 $sourceFiles = @($sourceDirs | ForEach-Object { Get-ChildItem $_ -Recurse -Filter *.cs } |
     Where-Object { $_.FullName -notmatch '\\(obj|bin|Locales)\\' })
 
+# 程序集标题/描述写在 csproj 里，孤儿键扫描需要把它们也算作来源
+$metadataFiles = @($sourceDirs | ForEach-Object { Get-ChildItem $_ -Recurse -Include *.csproj, *.props } |
+    Where-Object { $_.FullName -notmatch '\\(obj|bin|Locales)\\' })
+
 # 孤儿键：基准表中的键在源码里完全找不到（改文案后遗留的死条目）
 $orphans = @()
 if (!$SkipOrphan) {
-    $sourceText = ($sourceFiles | ForEach-Object { [IO.File]::ReadAllText($_.FullName) }) -join "`n"
+    $sourceText = (@($sourceFiles) + @($metadataFiles) | ForEach-Object { [IO.File]::ReadAllText($_.FullName) }) -join "`n"
 
     foreach ($key in $reference.Entries.Keys) {
         # 源码中的字面量形式：制表符写作 \t，引号写作 \"
@@ -183,7 +187,7 @@ if (!$SkipUsage) {
 }
 
 if ($allErrors.Count -gt 0) {
-    foreach ($o in $orphans) { Write-Host "孤儿键（源码中找不到）：$o" -ForegroundColor Red }
+    foreach ($e in $allErrors) { Write-Host $e -ForegroundColor Red }
 }
 
 $count = (Get-ChildItem $localeDir -Filter *.yml).Count
