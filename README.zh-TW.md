@@ -1,5 +1,7 @@
 # NewLife.RocketMQ - 企業級純受控 RocketMQ 用戶端
 
+![GitHub top language](https://img.shields.io/github/languages/top/newlifex/newlife.rocketmq?logo=github)
+
 ![GitHub License](https://img.shields.io/github/license/NewLifeX/NewLife.RocketMQ?logo=github)
 ![NuGet Downloads](https://img.shields.io/nuget/dt/NewLife.RocketMQ?logo=nuget)
 ![NuGet](https://img.shields.io/nuget/v/NewLife.RocketMQ?logo=nuget)
@@ -16,31 +18,521 @@
 
 > 本翻譯可能落後，以 [English README](README.md) 為準。
 
-NewLife.RocketMQ 是純受控的 RocketMQ 用戶端，支援 Apache RocketMQ 與阿里雲訊息佇列，提供一般訊息、順序訊息、交易訊息與延遲訊息。
+**純受控企業級 RocketMQ 用戶端**，支援 `.NET Framework 4.5+` / `.NET Standard 2.0+` / `.NET Core` / `.NET 5+`。  
+**完全使用 C# 實作，零外部相依（無需 Java、gRPC、Protobuf 第三方函式庫）。**
+
+---
+
+## 產品簡介
+
+NewLife.RocketMQ 是新生命團隊開發的**企業級純受控 RocketMQ 用戶端**，專為 .NET 生態設計。同時支援 RocketMQ **Remoting 協定（4.x/5.x Broker）** 與 **gRPC Proxy 協定（5.x Proxy）**，涵蓋生產者、消費者全部核心功能及企業級特性，統一適配阿里雲、華為雲、騰訊雲及 Apache ACL 認證體系。
+
+**核心優勢**：
+
+| 特性 | 說明 |
+|------|------|
+| **雙協定支援** | Remoting（4.x 成熟穩定）+ gRPC（5.x 面向未來），自動路由 |
+| **零外部相依** | 內建 Protobuf 欄位編解碼（基於 NewLife.Core 的 SpanWriter/SpanReader 手寫實作），無需 Java 或 gRPC 執行階段 |
+| **多雲適配** | 統一 `ICloudProvider` 介面，已內建阿里雲/華為雲/騰訊雲/Apache ACL 四家適配器 |
+| **生產就緒** | 消費重試、死信佇列、交易回查、順序消費、Pop 消費等企業級特性完整支援 |
+| **最廣框架涵蓋** | .NET Framework 4.5+ 到 .NET 10，gRPC 功能在 .NET Standard 2.1+ 可用 |
+| **AOT 友善** | net10.0 目標支援 NativeAOT/裁剪：訊框編解碼、JSON 序列化與訊息壓縮不依賴執行階段反射，儲存庫內建 AOT 冒煙與 NuGet 套件消費 AOT 冒煙；CI 以主流 RID 矩陣（win/linux/osx、musl 及龍芯 LA64）驗證 AOT 發佈與執行 |
+| **執行階段多語言** | 日誌、協定解析例外、公開 API 例外與設定項描述以英文為源文，內建 31 種語言詞表（132 條），按 `Localization.Culture` 自動翻譯並回退英文；帶前綴日誌先翻譯再拼前綴，前綴不參與詞表查找 |
+| **高效能** | 基於 NewLife.Net 高效能網路層，連線複用、VIP 通道、訊息壓縮、並行控制 |
+
+---
 
 ## 安裝
 
-```bash
+```powershell
+# NuGet 套件管理員
+Install-Package NewLife.RocketMQ
+
+# .NET CLI
 dotnet add package NewLife.RocketMQ
 ```
 
-## 快速開始
-
-```csharp
-var mq = new RocketMQClient("127.0.0.1:9876");
-mq.Start();
-mq.Send("TopicTest", "hello".GetBytes());
+```xml
+<!-- PackageReference -->
+<PackageReference Include="NewLife.RocketMQ" Version="3.0.*" />
 ```
 
-## 核心特性
+---
 
-- 涵蓋主流協定與格式版本，相容性強
-- 適配主流雲端服務與託管中介軟體
-- 長期生產驗證，穩定可靠
+## 快速入門
 
-## 文件
+### 傳送訊息
 
-> 📖 完整文件（中文）見 [儲存庫文件](Doc)
+```csharp
+using NewLife.RocketMQ;
+
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "127.0.0.1:9876",
+    Group = "producer_group"
+};
+producer.Start();
+
+// 同步傳送
+var result = producer.Publish("Hello RocketMQ!");
+Console.WriteLine($"消息ID: {result.MsgId}");
+
+// 非同步傳送
+await producer.PublishAsync("异步消息");
+
+// 批次傳送
+await producer.PublishBatch(new[] { "消息1", "消息2", "消息3" });
+```
+
+### 消費訊息
+
+```csharp
+var consumer = new Consumer
+{
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876"
+};
+
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        Console.WriteLine($"收到消息: {msg.BodyString}");
+    }
+    return true; // 回傳 true 表示消費成功
+};
+
+consumer.Start();
+```
+
+### gRPC（5.x Proxy）接入
+
+```csharp
+// 生產者：設定 GrpcProxyAddress 即走 5.x gRPC 鏈路（需 netstandard2.1+）
+var producer = new Producer
+{
+    Topic = "test_topic",
+    Group = "producer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    GrpcProxyAddress = "http://127.0.0.1:8081",
+};
+producer.Start();
+await producer.PublishAsync("gRPC message");
+
+// 消費者：啟動時自動上報訂閱關係（Telemetry 長連線），接收與確認走 gRPC
+var consumer = new Consumer
+{
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    GrpcProxyAddress = "http://127.0.0.1:8081",
+};
+consumer.Start();
+
+var route = await consumer.QueryRouteViaGrpcAsync();
+var messages = await consumer.ReceiveMessageViaGrpcAsync(route.MessageQueues[0], batchSize: 8);
+// ……業務處理……
+await consumer.AckMessageViaGrpcAsync("test_topic",
+[
+    .. messages.Select(m => new AckMessageEntry
+    {
+        ReceiptHandle = m.SystemProperties?.ReceiptHandle,
+        MessageId = m.SystemProperties?.MessageId,
+    }),
+]);
+```
+
+> 長輪詢消費也可直接用 `GrpcPushConsumer`（PUSH_CONSUMER 語意，內建自動 Ack 與重試）。
+>
+> **5.x POP 重試與死信**：消費失敗的訊息由 Broker 寫入 `%RETRY%{group}_{topic}` 並按 `popFromRetryProbability` 機率併回原主題的拉取回應，用戶端只需消費原主題；投遞次數達到 `GrpcPushConsumer.MaxDeliveryAttempts`（預設 16）時轉入 `%DLQ%{group}`，手動接收場景呼叫 `Consumer.ForwardToDeadLetterQueueViaGrpcAsync`（`GetGrpcDlqTopic()` 傳回死信主題名稱）。不可見時間下限 10 秒（函式庫內自動收斂），小於該值會被 Broker 拒絕。
+>
+> 死信訊息需一次處理完成：`dotnet run --file scripts/DlqTool.cs -- --group <消費組> --to <原主題>` 會把死信佇列中的訊息重投到指定主題，僅確認重投成功的訊息。死信被拉取即推進消費位點、未確認的訊息會被 Broker 移入 `%RETRY%{group}_%DLQ%{group}`，因此不支援唯讀瀏覽死信佇列。
+>
+> **FIFO 順序訊息與交易訊息**：主題類型須與訊息類型匹配，用 `CreateTopic(topic, queueNum, 0, TopicMessageType.Fifo/Transaction)` 建立。FIFO 傳送時設定 `Message.MessageGroup`，消費時設定 `GrpcPushConsumer.Orderly = true` 以串行處理並保持順序；交易訊息用 `PublishTransactionViaGrpcAsync` 傳送半訊息、`EndTransactionViaGrpcAsync` 提交或回滾（不提交則逾時後被 Broker 回滾）。
+
+### 延遲訊息
+
+```csharp
+// 18 級預設延遲
+producer.PublishDelay("延迟消息", DelayTimeLevels.s30);
+
+// gRPC 模式支援任意時間延遲（需 netstandard2.1+）
+producer.GrpcProxyAddress = "http://127.0.0.1:8081";
+await producer.PublishDelayViaGrpcAsync("任意延迟", DateTime.Now.AddMinutes(30));
+```
+
+### 交易訊息
+
+```csharp
+var producer = new Producer
+{
+    Topic = "tx_topic",
+    Group = "tx_group",
+    NameServerAddress = "127.0.0.1:9876"
+};
+
+// 交易回查回呼
+producer.OnCheckTransaction = (msg, transactionId) =>
+{
+    var success = CheckLocalTransaction(transactionId);
+    return success ? TransactionState.Commit : TransactionState.Rollback;
+};
+producer.Start();
+
+// 傳送半訊息 → 執行本機交易 → 提交/回滾
+var sendResult = producer.PublishTransaction("订单创建");
+try
+{
+    ExecuteLocalTransaction(sendResult.TransactionId);
+    producer.EndTransaction(sendResult, TransactionState.Commit);
+}
+catch
+{
+    producer.EndTransaction(sendResult, TransactionState.Rollback);
+}
+```
+
+### 順序訊息
+
+```csharp
+// 相同 key 的訊息進入同一佇列
+var queue = producer.SelectQueue("order_123");
+producer.Publish("顺序消息1", queue);
+producer.Publish("顺序消息2", queue);
+
+// 消費端啟用順序消費
+consumer.OrderConsume = true;
+```
+
+### Request-Reply 模式
+
+```csharp
+// 生產者傳送請求（同步/非同步）
+var response = producer.Request("请求消息", timeout: 5000);
+var reply = await producer.RequestAsync("异步请求", timeout: 5000);
+
+// 消費者回覆
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        if (!String.IsNullOrEmpty(msg.CorrelationId))
+            consumer.SendReply(msg, "处理结果");
+    }
+    return true;
+};
+```
+
+### 雙協定訊息轉換
+
+```csharp
+// Remoting 訊息轉 gRPC 訊息（需 netstandard2.1+）
+var grpcMsg = message.ToGrpcMessage();
+
+// gRPC 訊息轉 Remoting 擴充訊息 / 基礎訊息
+var ext = grpcMsg.ToMessageExt();   // MessageExt（含全部系統屬性）
+var msg = grpcMsg.ToMessage();      // Message（基礎欄位）
+```
+
+---
+
+## 消費者進階特性
+
+### 消費重試與死信佇列
+
+```csharp
+var consumer = new Consumer
+{
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    EnableRetry = true,           // 啟用消費重試
+    MaxReconsumeTimes = 3         // 最大重試次數，超過進入 %DLQ% 死信佇列
+};
+
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        try { ProcessMessage(msg); }
+        catch { return false; } // 回傳 false 觸發重試
+    }
+    return true;
+};
+```
+
+### Tag / SQL92 過濾
+
+```csharp
+// Tag 過濾
+consumer.Tags = "TagA || TagB";
+
+// SQL92 表達式過濾
+consumer.ExpressionType = "SQL92";
+consumer.Subscription = "age > 18 AND city = 'Shanghai'";
+```
+
+### 多 Topic 訂閱
+
+```csharp
+consumer.Topics = "topic1;topic2;topic3";
+```
+
+### Pop 消費模式
+
+```csharp
+// Pop 消費（手動確認）
+var messages = await consumer.PopMessageAsync(timeout: 10000);
+foreach (var msg in messages)
+{
+    try
+    {
+        ProcessMessage(msg);
+        await consumer.AckMessageAsync(msg);
+    }
+    catch
+    {
+        await consumer.ChangeInvisibleTimeAsync(msg, 30000); // 延長處理時間
+    }
+}
+```
+
+### 消費限流 / VIP 通道 / 訊息壓縮
+
+```csharp
+consumer.MaxConcurrentConsume = 10; // 最多同時處理 10 條訊息
+
+producer.VipChannelEnabled = true;  // 啟用 VIP 通道（BrokerPort - 2）
+producer.CompressOverBytes = 4096;  // 訊息體超過 4KB 自動 ZLIB 壓縮
+```
+
+### HTTP 橋接（MQ ↔ WebAPI）
+
+消費訊息後轉發給 WebAPI、或提供 WebAPI 供外部發佈訊息，用現有 API 即可組合實現，寫法見 [HTTP 橋接指南](Doc/HttpBridge_Guide.md)。
+
+---
+
+## 雲廠商接入
+
+### 阿里雲訊息佇列 RocketMQ
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "http://MQ_INST_xxx.aliyuncs.com:80",
+    CloudProvider = new AliyunProvider
+    {
+        AccessKey = "你的AccessKey",
+        SecretKey = "你的SecretKey",
+        InstanceId = "MQ_INST_xxx"  // 可選，自動從位址解析
+    }
+};
+```
+
+### 華為雲 DMS for RocketMQ
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "华为云实例地址:9876",
+    CloudProvider = new HuaweiProvider
+    {
+        AccessKey = "你的AK",
+        SecretKey = "你的SK",
+        InstanceId = "实例ID",
+        EnableSsl = true
+    }
+};
+```
+
+### 騰訊雲 TDMQ RocketMQ
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "腾讯云实例地址:9876",
+    CloudProvider = new TencentProvider
+    {
+        AccessKey = "腾讯云SecretId",
+        SecretKey = "腾讯云SecretKey",
+        Namespace = "命名空间"
+    }
+};
+```
+
+### Apache RocketMQ ACL 認證
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "127.0.0.1:9876",
+    CloudProvider = new AclProvider
+    {
+        AccessKey = "RocketMQ AccessKey",
+        SecretKey = "RocketMQ SecretKey"
+    }
+};
+```
+
+---
+
+## NativeAOT 發佈
+
+僅 `net10.0` 目標支援 NativeAOT/裁剪（舊目標框架無裁剪概念，行為不變）。套件內已帶源產生器成員存取子與中繼資料根，接入時無需額外設定：
+
+```xml
+<PropertyGroup>
+  <PublishAot>true</PublishAot>
+</PropertyGroup>
+```
+
+```powershell
+dotnet publish -c Release -r linux-x64
+```
+
+已驗證場景（原生可執行檔實測）：訊框編解碼、請求標頭屬性字典、JSON 序列化、訊息壓縮（ZLIB 往返與解壓上限）、LMQ 屬性、ACL 簽名、雲廠商適配、雙協定轉換，以及端對端收發（一般/物件體/批次/延遲/大訊息壓縮、消費、位移查詢、順序鎖、POP）與 gRPC 5.x 鏈路（路由、收發確認、推送消費、死信轉發、FIFO 順序消費）。
+
+CI 涵蓋：win-x64（含本機 RocketMQ 全量端對端）、linux-x64、linux-arm64、win-arm64、osx-x64/osx-arm64、linux-musl-x64/arm64 逐一原生發佈執行；龍芯 linux-loongarch64 經 QEMU 使用者態模擬 + 龍芯 SDK 執行（官方暫無該平台 NativeAOT 支援，以 AOT 姿態工程 JIT 冒煙為準）。
+
+**自訂型別物件體需登記**：以自訂型別（POCO）作為訊息體時，裁剪器預設會移除其公開屬性，物件體將被靜默序列化為空物件 `{}`。在應用程式啟動處為每個用作訊息體的型別呼叫一次登記即可：
+
+```csharp
+MqAot.RegisterBodyType<MyOrder>();
+MqAot.RegisterBodyType<MyEvent>();
+```
+
+`MqAot.RegisterBodyType<T>()` 僅 net10.0 帶裁剪保留語意，其餘目標為空實作，多目標工程可共用同一份啟動程式碼；也可按函式庫內同套路自行宣告中繼資料根（`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`）。
+
+---
+
+## 架構總覽
+
+```
+MqBase (業務基底類別)
+├── Producer (生產者)
+└── Consumer (消費者)
+
+通訊層
+├── Remoting 協定（4.x/5.x Broker）
+│   ├── ClusterClient (TCP 長連線，Opaque 複用)
+│   ├── NameClient (路由探索，30s 輪詢)
+│   └── BrokerClient (心跳/註銷)
+│
+└── gRPC 協定（5.x Proxy，netstandard2.1+）
+    ├── GrpcClient (HTTP/2，Unary + Server Streaming + 唯寫長連線)
+    ├── GrpcMessagingService (11 個 RPC 方法)
+    ├── GrpcTelemetrySession (資源上報長連線：週期重送 + 斷線重連)
+    ├── MessageConverter (Remoting ↔ gRPC 訊息互轉)
+    └── 欄位編解碼 (基於 SpanWriter/SpanReader 手寫 Protobuf)
+
+雲廠商適配層
+├── AliyunProvider  (阿里雲：實例ID路由 + HTTP NameServer)
+├── HuaweiProvider  (華為雲：SSL/TLS + 實例ID路由)
+├── TencentProvider (騰訊雲：Namespace 前綴路由)
+└── AclProvider     (Apache ACL：HMAC-SHA1 簽名)
+```
+
+詳見 [需求文件](Doc/需求文档.md)、[功能清單](Doc/功能清单.md)、[架構設計文件](Doc/架构设计.md)、[競品分析](Doc/竞品分析.md)、[HTTP 橋接指南](Doc/HttpBridge_Guide.md)、[多語言在地化](Doc/多语言本地化.md)。
+
+---
+
+## 功能特性一覽
+
+### 生產者
+
+| 功能 | 狀態 | 說明 |
+|------|:----:|------|
+| 同步/非同步/單向傳送 | ✅ | Publish / PublishAsync / PublishOneway |
+| 批次訊息傳送 | ✅ | PublishBatch，合併多條訊息為一個請求 |
+| 延遲訊息 | ✅ | 18 級預設 + gRPC 任意時間延遲 |
+| 交易訊息 | ✅ | 半訊息 + 提交/回滾 + 回查回呼 |
+| 順序訊息 | ✅ | 指定 MessageQueue 傳送 |
+| Request-Reply | ✅ | 同步/非同步請求回覆 |
+| 訊息壓縮 | ✅ | CompressOverBytes 閾值自動 ZLIB |
+| 訊息軌跡 | ✅ | AsyncTraceDispatcher + MessageTraceHook |
+
+### 消費者
+
+| 功能 | 狀態 | 說明 |
+|------|:----:|------|
+| Pull 消費 / 消費調度 | ✅ | 長輪詢拉取，自動分配佇列 |
+| 叢集消費 / 廣播消費 | ✅ | Rebalance 平均分配 / 本機位移持久化 |
+| Tag / SQL92 過濾 | ✅ | 表達式過濾 |
+| 多 Topic 訂閱 | ✅ | Topics 屬性，按 Topic 分別 Rebalance |
+| 消費重試 + 死信佇列 | ✅ | EnableRetry + MaxReconsumeTimes |
+| 順序消費 | ✅ | 佇列鎖定（OrderConsume） |
+| Pop 消費 | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
+| 消費限流 | ✅ | MaxConcurrentConsume 號誌控制 |
+
+### 管理與維運
+
+| 功能 | 狀態 | 說明 |
+|------|:----:|------|
+| Topic/消費組 CRUD | ✅ | 建立/更新/刪除 |
+| 訊息查詢 | ✅ | 按 ID / 按 Key |
+| 消費統計 / 叢集資訊 | ✅ | GetConsumeStats / GetClusterInfo |
+| 位移量管理與重置 | ✅ | 查詢/更新/重置 |
+
+### 協定與相容性
+
+| 服務端版本 | Remoting | gRPC | 說明 |
+|-----------|:--------:|:----:|------|
+| RocketMQ 4.0 ~ 4.9 | ✅ | — | 完全相容 |
+| RocketMQ 5.x（Broker） | ✅ | — | Remoting 向後相容 |
+| RocketMQ 5.x（Proxy） | — | ✅ | 透過 GrpcProxyAddress 啟用 |
+| 阿里雲 4.x | ✅ | — | AliyunProvider 適配 |
+| 華為雲 DMS | ✅ | — | HuaweiProvider 適配 |
+| 騰訊雲 TDMQ | ✅ | — | TencentProvider 適配 |
+
+---
+
+## 測試涵蓋範圍
+
+xUnit 測試套件涵蓋核心功能、進階特性、協定相容、雲廠商適配、E2E 整合測試（gRPC 整合案例在未設定 Proxy 時自動跳過）；另含 Apache ACL 2.0 在 Remoting 與 gRPC 兩側的鑑權語意驗證（無憑證/非管理員/錯誤金鑰被拒，管理員可正常收發）。單元測試按測試類別平行執行，`dotnet test XUnitTestRocketMQ/XUnitTest.csproj --filter "Category!=Integration"` 約 4 秒完成；依賴真實 Broker 的整合案例統一進入 RocketMQ 集合串行執行，避免共用主題與消費組互相干擾；排查問題時設定 `ROCKETMQ_TEST_VERBOSE=1` 可恢復框架日誌。CI 以 RID 矩陣執行：單元測試與 AOT 冒煙涵蓋 win-x64 / linux-x64 / linux-arm64 / 龍芯 LA64（QEMU 模擬，必選），win-arm64、osx 雙架構與 linux-musl 雙架構為觀察期，全部支援手動觸發。
+
+另有 NativeAOT 冒煙（`AotSmoke`，涵蓋訊息壓縮、LMQ、ACL 簽名、gRPC 鏈路、死信轉發與 FIFO 順序消費）、NuGet 套件消費 AOT 冒煙（`AotPackageSmoke`，以 PackageReference 消費封裝產物，涵蓋套件資產、源產生序列化、壓縮與端對端收發）、發佈基準收集（`scripts/AotBaseline.cs`，輸出體積/啟動開銷/吞吐並支援閾值判定，CI 寫入管線摘要）、AOT/JIT 效能對照基準（`Benchmark` 工程基於 BenchmarkDotNet，含配置統計；AOT 側由 `AotSmoke --bench` 多輪取樣）、死信維運工具（`scripts/DlqTool.cs`，把 `%DLQ%{group}` 訊息重投到指定主題）與 gRPC 長穩驗收腳本（`scripts/GrpcStability.cs`，CI 夜間執行並注入一次 Proxy 重啟）。
+
+### 本機整合測試（Windows）
+
+```powershell
+# 一鍵安裝並啟動 NameServer + Broker + Proxy（每次啟動清空 store）
+dotnet run --file scripts/RocketMqSetup.cs
+
+$env:ROCKETMQ_NAMESERVER = "127.0.0.1:9876"
+dotnet test XUnitTestRocketMQ\XUnitTest.csproj -c Release
+
+# 停止 / 狀態
+dotnet run --file scripts/RocketMqSetup.cs -- --stop
+dotnet run --file scripts/RocketMqSetup.cs -- --status
+```
+
+本機啟動預設使用低資源模式：三個 JVM 的日誌降到 WARN（不再寫入 `%USERPROFILE%\logs\rocketmqlogs`）、非同步刷盤間隔 5 秒、commitlog 64MB、執行緒集區收緊，並且每次啟動都會清空 store，Broker 始終處於全新狀態。排查問題時用 `--log-level INFO`（或 `$env:ROCKETMQ_TEST_LOG_LEVEL="INFO"`）恢復詳細日誌（日誌量會明顯增大）；不需要 gRPC 時用 `--no-proxy` 少起一個 JVM；需要把 store 指到 RAM 碟時用 `--store-dir R:\RocketMQ\store`。
+
+---
+
+## 參與貢獻
+
+歡迎提交 Issue 與 Pull Request！
+
+1. Fork 本儲存庫
+2. 建立特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交變更 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 提交 Pull Request
+
+---
+
+## 授權條款
+
+本專案採用 [MIT License](LICENSE) 開源授權。
+
+---
 
 ## 生態版圖
 
@@ -92,6 +584,8 @@ NewLife 生態系按相依分層，各專案獨立版本、獨立發行。下面
 
 > 徽章取各專案主套件；主題套件、擴充套件與衛星套件見對應 NuGet 頁面。未在表中列出的 30 多個套件（FTP、LoRa、Office 擴充、各類協定驅動等）見 [NewLifeX 組織](https://github.com/NewLifeX) 與 [newlifex.com](https://newlifex.com)。
 
+---
+
 ## 新生命開發團隊
 
 <img src="https://newlifex.com/logo.png" width="48" align="right" alt="NewLife" />
@@ -108,9 +602,3 @@ NewLife 生態系按相依分層，各專案獨立版本、獨立發行。下面
 ![智能大石头](https://newlifex.com/stone.jpg)
 
 </details>
-
-## 授權
-
-MIT License © 2002-2026 新生命開發團隊
-
-[GitHub](https://github.com/NewLifeX/NewLife.RocketMQ) | [Website](https://newlifex.com)
