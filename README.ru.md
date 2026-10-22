@@ -1,5 +1,7 @@
 # NewLife.RocketMQ - Корпоративный полностью управляемый клиент RocketMQ
 
+![GitHub top language](https://img.shields.io/github/languages/top/newlifex/newlife.rocketmq?logo=github)
+
 ![GitHub License](https://img.shields.io/github/license/NewLifeX/NewLife.RocketMQ?logo=github)
 ![NuGet Downloads](https://img.shields.io/nuget/dt/NewLife.RocketMQ?logo=nuget)
 ![NuGet](https://img.shields.io/nuget/v/NewLife.RocketMQ?logo=nuget)
@@ -16,31 +18,519 @@
 
 > Перевод может отставать от [английской версии](README.md).
 
-NewLife.RocketMQ — полностью управляемый клиент RocketMQ для Apache RocketMQ и Alibaba Cloud: обычные, упорядоченные, транзакционные и отложенные сообщения.
+**Корпоративный полностью управляемый клиент RocketMQ** с поддержкой `.NET Framework 4.5+` / `.NET Standard 2.0+` / `.NET Core` / `.NET 5+`.  
+**Полностью реализован на C# без внешних зависимостей (не требуются сторонние библиотеки Java, gRPC или Protobuf).**
+
+---
+
+## Обзор продукта
+
+NewLife.RocketMQ — **корпоративный полностью управляемый клиент RocketMQ**, разработанный командой NewLife для экосистемы .NET. Поддерживает как **протокол Remoting (Broker 4.x/5.x)**, так и **протокол gRPC Proxy (Proxy 5.x)**, охватывает все ключевые возможности производителя и потребителя, а также корпоративные функции, и предоставляет единые адаптеры для Alibaba Cloud, Huawei Cloud, Tencent Cloud и системы аутентификации Apache ACL.
+
+**Ключевые преимущества**:
+
+| Возможность | Описание |
+|---------|-------------|
+| **Поддержка двух протоколов** | Remoting (зрелый и стабильный на 4.x) + gRPC (ориентирован на 5.x), с автоматической маршрутизацией |
+| **Ноль внешних зависимостей** | Встроенный кодек полей Protobuf (написан вручную на SpanWriter/SpanReader из NewLife.Core), не требуется среда выполнения Java или gRPC |
+| **Поддержка нескольких облаков** | Единый интерфейс `ICloudProvider` со встроенными адаптерами для Alibaba Cloud, Huawei Cloud, Tencent Cloud и Apache ACL |
+| **Готовность к эксплуатации** | Полный набор корпоративных функций: повторное потребление, очередь недоставленных сообщений, проверка транзакций, упорядоченное потребление, Pop-потребление и многое другое |
+| **Самый широкий охват платформ** | От .NET Framework 4.5+ до .NET 10; функции gRPC доступны начиная с .NET Standard 2.1+ |
+| **Дружелюбность к AOT** | Целевая платформа net10.0 поддерживает NativeAOT/тримминг: кодирование и декодирование кадров, сериализация JSON и сжатие сообщений не зависят от рефлексии времени выполнения. В репозитории есть AOT smoke-тест и AOT smoke-тест потребления NuGet-пакета; CI проверяет публикацию и запуск AOT на матрице основных RID (win/linux/osx, musl и Loongson LA64) |
+| **Локализация во время выполнения** | Логи, исключения разбора протокола, исключения публичного API и описания конфигурации используют английский текст как исходный, со встроенными словарями для 31 языка (132 записи); перевод выполняется автоматически в соответствии с `Localization.Culture` с откатом на английский; логи с префиксом переводятся до формирования префикса, и префикс не участвует в поиске по словарю |
+| **Высокая производительность** | Построен на высокопроизводительном сетевом слое NewLife.Net: повторное использование соединений, VIP-канал, сжатие сообщений и управление конкурентностью |
+
+---
 
 ## Установка
 
-```bash
+```powershell
+# Менеджер пакетов NuGet
+Install-Package NewLife.RocketMQ
+
+# .NET CLI
 dotnet add package NewLife.RocketMQ
+```
+
+```xml
+<!-- PackageReference -->
+<PackageReference Include="NewLife.RocketMQ" Version="3.0.*" />
 ```
 
 ## Быстрый старт
 
+### Отправка сообщений
+
 ```csharp
-var mq = new RocketMQClient("127.0.0.1:9876");
-mq.Start();
-mq.Send("TopicTest", "hello".GetBytes());
+using NewLife.RocketMQ;
+
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "127.0.0.1:9876",
+    Group = "producer_group"
+};
+producer.Start();
+
+// Синхронная отправка
+var result = producer.Publish("Hello RocketMQ!");
+Console.WriteLine($"Message ID: {result.MsgId}");
+
+// Асинхронная отправка
+await producer.PublishAsync("async message");
+
+// Пакетная отправка
+await producer.PublishBatch(new[] { "message1", "message2", "message3" });
 ```
 
-## Возможности
+### Получение сообщений
 
-- Широкий охват версий популярных протоколов и форматов
-- Совместимость с облачными сервисами и управляемыми middleware
-- Проверено в длительной промышленной эксплуатации
+```csharp
+var consumer = new Consumer
+{
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876"
+};
 
-## Документация
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        Console.WriteLine($"Received message: {msg.BodyString}");
+    }
+    return true; // true означает успешное потребление
+};
 
-> 📖 Полная документация (на китайском): [документы репозитория](Doc)
+consumer.Start();
+```
+
+### Доступ по gRPC (Proxy 5.x)
+
+```csharp
+// Производитель: установка GrpcProxyAddress направляет трафик по пути gRPC 5.x (требуется netstandard2.1+)
+var producer = new Producer
+{
+    Topic = "test_topic",
+    Group = "producer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    GrpcProxyAddress = "http://127.0.0.1:8081",
+};
+producer.Start();
+await producer.PublishAsync("gRPC message");
+
+// Потребитель: подписки автоматически сообщаются при запуске (постоянное соединение Telemetry); получение и подтверждение идут по gRPC
+var consumer = new Consumer
+{
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    GrpcProxyAddress = "http://127.0.0.1:8081",
+};
+consumer.Start();
+
+var route = await consumer.QueryRouteViaGrpcAsync();
+var messages = await consumer.ReceiveMessageViaGrpcAsync(route.MessageQueues[0], batchSize: 8);
+// ... обработка бизнес-логики ...
+await consumer.AckMessageViaGrpcAsync("test_topic",
+[
+    .. messages.Select(m => new AckMessageEntry
+    {
+        ReceiptHandle = m.SystemProperties?.ReceiptHandle,
+        MessageId = m.SystemProperties?.MessageId,
+    }),
+]);
+```
+
+> Для длинного опроса можно также напрямую использовать `GrpcPushConsumer` (семантика PUSH_CONSUMER со встроенными автоматическими Ack и повторами).
+>
+> **Повторы и недоставленные сообщения POP в 5.x**: сообщения, обработка которых завершилась ошибкой, записываются Broker-ом в `%RETRY%{group}_{topic}` и в соответствии с `popFromRetryProbability` возвращаются в ответ на выборку исходной темы; клиенту достаточно потреблять исходную тему. Когда число доставок достигает `GrpcPushConsumer.MaxDeliveryAttempts` (по умолчанию 16), сообщение перемещается в `%DLQ%{group}`; в сценариях ручного получения вызывайте `Consumer.ForwardToDeadLetterQueueViaGrpcAsync` (`GetGrpcDlqTopic()` возвращает имя темы недоставленных сообщений). Нижняя граница времени невидимости — 10 секунд (внутри библиотеки значение приводится автоматически); меньшие значения отклоняются Broker-ом.
+>
+> Сообщения из очереди недоставленных должны обрабатываться за один проход: `dotnet run --file scripts/DlqTool.cs -- --group <consumer group> --to <original topic>` повторно публикует сообщения из очереди недоставленных в указанную тему и подтверждает только успешно переопубликованные. Выборка сообщений из очереди недоставленных сдвигает смещение потребления, а неподтверждённые сообщения переносятся Broker-ом в `%RETRY%{group}_%DLQ%{group}`; поэтому просмотр очереди недоставленных в режиме только чтения не поддерживается.
+>
+> **Упорядоченные FIFO-сообщения и транзакционные сообщения**: тип темы должен соответствовать типу сообщений; создавайте её через `CreateTopic(topic, queueNum, 0, TopicMessageType.Fifo/Transaction)`. Для FIFO-отправки задайте `Message.MessageGroup`; на стороне потребителя установите `GrpcPushConsumer.Orderly = true`, чтобы обрабатывать последовательно и сохранять порядок. Для транзакционных сообщений используйте `PublishTransactionViaGrpcAsync` для отправки половинного сообщения и `EndTransactionViaGrpcAsync` для фиксации или отката (если фиксации не было, Broker откатит сообщение по тайм-ауту).
+
+### Отложенные сообщения
+
+```csharp
+// 18 предустановленных уровней задержки
+producer.PublishDelay("delayed message", DelayTimeLevels.s30);
+
+// Режим gRPC поддерживает произвольные задержки (требуется netstandard2.1+)
+producer.GrpcProxyAddress = "http://127.0.0.1:8081";
+await producer.PublishDelayViaGrpcAsync("arbitrary delay", DateTime.Now.AddMinutes(30));
+```
+
+### Транзакционные сообщения
+
+```csharp
+var producer = new Producer
+{
+    Topic = "tx_topic",
+    Group = "tx_group",
+    NameServerAddress = "127.0.0.1:9876"
+};
+
+// Обратный вызов проверки транзакции
+producer.OnCheckTransaction = (msg, transactionId) =>
+{
+    var success = CheckLocalTransaction(transactionId);
+    return success ? TransactionState.Commit : TransactionState.Rollback;
+};
+producer.Start();
+
+// Отправка половинного сообщения -> выполнение локальной транзакции -> фиксация/откат
+var sendResult = producer.PublishTransaction("order created");
+try
+{
+    ExecuteLocalTransaction(sendResult.TransactionId);
+    producer.EndTransaction(sendResult, TransactionState.Commit);
+}
+catch
+{
+    producer.EndTransaction(sendResult, TransactionState.Rollback);
+}
+```
+
+### Упорядоченные сообщения
+
+```csharp
+// Сообщения с одинаковым ключом попадают в одну очередь
+var queue = producer.SelectQueue("order_123");
+producer.Publish("ordered message 1", queue);
+producer.Publish("ordered message 2", queue);
+
+// Включение упорядоченного потребления на стороне потребителя
+consumer.OrderConsume = true;
+```
+
+### Шаблон «запрос-ответ»
+
+```csharp
+// Производитель отправляет запрос (синхронно/асинхронно)
+var response = producer.Request("request message", timeout: 5000);
+var reply = await producer.RequestAsync("async request", timeout: 5000);
+
+// Потребитель отвечает
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        if (!String.IsNullOrEmpty(msg.CorrelationId))
+            consumer.SendReply(msg, "processing result");
+    }
+    return true;
+};
+```
+
+### Преобразование сообщений между протоколами
+
+```csharp
+// Преобразование сообщения Remoting в сообщение gRPC (требуется netstandard2.1+)
+var grpcMsg = message.ToGrpcMessage();
+
+// Преобразование сообщения gRPC в расширенное сообщение Remoting / базовое сообщение
+var ext = grpcMsg.ToMessageExt();   // MessageExt (включает все системные свойства)
+var msg = grpcMsg.ToMessage();      // Message (базовые поля)
+```
+
+---
+
+## Расширенные возможности потребителя
+
+### Повторное потребление и очередь недоставленных сообщений
+
+```csharp
+var consumer = new Consumer
+{
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    EnableRetry = true,           // Включить повторное потребление
+    MaxReconsumeTimes = 3         // Максимальное число повторов; превысившие сообщения попадают в очередь недоставленных %DLQ%
+};
+
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        try { ProcessMessage(msg); }
+        catch { return false; } // false запускает повтор
+    }
+    return true;
+};
+```
+
+### Фильтрация по Tag / SQL92
+
+```csharp
+// Фильтрация по Tag
+consumer.Tags = "TagA || TagB";
+
+// Фильтрация по выражению SQL92
+consumer.ExpressionType = "SQL92";
+consumer.Subscription = "age > 18 AND city = 'Shanghai'";
+```
+
+### Подписка на несколько тем
+
+```csharp
+consumer.Topics = "topic1;topic2;topic3";
+```
+
+### Режим Pop-потребления
+
+```csharp
+// Pop-потребление (ручное подтверждение)
+var messages = await consumer.PopMessageAsync(timeout: 10000);
+foreach (var msg in messages)
+{
+    try
+    {
+        ProcessMessage(msg);
+        await consumer.AckMessageAsync(msg);
+    }
+    catch
+    {
+        await consumer.ChangeInvisibleTimeAsync(msg, 30000); // Продлить время обработки
+    }
+}
+```
+
+### Ограничение потребления / VIP-канал / сжатие сообщений
+
+```csharp
+consumer.MaxConcurrentConsume = 10; // Обрабатывать не более 10 сообщений одновременно
+
+producer.VipChannelEnabled = true;  // Включить VIP-канал (BrokerPort - 2)
+producer.CompressOverBytes = 4096;  // Автоматически сжимать тела сообщений больше 4 КБ через ZLIB
+```
+
+### HTTP-мост (MQ -> WebAPI)
+
+Чтобы пересылать полученные сообщения в WebAPI или предоставить WebAPI для внешней публикации сообщений, можно скомбинировать существующие API; см. [руководство по HTTP-мосту](Doc/HttpBridge_Guide.md).
+
+---
+
+## Доступ к облачным провайдерам
+
+### Alibaba Cloud ApsaraMQ for RocketMQ
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "http://MQ_INST_xxx.aliyuncs.com:80",
+    CloudProvider = new AliyunProvider
+    {
+        AccessKey = "your AccessKey",
+        SecretKey = "your SecretKey",
+        InstanceId = "MQ_INST_xxx"  // Необязательно; разбирается автоматически из адреса
+    }
+};
+```
+
+### Huawei Cloud DMS for RocketMQ
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "Huawei Cloud instance address:9876",
+    CloudProvider = new HuaweiProvider
+    {
+        AccessKey = "your AK",
+        SecretKey = "your SK",
+        InstanceId = "instance ID",
+        EnableSsl = true
+    }
+};
+```
+
+### Tencent Cloud TDMQ RocketMQ
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "Tencent Cloud instance address:9876",
+    CloudProvider = new TencentProvider
+    {
+        AccessKey = "Tencent Cloud SecretId",
+        SecretKey = "Tencent Cloud SecretKey",
+        Namespace = "namespace"
+    }
+};
+```
+
+### Аутентификация Apache RocketMQ ACL
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "127.0.0.1:9876",
+    CloudProvider = new AclProvider
+    {
+        AccessKey = "RocketMQ AccessKey",
+        SecretKey = "RocketMQ SecretKey"
+    }
+};
+```
+
+---
+
+## Публикация NativeAOT
+
+Только целевая платформа `net10.0` поддерживает NativeAOT/тримминг (у более старых целевых платформ нет понятия тримминга, их поведение не меняется). Пакет уже содержит сгенерированные исходным кодом аксессоры членов и корневые метаданные, поэтому при использовании дополнительная конфигурация не нужна:
+
+```xml
+<PropertyGroup>
+  <PublishAot>true</PublishAot>
+</PropertyGroup>
+```
+
+```powershell
+dotnet publish -c Release -r linux-x64
+```
+
+Проверенные сценарии (измерено на нативных исполняемых файлах): кодирование и декодирование кадров, словари свойств заголовков запросов, сериализация JSON, сжатие сообщений (цикл ZLIB и ограничения распаковки), свойства LMQ, подпись ACL, адаптеры облачных провайдеров, преобразование между протоколами и сквозная отправка/получение (обычное тело/объектное тело/пакет/задержка/сжатие больших сообщений, потребление, запрос смещений, упорядоченная блокировка, POP), а также путь gRPC 5.x (маршрутизация, получение и подтверждение, push-потребление, пересылка в очередь недоставленных, упорядоченное FIFO-потребление).
+
+Покрытие CI: win-x64 (включая полную локальную сквозную проверку RocketMQ), linux-x64, linux-arm64, win-arm64, osx-x64/osx-arm64, linux-musl-x64/arm64 — каждая платформа нативно публикуется и запускается; Loongson linux-loongarch64 запускается через эмуляцию пользовательского режима QEMU вместе с SDK Loongson (официальной поддержки NativeAOT для этой платформы сейчас нет, поэтому критерием служит AOT-подобный инженерный JIT smoke-тест).
+
+**Тела пользовательских типов-объектов обязательно нужно регистрировать**: когда в качестве тела сообщения используется пользовательский тип (POCO), триммер по умолчанию удаляет его публичные свойства, и объектное тело молча сериализуется как пустой объект `{}`. Зарегистрируйте каждый тип, используемый как тело сообщения, один раз при запуске приложения:
+
+```csharp
+MqAot.RegisterBodyType<MyOrder>();
+MqAot.RegisterBodyType<MyEvent>();
+```
+
+`MqAot.RegisterBodyType<T>()` имеет семантику сохранения при тримминге только на net10.0; на других целях это пустая операция, поэтому мультицелевые проекты могут использовать один и тот же код запуска. Вы также можете объявить собственные корневые метаданные по тому же образцу, что и библиотека (`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`).
+
+---
+
+## Обзор архитектуры
+
+```
+MqBase (базовый бизнес-класс)
+├── Producer
+└── Consumer
+
+Слой связи
+├── Протокол Remoting (Broker 4.x/5.x)
+│   ├── ClusterClient (постоянное TCP-соединение, переиспользование Opaque)
+│   ├── NameClient (обнаружение маршрутов, опрос каждые 30 с)
+│   └── BrokerClient (heartbeat/unregister)
+│
+└── Протокол gRPC (Proxy 5.x, netstandard2.1+)
+    ├── GrpcClient (HTTP/2, Unary + Server Streaming + постоянное соединение только на запись)
+    ├── GrpcMessagingService (11 RPC-методов)
+    ├── GrpcTelemetrySession (постоянное соединение отчётов о ресурсах: периодическая отправка + переподключение при разрыве)
+    ├── MessageConverter (преобразование сообщений Remoting ↔ gRPC)
+    └── Кодек полей (Protobuf, написанный вручную на SpanWriter/SpanReader)
+
+Слой адаптеров облачных провайдеров
+├── AliyunProvider  (Alibaba Cloud: маршрутизация по InstanceId + HTTP NameServer)
+├── HuaweiProvider  (Huawei Cloud: SSL/TLS + маршрутизация по InstanceId)
+├── TencentProvider (Tencent Cloud: маршрутизация по префиксу Namespace)
+└── AclProvider     (Apache ACL: подпись HMAC-SHA1)
+```
+
+См. [документ требований](Doc/需求文档.md), [список функций](Doc/功能清单.md), [архитектурный дизайн](Doc/架构设计.md), [анализ конкурентов](Doc/竞品分析.md), [руководство по HTTP-мосту](Doc/HttpBridge_Guide.md) и [локализацию](Doc/多语言本地化.md).
+
+---
+
+## Обзор возможностей
+
+### Производитель
+
+| Возможность | Статус | Описание |
+|---------|:------:|-------------|
+| Синхронная/асинхронная/односторонняя отправка | ✅ | Publish / PublishAsync / PublishOneway |
+| Пакетная отправка сообщений | ✅ | PublishBatch, объединение нескольких сообщений в один запрос |
+| Отложенные сообщения | ✅ | 18 предустановленных уровней + произвольные задержки по gRPC |
+| Транзакционные сообщения | ✅ | Половинное сообщение + фиксация/откат + обратный вызов проверки |
+| Упорядоченные сообщения | ✅ | Отправка в указанную MessageQueue |
+| Запрос-ответ | ✅ | Синхронный/асинхронный запрос-ответ |
+| Сжатие сообщений | ✅ | Автоматический ZLIB при превышении порога CompressOverBytes |
+| Трассировка сообщений | ✅ | AsyncTraceDispatcher + MessageTraceHook |
+
+### Потребитель
+
+| Возможность | Статус | Описание |
+|---------|:------:|-------------|
+| Вытягивающее потребление / планирование потребления | ✅ | Длинный опрос с автоматическим распределением очередей |
+| Кластерное/широковещательное потребление | ✅ | Перебалансировка с равномерным распределением / локальное сохранение смещений |
+| Фильтрация по Tag / SQL92 | ✅ | Фильтрация по выражениям |
+| Подписка на несколько тем | ✅ | Свойство Topics; перебалансировка по каждой теме |
+| Повторное потребление + очередь недоставленных | ✅ | EnableRetry + MaxReconsumeTimes |
+| Упорядоченное потребление | ✅ | Блокировка очередей (OrderConsume) |
+| Pop-потребление | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
+| Ограничение потребления | ✅ | Управление семафором MaxConcurrentConsume |
+
+### Управление и эксплуатация
+
+| Возможность | Статус | Описание |
+|---------|:------:|-------------|
+| CRUD тем и групп потребителей | ✅ | Создание/изменение/удаление |
+| Запрос сообщений | ✅ | По ID / по Key |
+| Статистика потребления / информация о кластере | ✅ | GetConsumeStats / GetClusterInfo |
+| Управление и сброс смещений | ✅ | Запрос/обновление/сброс |
+
+### Протоколы и совместимость
+
+| Версия сервера | Remoting | gRPC | Описание |
+|----------------|:--------:|:----:|-------------|
+| RocketMQ 4.0 ~ 4.9 | ✅ | — | Полная совместимость |
+| RocketMQ 5.x (Broker) | ✅ | — | Remoting обратно совместим |
+| RocketMQ 5.x (Proxy) | — | ✅ | Включается через GrpcProxyAddress |
+| Alibaba Cloud 4.x | ✅ | — | Адаптер AliyunProvider |
+| Huawei Cloud DMS | ✅ | — | Адаптер HuaweiProvider |
+| Tencent Cloud TDMQ | ✅ | — | Адаптер TencentProvider |
+
+---
+
+## Тестовое покрытие
+
+Набор xUnit-тестов охватывает ключевую функциональность, расширенные возможности, совместимость протоколов, адаптеры облачных провайдеров и сквозные интеграционные тесты (интеграционные случаи gRPC автоматически пропускаются, если Proxy не настроен); он также проверяет семантику аутентификации Apache ACL 2.0 как на Remoting, так и на gRPC (запросы без учётных данных, от пользователей без прав администратора или с неверными ключами отклоняются, а администраторы могут нормально отправлять и получать сообщения). Модульные тесты выполняются параллельно по классам, а `dotnet test XUnitTestRocketMQ/XUnitTest.csproj --filter "Category!=Integration"` завершается примерно за 4 секунды; интеграционные случаи, зависящие от реального Broker, помещены в коллекцию RocketMQ и выполняются последовательно, чтобы избежать взаимных помех из-за общих тем и групп потребителей; для восстановления журналов фреймворка при диагностике задайте `ROCKETMQ_TEST_VERBOSE=1`. CI работает как матрица RID: модульные тесты и AOT smoke-тесты охватывают win-x64 / linux-x64 / linux-arm64 / Loongson LA64 (эмуляция QEMU, обязательна), а win-arm64, обе архитектуры osx и обе архитектуры linux-musl находятся в периоде наблюдения; все они поддерживают ручной запуск.
+
+Также включены: smoke-тесты NativeAOT (`AotSmoke`, включая сжатие сообщений, LMQ, подпись ACL, путь gRPC, пересылку в очередь недоставленных и упорядоченное FIFO-потребление), AOT smoke-тесты потребления NuGet-пакета (`AotPackageSmoke`, потребление упакованных артефактов через PackageReference, охватывая ресурсы пакета, сгенерированную сериализацию, сжатие и сквозную отправку/получение), сбор базовых показателей публикации (`scripts/AotBaseline.cs`, отчёт о размере, накладных расходах на запуск и пропускной способности с проверкой порогов и записью в сводку конвейера в CI), бенчмарки сравнения производительности AOT/JIT (проект `Benchmark` на основе BenchmarkDotNet, включая статистику аллокаций; сторона AOT использует многократную выборку через `AotSmoke --bench`), инструмент работы с очередью недоставленных (`scripts/DlqTool.cs`, повторная публикация сообщений `%DLQ%{group}` в указанную тему) и скрипт приёмки стабильности gRPC (`scripts/GrpcStability.cs`, запускается ночью в CI с одной инъекцией перезапуска Proxy).
+
+### Локальные интеграционные тесты (Windows)
+
+```powershell
+# Установка и запуск NameServer + Broker + Proxy одной командой (хранилище очищается при каждом запуске)
+dotnet run --file scripts/RocketMqSetup.cs
+
+$env:ROCKETMQ_NAMESERVER = "127.0.0.1:9876"
+dotnet test XUnitTestRocketMQ\XUnitTest.csproj -c Release
+
+# Остановка / статус
+dotnet run --file scripts/RocketMqSetup.cs -- --stop
+dotnet run --file scripts/RocketMqSetup.cs -- --status
+```
+
+Локальный запуск по умолчанию использует режим малых ресурсов: журналы трёх JVM сокращаются до WARN (больше не пишутся в `%USERPROFILE%\logs\rocketmqlogs`), интервал асинхронного сброса — 5 секунд, commitlog — 64 МБ, пулы потоков ужаты, а хранилище очищается при каждом запуске, поэтому Broker всегда находится в свежем состоянии. При диагностике используйте `--log-level INFO` (или `$env:ROCKETMQ_TEST_LOG_LEVEL="INFO"`), чтобы вернуть подробные журналы (объём журналов заметно возрастает); если gRPC не нужен, используйте `--no-proxy`, чтобы запускать на одну JVM меньше; чтобы разместить хранилище на RAM-диске, используйте `--store-dir R:\RocketMQ\store`.
+
+---
+
+## Участие в разработке
+
+Issues и Pull Requests приветствуются!
+
+1. Форкните этот репозиторий
+2. Создайте ветку функциональности (`git checkout -b feature/AmazingFeature`)
+3. Зафиксируйте изменения (`git commit -m 'Add some AmazingFeature'`)
+4. Отправьте изменения в ветку (`git push origin feature/AmazingFeature`)
+5. Откройте Pull Request
+
+---
+
+## Лицензия
+
+Проект распространяется по [лицензии MIT](LICENSE).
+
+---
 
 ## Карта экосистемы
 
@@ -92,6 +582,8 @@ NewLife — это многоуровневая экосистема незав�
 
 > Бейджи показывают основной пакет каждого проекта; пакеты тем, расширений и сателлитов перечислены на соответствующих страницах NuGet. Более 30 пакетов, не перечисленных здесь (FTP, LoRa, расширения Office, драйверы протоколов и другие), доступны в [организации NewLifeX](https://github.com/NewLifeX) и на [newlifex.com](https://newlifex.com).
 
+---
+
 ## Команда
 
 <img src="https://newlifex.com/logo.png" width="48" align="right" alt="NewLife" />
@@ -108,9 +600,3 @@ Open-source компоненты скачали <!--nuget-total:start-->6.48M<!-
 ![智能大石头](https://newlifex.com/stone.jpg)
 
 </details>
-
-## Лицензия
-
-MIT License © 2002-2026 Команда NewLife
-
-[GitHub](https://github.com/NewLifeX/NewLife.RocketMQ) | [Website](https://newlifex.com)
