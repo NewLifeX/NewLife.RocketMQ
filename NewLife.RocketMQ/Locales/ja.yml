@@ -131,3 +131,5 @@
 "HTTP address that returns the NameServer address; Aliyun only. http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet": "NameServer アドレスを返す HTTP アドレス（Aliyun 専用）。http://onsaddr-internet.aliyun.com/rocketmq/nsaddr4client-internet"
 "Access token; Aliyun only.": "アクセストークン（Aliyun 専用）。"
 "Secret key; Aliyun only.": "シークレットキー（Aliyun 専用）。"
+"Enterprise RocketMQ Client": "エンタープライズ向け RocketMQ クライアント"
+"Enterprise-grade fully managed RocketMQ client with dual-protocol support for Remoting 4.x/5.x and gRPC 5.x Proxy. Zero external dependencies: no Java, gRPC or Protobuf runtime required. Unified adapters for Alibaba Cloud, Huawei Cloud, Tencent Cloud and Apache ACL, with consume retry, dead-letter queue, transactional messages, ordered consumption and Pop consumption. Proven in billion-scale production systems.": "エンタープライズグレードのフルマネージド RocketMQ クライアント。Remoting 4.x/5.x と gRPC 5.x Proxy のデュアルプロトコルに対応。外部依存ゼロ：Java、gRPC、Protobuf のランタイムは不要。Alibaba Cloud、Huawei Cloud、Tencent Cloud、Apache ACL 向けの統一アダプターを備え、コンシューム再試行、デッドレターキュー、トランザクションメッセージ、順序消費、Pop 消費をサポート。数十億規模の本番システムで実証済み。"

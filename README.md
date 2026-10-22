@@ -35,7 +35,7 @@ NewLife.RocketMQ is an **enterprise-grade, fully managed RocketMQ client** devel
 | **Production ready** | Complete enterprise features: consume retry, dead-letter queue, transaction checkback, ordered consumption, Pop consumption and more |
 | **Broadest framework coverage** | From .NET Framework 4.5+ to .NET 10; gRPC features are available on .NET Standard 2.1+ |
 | **AOT friendly** | The net10.0 target supports NativeAOT/trimming: frame encoding/decoding, JSON serialization and message compression do not rely on runtime reflection. The repository includes an AOT smoke test and a NuGet package consumption AOT smoke test; CI validates AOT publishing and execution on a mainstream RID matrix (win/linux/osx, musl and Loongson LA64) |
-| **Runtime localization** | Logs, protocol parsing exceptions, public API exceptions and configuration descriptions use English as the source text, with built-in word lists for 31 languages (132 entries), translated automatically according to `Localization.Culture` with English fallback; prefixed logs are translated before the prefix is composed, and the prefix does not participate in word-list lookup |
+| **Runtime localization** | Logs, protocol parsing exceptions, public API exceptions and configuration descriptions use English as the source text, with built-in word lists for 31 languages, translated automatically according to `Localization.Culture` with English fallback; prefixed logs are translated before the prefix is composed, and the prefix does not participate in word-list lookup |
 | **High performance** | Built on the NewLife.Net high-performance network layer: connection reuse, VIP channel, message compression and concurrency control |
 
 ---

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using NewLife;
 using NewLife.Configuration;
 using NewLife.Log;
@@ -177,6 +178,34 @@ public class LocalizationTests
         {
             Localization.Culture = savedCulture;
             Localization.LogCulture = savedLogCulture;
+        }
+    }
+
+    [Fact(DisplayName = "程序集标题与描述：已进词表并可翻译")]
+    public void AssemblyMetadataIsLocalized()
+    {
+        var saved = Localization.Culture;
+        try
+        {
+            var assembly = typeof(Producer).Assembly;
+            var title = assembly.GetCustomAttribute<AssemblyTitleAttribute>()?.Title;
+            var description = assembly.GetCustomAttribute<AssemblyDescriptionAttribute>()?.Description;
+
+            Assert.False(String.IsNullOrEmpty(title));
+            Assert.False(String.IsNullOrEmpty(description));
+
+            Localization.Culture = CultureInfo.GetCultureInfo("zh-CN");
+
+            var localizedTitle = Localization.Translate(title!);
+            var localizedDescription = Localization.Translate(description!);
+
+            Assert.NotEqual(title, localizedTitle);
+            Assert.NotEqual(description, localizedDescription);
+            Assert.Contains("RocketMQ", localizedTitle);
+        }
+        finally
+        {
+            Localization.Culture = saved;
         }
     }
 
