@@ -1,4 +1,6 @@
-# NewLife.RocketMQ - 엔터프라이즈 순수 관리형 RocketMQ 클라이언트
+# NewLife.RocketMQ - 엔터프라이즈급 완전 관리형 RocketMQ 클라이언트
+
+![GitHub top language](https://img.shields.io/github/languages/top/newlifex/newlife.rocketmq?logo=github)
 
 ![GitHub License](https://img.shields.io/github/license/NewLifeX/NewLife.RocketMQ?logo=github)
 ![NuGet Downloads](https://img.shields.io/nuget/dt/NewLife.RocketMQ?logo=nuget)
@@ -16,31 +18,521 @@
 
 > 이 번역은 [영어 버전](README.md)보다 늦을 수 있습니다.
 
-NewLife.RocketMQ는 순수 관리형 RocketMQ 클라이언트로 Apache RocketMQ와 Alibaba Cloud를 지원하며 일반·순서·트랜잭션·지연 메시지를 처리합니다.
+**`.NET Framework 4.5+` / `.NET Standard 2.0+` / `.NET Core` / `.NET 5+`를 지원하는 엔터프라이즈급 완전 관리형 RocketMQ 클라이언트입니다.**  
+**전체를 순수 C#로 구현했으며 외부 의존성이 전혀 없습니다(Java, gRPC, Protobuf 서드파티 라이브러리 불필요).**
+
+---
+
+## 제품 개요
+
+NewLife.RocketMQ는 뉴라이프 팀이 .NET 생태계를 위해 개발한 **엔터프라이즈급 완전 관리형 RocketMQ 클라이언트**입니다. RocketMQ **Remoting 프로토콜(4.x/5.x Broker)** 과 **gRPC Proxy 프로토콜(5.x Proxy)** 을 모두 지원하며, 프로듀서와 컨슈머의 핵심 능력 및 엔터프라이즈 기능을 전부 다루고, 알리바바 클라우드·화웨이 클라우드·텐센트 클라우드와 Apache ACL 인증 체계를 위한 통일된 어댑터를 제공합니다.
+
+**핵심 장점**:
+
+| 기능 | 설명 |
+|---------|-------------|
+| **이중 프로토콜 지원** | Remoting(4.x에서 성숙하고 안정적) + gRPC(5.x의 미래 지향), 자동 라우팅 |
+| **외부 의존성 제로** | 내장 Protobuf 필드 코덱(NewLife.Core의 SpanWriter/SpanReader 위에 직접 구현), Java나 gRPC 런타임 불필요 |
+| **멀티 클라우드 지원** | 통일된 `ICloudProvider` 인터페이스와 알리바바 클라우드·화웨이 클라우드·텐센트 클라우드·Apache ACL 내장 어댑터 |
+| **프로덕션 레디** | 소비 재시도, 데드 레터 큐, 트랜잭션 검사백, 순서 소비, Pop 소비 등 완전한 엔터프라이즈 기능 |
+| **폭넓은 프레임워크 지원** | .NET Framework 4.5+부터 .NET 10까지; gRPC 기능은 .NET Standard 2.1+에서 사용 가능 |
+| **AOT 친화** | net10.0 타깃은 NativeAOT/트리밍을 지원: 프레임 인코딩/디코딩, JSON 직렬화, 메시지 압축이 런타임 리플렉션에 의존하지 않음. 저장소에 AOT 스모크 테스트와 NuGet 패키지 소비 AOT 스모크 테스트가 포함되며, CI가 주요 RID 매트릭스(win/linux/osx, musl 및 Loongson LA64)에서 AOT 게시와 실행을 검증 |
+| **런타임 현지화** | 로그, 프로토콜 파싱 예외, 공개 API 예외, 구성 설명이 영어를 원문으로 하며, 31개 언어(132개 항목) 내장 단어 목록을 통해 `Localization.Culture`에 따라 자동 번역되고 영어로 폴백; 접두사가 붙은 로그는 접두사 조합 전에 번역되며 접두사는 단어 목록 조회에 참여하지 않음 |
+| **고성능** | NewLife.Net 고성능 네트워크 계층 기반: 연결 재사용, VIP 채널, 메시지 압축, 동시성 제어 |
+
+---
 
 ## 설치
 
-```bash
+```powershell
+# NuGet 패키지 관리자
+Install-Package NewLife.RocketMQ
+
+# .NET CLI
 dotnet add package NewLife.RocketMQ
 ```
 
-## 빠른 시작
-
-```csharp
-var mq = new RocketMQClient("127.0.0.1:9876");
-mq.Start();
-mq.Send("TopicTest", "hello".GetBytes());
+```xml
+<!-- PackageReference -->
+<PackageReference Include="NewLife.RocketMQ" Version="3.0.*" />
 ```
 
-## 주요 기능
+---
 
-- 주요 프로토콜과 형식 버전을 폭넓게 지원
-- 주요 클라우드 서비스와 관리형 미들웨어 지원
-- 장기 운영 환경에서 검증됨
+## 빠른 시작
 
-## 문서
+### 메시지 전송
 
-> 📖 전체 문서(중국어): [저장소 문서](Doc)
+```csharp
+using NewLife.RocketMQ;
+
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "127.0.0.1:9876",
+    Group = "producer_group"
+};
+producer.Start();
+
+// 동기 전송
+var result = producer.Publish("Hello RocketMQ!");
+Console.WriteLine($"Message ID: {result.MsgId}");
+
+// 비동기 전송
+await producer.PublishAsync("async message");
+
+// 배치 전송
+await producer.PublishBatch(new[] { "message1", "message2", "message3" });
+```
+
+### 메시지 소비
+
+```csharp
+var consumer = new Consumer
+{
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876"
+};
+
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        Console.WriteLine($"Received message: {msg.BodyString}");
+    }
+    return true; // true를 반환하면 소비 성공을 의미합니다
+};
+
+consumer.Start();
+```
+
+### gRPC(5.x Proxy) 접속
+
+```csharp
+// Producer: GrpcProxyAddress를 설정하면 5.x gRPC 경로로 트래픽이 라우팅됩니다(netstandard2.1+ 필요)
+var producer = new Producer
+{
+    Topic = "test_topic",
+    Group = "producer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    GrpcProxyAddress = "http://127.0.0.1:8081",
+};
+producer.Start();
+await producer.PublishAsync("gRPC message");
+
+// Consumer: 시작 시 구독 관계가 자동으로 보고되고(Telemetry 장기 연결), 수신과 확인 응답은 gRPC로 수행됩니다
+var consumer = new Consumer
+{
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    GrpcProxyAddress = "http://127.0.0.1:8081",
+};
+consumer.Start();
+
+var route = await consumer.QueryRouteViaGrpcAsync();
+var messages = await consumer.ReceiveMessageViaGrpcAsync(route.MessageQueues[0], batchSize: 8);
+// ... 비즈니스 처리 ...
+await consumer.AckMessageViaGrpcAsync("test_topic",
+[
+    .. messages.Select(m => new AckMessageEntry
+    {
+        ReceiptHandle = m.SystemProperties?.ReceiptHandle,
+        MessageId = m.SystemProperties?.MessageId,
+    }),
+]);
+```
+
+> 장폴링 소비는 `GrpcPushConsumer`를 직접 사용할 수도 있습니다(PUSH_CONSUMER 시맨틱, 자동 Ack와 재시도 내장).
+>
+> **5.x POP 재시도와 데드 레터**: 소비에 실패한 메시지는 Broker가 `%RETRY%{group}_{topic}`에 기록하고 `popFromRetryProbability`에 따라 원래 토픽의 풀 응답에 다시 병합하므로, 클라이언트는 원래 토픽만 소비하면 됩니다. 전달 횟수가 `GrpcPushConsumer.MaxDeliveryAttempts`(기본 16)에 도달하면 메시지는 `%DLQ%{group}`으로 이동합니다. 수동 수신 시나리오에서는 `Consumer.ForwardToDeadLetterQueueViaGrpcAsync`를 호출합니다(`GetGrpcDlqTopic()`은 데드 레터 토픽 이름을 반환). 보이지 않는 시간(invisible time)의 하한은 10초이며(라이브러리 내부에서 자동 수렴), 더 작은 값은 Broker가 거부합니다.
+>
+> 데드 레터 메시지는 한 번에 처리해야 합니다: `dotnet run --file scripts/DlqTool.cs -- --group <consumer group> --to <original topic>`은 데드 레터 큐의 메시지를 지정한 토픽으로 재게시하고 재게시에 성공한 메시지만 확인 응답합니다. 데드 레터 메시지를 풀하면 소비 오프셋이 전진하고, 확인 응답하지 않은 메시지는 Broker가 `%RETRY%{group}_%DLQ%{group}`으로 이동시키므로 데드 레터 큐의 읽기 전용 탐색은 지원되지 않습니다.
+>
+> **FIFO 순서 메시지와 트랜잭션 메시지**: 토픽 유형은 메시지 유형과 일치해야 하며, `CreateTopic(topic, queueNum, 0, TopicMessageType.Fifo/Transaction)`으로 생성합니다. FIFO 전송 시 `Message.MessageGroup`을 설정하고, 소비 측에서는 `GrpcPushConsumer.Orderly = true`를 설정하면 직렬 처리로 순서를 보존합니다. 트랜잭션 메시지는 `PublishTransactionViaGrpcAsync`로 하프 메시지를 보내고 `EndTransactionViaGrpcAsync`로 커밋하거나 롤백합니다(커밋하지 않으면 Broker가 타임아웃 후 롤백).
+
+### 지연 메시지
+
+```csharp
+// 18개 사전 설정 지연 레벨
+producer.PublishDelay("delayed message", DelayTimeLevels.s30);
+
+// gRPC 모드는 임의 지연을 지원(netstandard2.1+ 필요)
+producer.GrpcProxyAddress = "http://127.0.0.1:8081";
+await producer.PublishDelayViaGrpcAsync("arbitrary delay", DateTime.Now.AddMinutes(30));
+```
+
+### 트랜잭션 메시지
+
+```csharp
+var producer = new Producer
+{
+    Topic = "tx_topic",
+    Group = "tx_group",
+    NameServerAddress = "127.0.0.1:9876"
+};
+
+// 트랜잭션 검사백 콜백
+producer.OnCheckTransaction = (msg, transactionId) =>
+{
+    var success = CheckLocalTransaction(transactionId);
+    return success ? TransactionState.Commit : TransactionState.Rollback;
+};
+producer.Start();
+
+// 하프 메시지 전송 -> 로컬 트랜잭션 실행 -> 커밋/롤백
+var sendResult = producer.PublishTransaction("order created");
+try
+{
+    ExecuteLocalTransaction(sendResult.TransactionId);
+    producer.EndTransaction(sendResult, TransactionState.Commit);
+}
+catch
+{
+    producer.EndTransaction(sendResult, TransactionState.Rollback);
+}
+```
+
+### 순서 메시지
+
+```csharp
+// 동일한 키를 가진 메시지는 같은 큐로 전달됩니다
+var queue = producer.SelectQueue("order_123");
+producer.Publish("ordered message 1", queue);
+producer.Publish("ordered message 2", queue);
+
+// 소비 측에서 순서 소비 활성화
+consumer.OrderConsume = true;
+```
+
+### 요청-응답 패턴
+
+```csharp
+// Producer가 요청 전송(동기/비동기)
+var response = producer.Request("request message", timeout: 5000);
+var reply = await producer.RequestAsync("async request", timeout: 5000);
+
+// Consumer가 응답
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        if (!String.IsNullOrEmpty(msg.CorrelationId))
+            consumer.SendReply(msg, "processing result");
+    }
+    return true;
+};
+```
+
+### 이중 프로토콜 메시지 변환
+
+```csharp
+// Remoting 메시지를 gRPC 메시지로 변환(netstandard2.1+ 필요)
+var grpcMsg = message.ToGrpcMessage();
+
+// gRPC 메시지를 확장 Remoting 메시지 / 기본 메시지로 변환
+var ext = grpcMsg.ToMessageExt();   // MessageExt (모든 시스템 속성 포함)
+var msg = grpcMsg.ToMessage();      // Message (기본 필드)
+```
+
+---
+
+## Consumer 고급 기능
+
+### 소비 재시도와 데드 레터 큐
+
+```csharp
+var consumer = new Consumer
+{
+    Topic = "test_topic",
+    Group = "consumer_group",
+    NameServerAddress = "127.0.0.1:9876",
+    EnableRetry = true,           // 소비 재시도 활성화
+    MaxReconsumeTimes = 3         // 최대 재시도 횟수, 초과한 메시지는 %DLQ% 데드 레터 큐로 이동
+};
+
+consumer.OnConsume = (q, messages) =>
+{
+    foreach (var msg in messages)
+    {
+        try { ProcessMessage(msg); }
+        catch { return false; } // false를 반환하면 재시도가 트리거됩니다
+    }
+    return true;
+};
+```
+
+### 태그 / SQL92 필터링
+
+```csharp
+// 태그 필터링
+consumer.Tags = "TagA || TagB";
+
+// SQL92 표현식 필터링
+consumer.ExpressionType = "SQL92";
+consumer.Subscription = "age > 18 AND city = 'Shanghai'";
+```
+
+### 멀티 토픽 구독
+
+```csharp
+consumer.Topics = "topic1;topic2;topic3";
+```
+
+### Pop 소비 모드
+
+```csharp
+// Pop 소비(수동 확인 응답)
+var messages = await consumer.PopMessageAsync(timeout: 10000);
+foreach (var msg in messages)
+{
+    try
+    {
+        ProcessMessage(msg);
+        await consumer.AckMessageAsync(msg);
+    }
+    catch
+    {
+        await consumer.ChangeInvisibleTimeAsync(msg, 30000); // 처리 시간 연장
+    }
+}
+```
+
+### 소비 스로틀링 / VIP 채널 / 메시지 압축
+
+```csharp
+consumer.MaxConcurrentConsume = 10; // 최대 10개 메시지를 동시에 처리
+
+producer.VipChannelEnabled = true;  // VIP 채널 활성화(BrokerPort - 2)
+producer.CompressOverBytes = 4096;  // 4KB를 초과하는 메시지 바디를 자동 ZLIB 압축
+```
+
+### HTTP 브리지(MQ -> WebAPI)
+
+소비한 메시지를 WebAPI로 전달하거나, 외부에서 메시지를 게시할 수 있도록 WebAPI를 노출하려면 기존 API를 조합하면 됩니다. 자세한 내용은 [HTTP 브리지 가이드](Doc/HttpBridge_Guide.md)를 참고하세요.
+
+---
+
+## 클라우드 프로바이더 접속
+
+### 알리바바 클라우드 ApsaraMQ for RocketMQ
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "http://MQ_INST_xxx.aliyuncs.com:80",
+    CloudProvider = new AliyunProvider
+    {
+        AccessKey = "your AccessKey",
+        SecretKey = "your SecretKey",
+        InstanceId = "MQ_INST_xxx"  // 선택 사항, 주소에서 자동 파싱
+    }
+};
+```
+
+### 화웨이 클라우드 DMS for RocketMQ
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "Huawei Cloud instance address:9876",
+    CloudProvider = new HuaweiProvider
+    {
+        AccessKey = "your AK",
+        SecretKey = "your SK",
+        InstanceId = "instance ID",
+        EnableSsl = true
+    }
+};
+```
+
+### 텐센트 클라우드 TDMQ RocketMQ
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "Tencent Cloud instance address:9876",
+    CloudProvider = new TencentProvider
+    {
+        AccessKey = "Tencent Cloud SecretId",
+        SecretKey = "Tencent Cloud SecretKey",
+        Namespace = "namespace"
+    }
+};
+```
+
+### Apache RocketMQ ACL 인증
+
+```csharp
+var producer = new Producer
+{
+    Topic = "test_topic",
+    NameServerAddress = "127.0.0.1:9876",
+    CloudProvider = new AclProvider
+    {
+        AccessKey = "RocketMQ AccessKey",
+        SecretKey = "RocketMQ SecretKey"
+    }
+};
+```
+
+---
+
+## NativeAOT 게시
+
+`net10.0` 타깃만 NativeAOT/트리밍을 지원합니다(이전 타깃 프레임워크는 트리밍 개념이 없어 동작이 동일합니다). 패키지에는 이미 소스 생성 멤버 접근자와 메타데이터 루트가 포함되어 있으므로 사용 시 별도 구성이 필요하지 않습니다:
+
+```xml
+<PropertyGroup>
+  <PublishAot>true</PublishAot>
+</PropertyGroup>
+```
+
+```powershell
+dotnet publish -c Release -r linux-x64
+```
+
+검증된 시나리오(네이티브 실행 파일로 측정): 프레임 인코딩/디코딩, 요청 헤더 속성 사전, JSON 직렬화, 메시지 압축(ZLIB 왕복과 압축 해제 한도), LMQ 속성, ACL 서명, 클라우드 프로바이더 어댑터, 이중 프로토콜 변환, 엔드투엔드 송수신(일반/객체 바디/배치/지연/대용량 메시지 압축, 소비, 오프셋 조회, 순서 잠금, POP) 및 gRPC 5.x 경로(라우팅, 송수신 확인 응답, 푸시 소비, 데드 레터 전달, FIFO 순서 소비).
+
+CI 커버리지: win-x64(로컬 RocketMQ 전체 엔드투엔드 포함), linux-x64, linux-arm64, win-arm64, osx-x64/osx-arm64, linux-musl-x64/arm64는 각각 네이티브로 게시·실행하며, Loongson linux-loongarch64는 QEMU 사용자 모드 에뮬레이션과 Loongson SDK로 실행합니다(해당 플랫폼은 현재 공식 NativeAOT 지원이 없으므로 AOT 스타일 엔지니어링 JIT 스모크 테스트를 기준으로 삼습니다).
+
+**사용자 정의 타입 객체 바디는 반드시 등록해야 합니다**: 사용자 정의 타입(POCO)을 메시지 바디로 사용하면 트리머가 기본적으로 해당 public 속성을 제거하여 객체 바디가 조용히 빈 객체 `{}`로 직렬화됩니다. 애플리케이션 시작 시 메시지 바디로 사용하는 각 타입을 한 번 등록하세요:
+
+```csharp
+MqAot.RegisterBodyType<MyOrder>();
+MqAot.RegisterBodyType<MyEvent>();
+```
+
+`MqAot.RegisterBodyType<T>()`는 net10.0에서만 트리밍 보존 의미를 가지며 다른 타깃에서는 no-op이므로 멀티 타깃 프로젝트가 동일한 시작 코드를 공유할 수 있습니다. 라이브러리와 같은 방식(`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`)으로 자체 메타데이터 루트를 선언할 수도 있습니다.
+
+---
+
+## 아키텍처 개요
+
+```
+MqBase (비즈니스 기본 클래스)
+├── Producer
+└── Consumer
+
+통신 계층
+├── Remoting 프로토콜 (4.x/5.x Broker)
+│   ├── ClusterClient (TCP 장기 연결, Opaque 재사용)
+│   ├── NameClient (라우트 검색, 30초 폴링)
+│   └── BrokerClient (하트비트/등록 해제)
+│
+└── gRPC 프로토콜 (5.x Proxy, netstandard2.1+)
+    ├── GrpcClient (HTTP/2, Unary + Server Streaming + 쓰기 전용 장기 연결)
+    ├── GrpcMessagingService (11개 RPC 메서드)
+    ├── GrpcTelemetrySession (리소스 보고 장기 연결: 주기적 재전송 + 연결 끊김 시 재연결)
+    ├── MessageConverter (Remoting ↔ gRPC 메시지 변환)
+    └── 필드 코덱 (SpanWriter/SpanReader 기반으로 직접 구현한 Protobuf)
+
+클라우드 프로바이더 어댑터 계층
+├── AliyunProvider  (알리바바 클라우드: 인스턴스 ID 라우팅 + HTTP NameServer)
+├── HuaweiProvider  (화웨이 클라우드: SSL/TLS + 인스턴스 ID 라우팅)
+├── TencentProvider (텐센트 클라우드: Namespace 접두사 라우팅)
+└── AclProvider     (Apache ACL: HMAC-SHA1 서명)
+```
+
+[요구사항 문서](Doc/需求文档.md), [기능 목록](Doc/功能清单.md), [아키텍처 설계](Doc/架构设计.md), [경쟁 분석](Doc/竞品分析.md), [HTTP 브리지 가이드](Doc/HttpBridge_Guide.md), [현지화](Doc/多语言本地化.md)를 참고하세요.
+
+---
+
+## 기능 개요
+
+### Producer
+
+| 기능 | 상태 | 설명 |
+|---------|:------:|-------------|
+| 동기/비동기/단방향 전송 | ✅ | Publish / PublishAsync / PublishOneway |
+| 배치 메시지 전송 | ✅ | PublishBatch, 여러 메시지를 하나의 요청으로 병합 |
+| 지연 메시지 | ✅ | 18개 사전 설정 레벨 + gRPC를 통한 임의 지연 |
+| 트랜잭션 메시지 | ✅ | 하프 메시지 + 커밋/롤백 + 검사백 콜백 |
+| 순서 메시지 | ✅ | 지정된 MessageQueue로 전송 |
+| 요청-응답 | ✅ | 동기/비동기 요청-응답 |
+| 메시지 압축 | ✅ | CompressOverBytes 임계값 초과 시 자동 ZLIB |
+| 메시지 트레이스 | ✅ | AsyncTraceDispatcher + MessageTraceHook |
+
+### Consumer
+
+| 기능 | 상태 | 설명 |
+|---------|:------:|-------------|
+| 풀 소비 / 소비 스케줄링 | ✅ | 장폴링 풀 + 자동 큐 할당 |
+| 클러스터/브로드캐스트 소비 | ✅ | Rebalance 평균 할당 / 로컬 오프셋 영속화 |
+| 태그 / SQL92 필터링 | ✅ | 표현식 필터링 |
+| 멀티 토픽 구독 | ✅ | Topics 속성; 토픽별 Rebalance |
+| 소비 재시도 + 데드 레터 큐 | ✅ | EnableRetry + MaxReconsumeTimes |
+| 순서 소비 | ✅ | 큐 잠금(OrderConsume) |
+| Pop 소비 | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
+| 소비 스로틀링 | ✅ | MaxConcurrentConsume 세마포어 제어 |
+
+### 관리 및 운영
+
+| 기능 | 상태 | 설명 |
+|---------|:------:|-------------|
+| 토픽/컨슈머 그룹 CRUD | ✅ | 생성/수정/삭제 |
+| 메시지 조회 | ✅ | ID 기준 / Key 기준 |
+| 소비 통계 / 클러스터 정보 | ✅ | GetConsumeStats / GetClusterInfo |
+| 오프셋 관리와 리셋 | ✅ | 조회/업데이트/리셋 |
+
+### 프로토콜 및 호환성
+
+| 서버 버전 | Remoting | gRPC | 설명 |
+|----------------|:--------:|:----:|-------------|
+| RocketMQ 4.0 ~ 4.9 | ✅ | — | 완전 호환 |
+| RocketMQ 5.x (Broker) | ✅ | — | Remoting 하위 호환 |
+| RocketMQ 5.x (Proxy) | — | ✅ | GrpcProxyAddress로 활성화 |
+| 알리바바 클라우드 4.x | ✅ | — | AliyunProvider 어댑터 |
+| 화웨이 클라우드 DMS | ✅ | — | HuaweiProvider 어댑터 |
+| 텐센트 클라우드 TDMQ | ✅ | — | TencentProvider 어댑터 |
+
+---
+
+## 테스트 커버리지
+
+xUnit 테스트 스위트는 핵심 기능, 고급 기능, 프로토콜 호환성, 클라우드 프로바이더 어댑터, E2E 통합 테스트를 다룹니다(Proxy가 구성되지 않으면 gRPC 통합 케이스는 자동으로 건너뜁니다). 또한 Remoting과 gRPC 양쪽에서 Apache ACL 2.0의 인증 시맨틱을 검증합니다(자격 증명이 없는 요청, 비관리자 사용자, 잘못된 키를 사용한 요청은 거부되고 관리자는 정상적으로 송수신). 단위 테스트는 테스트 클래스 단위로 병렬 실행되며 `dotnet test XUnitTestRocketMQ/XUnitTest.csproj --filter "Category!=Integration"`은 약 4초에 완료됩니다. 실제 Broker에 의존하는 통합 케이스는 RocketMQ 컬렉션에 배치되어 공유 토픽과 컨슈머 그룹의 간섭을 피하기 위해 직렬 실행됩니다. 문제 해결 시 프레임워크 로그를 복원하려면 `ROCKETMQ_TEST_VERBOSE=1`을 설정하세요. CI는 RID 매트릭스로 실행됩니다: 단위 테스트와 AOT 스모크 테스트는 win-x64 / linux-x64 / linux-arm64 / Loongson LA64(QEMU 에뮬레이션, 필수)를 커버하고, win-arm64, osx 두 아키텍처, linux-musl 두 아키텍처는 관찰 기간 중입니다. 모두 수동 트리거를 지원합니다.
+
+또한 다음이 포함됩니다: NativeAOT 스모크 테스트(`AotSmoke`. 메시지 압축, LMQ, ACL 서명, gRPC 경로, 데드 레터 전달, FIFO 순서 소비 포함), NuGet 패키지 소비 측 AOT 스모크 테스트(`AotPackageSmoke`. PackageReference로 패키징된 산출물을 소비하며 패키지 자산, 소스 생성 직렬화, 압축, 엔드투엔드 송수신을 커버), 게시 베이스라인 수집(`scripts/AotBaseline.cs`. 크기/시작 오버헤드/처리량을 보고하고 임계값 검사 및 CI 파이프라인 요약 기록), AOT/JIT 성능 비교 벤치마크(BenchmarkDotNet 기반 `Benchmark` 프로젝트, 할당 통계 포함. AOT 측은 `AotSmoke --bench`로 다회 샘플링), 데드 레터 운영 도구(`scripts/DlqTool.cs`. `%DLQ%{group}` 메시지를 지정 토픽으로 재게시), gRPC 안정성 수용 스크립트(`scripts/GrpcStability.cs`. CI에서 매일 밤 실행하며 Proxy 재시작 1회를 주입).
+
+### 로컬 통합 테스트(Windows)
+
+```powershell
+# NameServer + Broker + Proxy 원스텝 설치 및 시작(스토어는 매번 초기화됩니다)
+dotnet run --file scripts/RocketMqSetup.cs
+
+$env:ROCKETMQ_NAMESERVER = "127.0.0.1:9876"
+dotnet test XUnitTestRocketMQ\XUnitTest.csproj -c Release
+
+# 중지 / 상태 확인
+dotnet run --file scripts/RocketMqSetup.cs -- --stop
+dotnet run --file scripts/RocketMqSetup.cs -- --status
+```
+
+로컬 기동은 기본적으로 저자원 모드를 사용합니다. 세 개 JVM의 로그는 WARN으로 낮추고(`%USERPROFILE%\logs\rocketmqlogs`에 기록하지 않음), 비동기 플러시 간격은 5초, commitlog는 64MB, 스레드 풀은 축소되며, 스토어는 매번 초기화되어 Broker가 항상 새 상태입니다. 문제 해결 시에는 `--log-level INFO`(또는 `$env:ROCKETMQ_TEST_LOG_LEVEL="INFO"`)로 상세 로그를 복원할 수 있습니다(로그 양이 눈에 띄게 늘어납니다). gRPC가 필요 없으면 `--no-proxy`로 JVM을 하나 줄여 시작하고, 스토어를 RAM 디스크에 두려면 `--store-dir R:\RocketMQ\store`를 사용하세요.
+
+---
+
+## 기여
+
+이슈와 Pull Request를 환영합니다!
+
+1. 이 저장소를 Fork합니다
+2. 기능 브랜치를 만듭니다 (`git checkout -b feature/AmazingFeature`)
+3. 변경 사항을 커밋합니다 (`git commit -m 'Add some AmazingFeature'`)
+4. 브랜치에 푸시합니다 (`git push origin feature/AmazingFeature`)
+5. Pull Request를 엽니다
+
+---
+
+## 라이선스
+
+이 프로젝트는 [MIT License](LICENSE)에 따라 배포됩니다.
+
+---
 
 ## 생태계 지도
 
@@ -92,6 +584,8 @@ NewLife는 독립적으로 버전이 관리되는 오픈소스 프로젝트의 �
 
 > 배지는 각 프로젝트의 기본 패키지를 나타냅니다. 테마, 확장, 위성 패키지는 해당 NuGet 페이지에서 확인하세요. 여기에 나열하지 않은 30여 개 패키지(FTP, LoRa, Office 확장, 각종 프로토콜 드라이버 등)는 [NewLifeX 조직](https://github.com/NewLifeX)과 [newlifex.com](https://newlifex.com)에서 확인할 수 있습니다.
 
+---
+
 ## 뉴라이프 개발팀
 
 <img src="https://newlifex.com/logo.png" width="48" align="right" alt="NewLife" />
@@ -108,9 +602,3 @@ NewLife는 독립적으로 버전이 관리되는 오픈소스 프로젝트의 �
 ![智能大石头](https://newlifex.com/stone.jpg)
 
 </details>
-
-## 라이선스
-
-MIT License © 2002-2026 NewLife 팀
-
-[GitHub](https://github.com/NewLifeX/NewLife.RocketMQ) | [Website](https://newlifex.com)
