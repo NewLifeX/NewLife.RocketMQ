@@ -7,9 +7,11 @@
 # 用法：
 #   pwsh -File tools/readme/sync-readme-languages.ps1           # 按配置重写各 README 的切换块
 #   pwsh -File tools/readme/sync-readme-languages.ps1 -Check    # 只校验不写入，不一致退出码 1（CI 使用）
+#   pwsh -File tools/readme/sync-readme-languages.ps1 -Structure # 校验译文与英文版结构一致（全译验收；摘要版会报差异）
 #   pwsh -File tools/readme/sync-readme-languages.ps1 -Root D:\src\MyLib   # 下游在自己的仓根运行
 param(
     [Switch]$Check,
+    [Switch]$Structure,
     [String]$Root = (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)),
     [String]$Config = "readme-languages.json"
 )
@@ -50,6 +52,28 @@ function Get-CurrentSwitcher($text, $pattern) {
     if (-not $m.Success) { return "<未找到切换行>" }
     $lines = @($m.Value -split "`r?`n" | Where-Object { $_ -notlike '<!-- lang:*' })
     return ($lines -join " / ")
+}
+
+# 提取文档骨架：标题层级序列、围栏代码块、图片与表格行数（均跳过代码块内部）
+function Get-ReadmeShape([String]$path) {
+    $lines = [IO.File]::ReadAllText($path) -split "`r?`n"
+    $inFence = $false
+    $headings = [System.Collections.Generic.List[String]]::new()
+    $fences = 0
+    $images = 0
+    $tableRows = 0
+    foreach ($line in $lines) {
+        if ($line -match '^\s*(```|~~~)') {
+            if (!$inFence) { $fences++ }
+            $inFence = !$inFence
+            continue
+        }
+        if ($inFence) { continue }
+        if ($line -match '^(#{1,6})\s') { $headings.Add($Matches[1]) }
+        if ($line -match '!\[') { $images++ }
+        if ($line -match '^\s*\|') { $tableRows++ }
+    }
+    return [pscustomobject]@{ Headings = $headings; Fences = $fences; Images = $images; TableRows = $tableRows }
 }
 
 $errors = 0
@@ -96,4 +120,43 @@ if ($Check) {
 }
 elseif ($changed -eq 0) {
     Write-Host "语言切换行已是最新（$($langs.Count) 个语种）"
+}
+
+if ($Structure) {
+    $baseItem = $langs | Where-Object { $_.code -eq 'en' } | Select-Object -First 1
+    if (!$baseItem) { throw "$Config 缺少 en 基准语种" }
+
+    $baseShape = Get-ReadmeShape (Join-Path $Root $baseItem.file)
+    $structureErrors = 0
+    foreach ($item in $langs) {
+        if ($item.file -eq $baseItem.file) { continue }
+
+        $shape = Get-ReadmeShape (Join-Path $Root $item.file)
+        $issues = @()
+        if ($shape.Headings.Count -ne $baseShape.Headings.Count) {
+            $issues += "标题数 $($shape.Headings.Count) ≠ $($baseShape.Headings.Count)"
+        }
+        else {
+            for ($i = 0; $i -lt $shape.Headings.Count; $i++) {
+                if ($shape.Headings[$i] -ne $baseShape.Headings[$i]) {
+                    $issues += "第 $($i + 1) 个标题层级 $($shape.Headings[$i]) ≠ $($baseShape.Headings[$i])"
+                    break
+                }
+            }
+        }
+        if ($shape.Fences -ne $baseShape.Fences) { $issues += "代码块 $($shape.Fences) ≠ $($baseShape.Fences)" }
+        if ($shape.Images -ne $baseShape.Images) { $issues += "图片 $($shape.Images) ≠ $($baseShape.Images)" }
+        if ($shape.TableRows -ne $baseShape.TableRows) { $issues += "表格行 $($shape.TableRows) ≠ $($baseShape.TableRows)" }
+
+        if ($issues.Count -gt 0) {
+            $structureErrors++
+            Write-Host "✗ $($item.file)：$($issues -join '；')"
+        }
+    }
+
+    if ($structureErrors -gt 0) {
+        Write-Host "`nREADME 结构与英文版不一致：$structureErrors / $($langs.Count - 1) 个译文。全译完成前该检查仅作参考。"
+        exit 1
+    }
+    Write-Host "README 结构与英文版一致（$($langs.Count - 1) 个译文）"
 }
