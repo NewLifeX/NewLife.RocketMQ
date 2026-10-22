@@ -36,6 +36,7 @@ NewLife.RocketMQ 是新生命团队开发的**企业级纯托管 RocketMQ 客户
 | **零外部依赖** | 内置 Protobuf 字段编解码（基于 NewLife.Core 的 SpanWriter/SpanReader 手写实现），无需 Java 或 gRPC 运行时 |
 | **多云适配** | 统一 `ICloudProvider` 接口，已内置阿里云/华为云/腾讯云/Apache ACL 四家适配器 |
 | **生产就绪** | 消费重试、死信队列、事务回查、顺序消费、Pop 消费等企业级特性完整支持 |
+| **事件总线** | 内置基于 Core `IEventBus` 契约的事件总线，事件主题经 Producer/Consumer 跨进程发布订阅，失败自动走重试/死信 |
 | **最广框架覆盖** | .NET Framework 4.5+ 到 .NET 10，gRPC 功能在 .NET Standard 2.1+ 可用 |
 | **AOT 友好** | net10.0 目标支持 NativeAOT/裁剪：帧编解码、JSON 序列化与消息压缩不依赖运行时反射，仓库内置 AOT 冒烟与 NuGet 包消费 AOT 冒烟；CI 以主流 RID 矩阵（win/linux/osx、musl 及龙芯 LA64）验证 AOT 发布与运行 |
 | **运行时多语言** | 日志、协议解析异常、公开 API 异常与配置项描述以英文为源文，内置 31 种语言词表，按 `Localization.Culture` 自动翻译并回退英文；带前缀日志先翻译再拼前缀，前缀不参与词表查找 |
@@ -236,6 +237,34 @@ var grpcMsg = message.ToGrpcMessage();
 var ext = grpcMsg.ToMessageExt();   // MessageExt（含全部系统属性）
 var msg = grpcMsg.ToMessage();      // Message（基础字段）
 ```
+
+### 事件总线（Event Bus）
+
+```csharp
+using NewLife.Messaging;
+using NewLife.RocketMQ;
+
+// 事件主题可直接使用 order.created，内部自动转换为 RocketMQ 合法名称 order_created
+using var bus = new RocketMqEventBus<OrderPaidEvent>("127.0.0.1:9876", "order.created", "order_service");
+
+// 订阅：处理器抛异常时回投重试，超过上限进入死信队列
+await bus.SubscribeAsync((OrderPaidEvent e, IEventContext ctx) =>
+{
+    Console.WriteLine($"收到支付成功事件：{e.OrderId}");
+    return Task.CompletedTask;
+}, "billing");
+
+// 发布：经 Broker 投递，本机订阅者同样通过消费组收到
+await bus.PublishAsync(new OrderPaidEvent { OrderId = 1001 });
+
+// 接入事件枢纽：工厂按主题创建并缓存总线
+var hub = new EventHub<OrderPaidEvent>
+{
+    Factory = new RocketMqEventBusFactory("127.0.0.1:9876"),
+};
+```
+
+> 消费组默认取本机标识，每个节点各成一组，因此每个节点都能收到事件；需要「整组只处理一次」时，向工厂传入相同的 clientId。处理器应保持幂等（同批次部分失败会整批重投）。
 
 ---
 
@@ -470,6 +499,15 @@ MqBase (业务基类)
 | 顺序消费 | ✅ | 队列锁定（OrderConsume） |
 | Pop 消费 | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
 | 消费限流 | ✅ | MaxConcurrentConsume 信号量控制 |
+
+### 事件总线
+
+| 功能 | 状态 | 说明 |
+|------|:----:|------|
+| Core IEventBus 契约 | ✅ | RocketMqEventBus&lt;TEvent&gt; / RocketMqEventContext |
+| 跨进程发布订阅 | ✅ | Producer 发布、Consumer 消费组订阅，失败回投重试/死信 |
+| 事件枢纽工厂 | ✅ | RocketMqEventBusFactory 实现 IEventBusFactory，可挂 EventHub.Factory |
+| 名称归一化 | ✅ | MqEventBusNaming，非法字符→下划线、127 字符截断 |
 
 ### 管理与运维
 

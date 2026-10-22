@@ -33,6 +33,7 @@ NewLife.RocketMQ is an **enterprise-grade, fully managed RocketMQ client** devel
 | **Zero external dependencies** | Built-in Protobuf field codec (hand-written on NewLife.Core's SpanWriter/SpanReader), no Java or gRPC runtime required |
 | **Multi-cloud support** | Unified `ICloudProvider` interface with built-in adapters for Alibaba Cloud, Huawei Cloud, Tencent Cloud and Apache ACL |
 | **Production ready** | Complete enterprise features: consume retry, dead-letter queue, transaction checkback, ordered consumption, Pop consumption and more |
+| **Event bus** | Built-in event bus based on the Core `IEventBus` contract: events are published and subscribed across processes through Producer/Consumer, with automatic retry/dead-letter handling |
 | **Broadest framework coverage** | From .NET Framework 4.5+ to .NET 10; gRPC features are available on .NET Standard 2.1+ |
 | **AOT friendly** | The net10.0 target supports NativeAOT/trimming: frame encoding/decoding, JSON serialization and message compression do not rely on runtime reflection. The repository includes an AOT smoke test and a NuGet package consumption AOT smoke test; CI validates AOT publishing and execution on a mainstream RID matrix (win/linux/osx, musl and Loongson LA64) |
 | **Runtime localization** | Logs, protocol parsing exceptions, public API exceptions and configuration descriptions use English as the source text, with built-in word lists for 31 languages, translated automatically according to `Localization.Culture` with English fallback; prefixed logs are translated before the prefix is composed, and the prefix does not participate in word-list lookup |
@@ -233,6 +234,34 @@ var grpcMsg = message.ToGrpcMessage();
 var ext = grpcMsg.ToMessageExt();   // MessageExt (includes all system properties)
 var msg = grpcMsg.ToMessage();      // Message (basic fields)
 ```
+
+### Event Bus
+
+```csharp
+using NewLife.Messaging;
+using NewLife.RocketMQ;
+
+// Event topics may contain dots; names are normalized to valid RocketMQ names (order.created -> order_created)
+using var bus = new RocketMqEventBus<OrderPaidEvent>("127.0.0.1:9876", "order.created", "order_service");
+
+// Subscribe: handler exceptions trigger redelivery, and messages eventually enter the dead-letter queue
+await bus.SubscribeAsync((OrderPaidEvent e, IEventContext ctx) =>
+{
+    Console.WriteLine($"Order paid: {e.OrderId}");
+    return Task.CompletedTask;
+}, "billing");
+
+// Publish: delivered through the Broker; local subscribers also receive it through their consumer group
+await bus.PublishAsync(new OrderPaidEvent { OrderId = 1001 });
+
+// Plug into an event hub: the factory creates and caches one bus per topic
+var hub = new EventHub<OrderPaidEvent>
+{
+    Factory = new RocketMqEventBusFactory("127.0.0.1:9876"),
+};
+```
+
+> The consumer group defaults to the current node identity so that every node receives each event. Pass the same clientId to switch to competing-consumer semantics. Keep handlers idempotent, because a partial batch failure redelivers the whole batch.
 
 ---
 
@@ -467,6 +496,15 @@ See the [Requirements Document](Doc/需求文档.md), [Feature List](Doc/功能�
 | Ordered consumption | ✅ | Queue locking (OrderConsume) |
 | Pop consumption | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
 | Consume throttling | ✅ | MaxConcurrentConsume semaphore control |
+
+### Event Bus
+
+| Feature | Status | Description |
+|---------|:------:|-------------|
+| Core IEventBus contract | ✅ | RocketMqEventBus&lt;TEvent&gt; / RocketMqEventContext |
+| Cross-process pub/sub | ✅ | Producer publishes, Consumer consumer group subscribes, failures go to retry/dead-letter |
+| Event hub factory | ✅ | RocketMqEventBusFactory implements IEventBusFactory and plugs into EventHub.Factory |
+| Name normalization | ✅ | MqEventBusNaming: invalid characters to underscores, 127-character truncation |
 
 ### Management and Operations
 

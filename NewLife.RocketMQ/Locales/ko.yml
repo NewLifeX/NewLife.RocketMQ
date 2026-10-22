@@ -133,3 +133,4 @@
 "Secret key; Aliyun only.": "비밀 키(Aliyun 전용)."
 "Enterprise RocketMQ Client": "엔터프라이즈 RocketMQ 클라이언트"
 "Enterprise-grade fully managed RocketMQ client with dual-protocol support for Remoting 4.x/5.x and gRPC 5.x Proxy. Zero external dependencies: no Java, gRPC or Protobuf runtime required. Unified adapters for Alibaba Cloud, Huawei Cloud, Tencent Cloud and Apache ACL, with consume retry, dead-letter queue, transactional messages, ordered consumption and Pop consumption. Proven in billion-scale production systems.": "엔터프라이즈급 완전 관리형 RocketMQ 클라이언트로, Remoting 4.x/5.x와 gRPC 5.x Proxy의 이중 프로토콜을 지원합니다. 외부 종속성 없음: Java, gRPC 또는 Protobuf 런타임이 필요하지 않습니다. Alibaba Cloud, Huawei Cloud, Tencent Cloud 및 Apache ACL을 위한 통합 어댑터를 제공하며, 소비 재시도, 데드 레터 큐, 트랜잭션 메시지, 순서 소비 및 Pop 소비를 지원합니다. 수십억 규모의 프로덕션 시스템에서 검증되었습니다."
+"The producer is already bound to another topic.": "프로듀서가 이미 다른 토픽에 바인딩되어 있습니다."

@@ -133,3 +133,4 @@
 "Secret key; Aliyun only.": "存取金鑰，阿里雲專用。"
 "Enterprise RocketMQ Client": "企業級 RocketMQ 用戶端"
 "Enterprise-grade fully managed RocketMQ client with dual-protocol support for Remoting 4.x/5.x and gRPC 5.x Proxy. Zero external dependencies: no Java, gRPC or Protobuf runtime required. Unified adapters for Alibaba Cloud, Huawei Cloud, Tencent Cloud and Apache ACL, with consume retry, dead-letter queue, transactional messages, ordered consumption and Pop consumption. Proven in billion-scale production systems.": "企業級純受控 RocketMQ 用戶端，雙協定支援 Remoting 4.x/5.x 與 gRPC 5.x Proxy。零外部相依：無需 Java、gRPC 或 Protobuf 執行階段。統一適配阿里雲、華為雲、騰訊雲及 Apache ACL，支援消費重試、死信佇列、交易訊息、順序消費與 Pop 消費。已在十億級生產系統中驗證。"
+"The producer is already bound to another topic.": "生產者已綁定到其它主題。"
