@@ -1,8 +1,8 @@
 name: readme
 
 # README 语言切换行由 tools/readme/sync-readme-languages.ps1 从 readme-languages.json 生成，
-# NuGet 包版 README.nuget.md 由 tools/readme/sync-readme-package.ps1 从 README.md 生成。
-# 手工改顺序、或某一份副本忘记同步，都会在这里被拦下。
+# 并校验各译文与英文版结构一致；NuGet 包版 README.nuget.md 由 tools/readme/sync-readme-package.ps1 从 README.md 生成。
+# 手工改顺序、某份副本忘记同步，或全译版漏章节，都会在这里被拦下。
 on:
   push:
     branches: [ '*' ]
@@ -39,3 +39,6 @@ jobs:
     - name: Check README package copy
       shell: pwsh
       run: pwsh -NoProfile -File ./tools/readme/sync-readme-package.ps1 -Check
+    - name: Check README structure
+      shell: pwsh
+      run: pwsh -NoProfile -File ./tools/readme/sync-readme-languages.ps1 -Structure
