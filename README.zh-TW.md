@@ -35,6 +35,7 @@ NewLife.RocketMQ 是新生命團隊開發的**企業級純受控 RocketMQ 用戶
 | **零外部相依** | 內建 Protobuf 欄位編解碼（基於 NewLife.Core 的 SpanWriter/SpanReader 手寫實作），無需 Java 或 gRPC 執行階段 |
 | **多雲適配** | 統一 `ICloudProvider` 介面，已內建阿里雲/華為雲/騰訊雲/Apache ACL 四家適配器 |
 | **生產就緒** | 消費重試、死信佇列、交易回查、順序消費、Pop 消費等企業級特性完整支援 |
+| **事件匯流排** | 內建基於 Core `IEventBus` 契約的事件匯流排：事件經 Producer/Consumer 跨行程發佈與訂閱，失敗自動回投重試/死信 |
 | **最廣框架涵蓋** | .NET Framework 4.5+ 到 .NET 10，gRPC 功能在 .NET Standard 2.1+ 可用 |
 | **AOT 友善** | net10.0 目標支援 NativeAOT/裁剪：訊框編解碼、JSON 序列化與訊息壓縮不依賴執行階段反射，儲存庫內建 AOT 冒煙與 NuGet 套件消費 AOT 冒煙；CI 以主流 RID 矩陣（win/linux/osx、musl 及龍芯 LA64）驗證 AOT 發佈與執行 |
 | **執行階段多語言** | 日誌、協定解析例外、公開 API 例外與設定項描述以英文為源文，內建 31 種語言詞表，按 `Localization.Culture` 自動翻譯並回退英文；帶前綴日誌先翻譯再拼前綴，前綴不參與詞表查找 |
@@ -54,7 +55,7 @@ dotnet add package NewLife.RocketMQ
 
 ```xml
 <!-- PackageReference -->
-<PackageReference Include="NewLife.RocketMQ" Version="3.0.*" />
+<PackageReference Include="NewLife.RocketMQ" Version="4.0.*" />
 ```
 
 ---
@@ -235,6 +236,36 @@ var grpcMsg = message.ToGrpcMessage();
 var ext = grpcMsg.ToMessageExt();   // MessageExt（含全部系統屬性）
 var msg = grpcMsg.ToMessage();      // Message（基礎欄位）
 ```
+
+---
+
+### 事件匯流排（Event Bus）
+
+```csharp
+using NewLife.Messaging;
+using NewLife.RocketMQ;
+
+// 事件主題可直接使用 order.created，內部自動轉換為 RocketMQ 合法名稱 order_created
+using var bus = new RocketMqEventBus<OrderPaidEvent>("127.0.0.1:9876", "order.created", "order_service");
+
+// 訂閱：處理常式拋出例外時回投重試，超過上限進入死信佇列
+await bus.SubscribeAsync((OrderPaidEvent e, IEventContext ctx) =>
+{
+    Console.WriteLine($"收到付款成功事件：{e.OrderId}");
+    return Task.CompletedTask;
+}, "billing");
+
+// 發佈：經 Broker 投遞，本機訂閱者同樣透過消費組收到
+await bus.PublishAsync(new OrderPaidEvent { OrderId = 1001 });
+
+// 接入事件中樞：工廠按主題建立並快取匯流排
+var hub = new EventHub<OrderPaidEvent>
+{
+    Factory = new RocketMqEventBusFactory("127.0.0.1:9876"),
+};
+```
+
+> 消費組預設取本機識別，每個節點各成一組，因此每個節點都能收到事件；需要「整組只處理一次」時，向工廠傳入相同的 clientId。處理常式應保持冪等（同批次部分失敗會整批重投）。
 
 ---
 
@@ -469,6 +500,15 @@ MqBase (業務基底類別)
 | 順序消費 | ✅ | 佇列鎖定（OrderConsume） |
 | Pop 消費 | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
 | 消費限流 | ✅ | MaxConcurrentConsume 號誌控制 |
+
+### 事件匯流排
+
+| 功能 | 狀態 | 說明 |
+|------|:----:|------|
+| Core IEventBus 契約 | ✅ | RocketMqEventBus&lt;TEvent&gt; / RocketMqEventContext |
+| 跨行程發佈訂閱 | ✅ | Producer 發佈、Consumer 消費組訂閱，失敗回投重試/死信 |
+| 事件中樞工廠 | ✅ | RocketMqEventBusFactory 實作 IEventBusFactory，可掛 EventHub.Factory |
+| 名稱正規化 | ✅ | MqEventBusNaming，非法字元→底線、127 字元截斷 |
 
 ### 管理與維運
 

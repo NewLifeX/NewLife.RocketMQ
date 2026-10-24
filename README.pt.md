@@ -35,6 +35,7 @@ NewLife.RocketMQ é um **cliente RocketMQ empresarial totalmente gerenciado** de
 | **Zero dependências externas** | Codec de campos Protobuf embutido (escrito à mão sobre SpanWriter/SpanReader do NewLife.Core), sem exigir runtime Java ou gRPC |
 | **Suporte a múltiplas nuvens** | Interface unificada `ICloudProvider` com adaptadores embutidos para Alibaba Cloud, Huawei Cloud, Tencent Cloud e Apache ACL |
 | **Pronto para produção** | Recursos empresariais completos: nova tentativa de consumo, fila de mensagens mortas, verificação de transações, consumo ordenado, consumo Pop e mais |
+| **Barramento de eventos** | Barramento de eventos integrado baseado no contrato `IEventBus` do Core: os eventos são publicados e assinados entre processos por meio de Producer/Consumer, com nova tentativa e fila de mensagens mortas automáticas |
 | **Maior cobertura de frameworks** | Do .NET Framework 4.5+ ao .NET 10; os recursos gRPC estão disponíveis a partir do .NET Standard 2.1 |
 | **Compatível com AOT** | O alvo net10.0 suporta NativeAOT/trimming: codificação/decodificação de quadros, serialização JSON e compactação de mensagens não dependem de reflexão em tempo de execução. O repositório inclui um teste de fumaça AOT e um teste de fumaça AOT de consumo do pacote NuGet; a CI valida a publicação e a execução AOT em uma matriz de RIDs mainstream (win/linux/osx, musl e Loongson LA64) |
 | **Localização em tempo de execução** | Logs, exceções de análise de protocolo, exceções de API pública e descrições de configuração usam o inglês como texto de origem, com listas de palavras embutidas para 31 idiomas, traduzidas automaticamente conforme `Localization.Culture` com fallback para o inglês; logs com prefixo são traduzidos antes da composição do prefixo, e o prefixo não participa da busca na lista de palavras |
@@ -54,7 +55,7 @@ dotnet add package NewLife.RocketMQ
 
 ```xml
 <!-- PackageReference -->
-<PackageReference Include="NewLife.RocketMQ" Version="3.0.*" />
+<PackageReference Include="NewLife.RocketMQ" Version="4.0.*" />
 ```
 
 ---
@@ -235,6 +236,36 @@ var grpcMsg = message.ToGrpcMessage();
 var ext = grpcMsg.ToMessageExt();   // MessageExt (inclui todas as propriedades de sistema)
 var msg = grpcMsg.ToMessage();      // Message (campos básicos)
 ```
+
+---
+
+### Barramento de eventos
+
+```csharp
+using NewLife.Messaging;
+using NewLife.RocketMQ;
+
+// Os tópicos de eventos podem conter pontos; os nomes são normalizados para nomes válidos do RocketMQ (order.created -> order_created)
+using var bus = new RocketMqEventBus<OrderPaidEvent>("127.0.0.1:9876", "order.created", "order_service");
+
+// Assinatura: exceções no manipulador disparam nova entrega e, ao esgotar as tentativas, a mensagem vai para a fila de mensagens mortas
+await bus.SubscribeAsync((OrderPaidEvent e, IEventContext ctx) =>
+{
+    Console.WriteLine($"Pedido pago: {e.OrderId}");
+    return Task.CompletedTask;
+}, "billing");
+
+// Publicação: entregue pelo Broker; assinantes locais também a recebem pelo seu grupo de consumidores
+await bus.PublishAsync(new OrderPaidEvent { OrderId = 1001 });
+
+// Integração com um hub de eventos: a fábrica cria e armazena em cache um barramento por tópico
+var hub = new EventHub<OrderPaidEvent>
+{
+    Factory = new RocketMqEventBusFactory("127.0.0.1:9876"),
+};
+```
+
+> O grupo de consumidores usa por padrão a identidade do nó atual, para que cada nó receba cada evento. Passe o mesmo clientId para mudar para a semântica de consumidores concorrentes. Mantenha os manipuladores idempotentes, pois a falha parcial de um lote reentrega o lote inteiro.
 
 ---
 
@@ -469,6 +500,15 @@ Consulte o [Documento de requisitos](Doc/需求文档.md), a [Lista de funcional
 | Consumo ordenado | ✅ | Bloqueio de fila (OrderConsume) |
 | Consumo Pop | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
 | Limitação de consumo | ✅ | Controle por semáforo MaxConcurrentConsume |
+
+### Barramento de eventos
+
+| Recurso | Status | Descrição |
+|---------|:------:|-------------|
+| Contrato IEventBus do Core | ✅ | RocketMqEventBus&lt;TEvent&gt; / RocketMqEventContext |
+| Pub/Sub entre processos | ✅ | Producer publica, o grupo de consumidores do Consumer assina; falhas vão para nova tentativa/fila de mensagens mortas |
+| Fábrica de hub de eventos | ✅ | RocketMqEventBusFactory implementa IEventBusFactory e se conecta a EventHub.Factory |
+| Normalização de nomes | ✅ | MqEventBusNaming: caracteres inválidos para sublinhado, truncamento em 127 caracteres |
 
 ### Gerenciamento e operações
 

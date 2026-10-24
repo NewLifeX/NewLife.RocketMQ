@@ -35,6 +35,7 @@ NewLife.RocketMQ は、NewLife チームが .NET エコシステム向けに開�
 | **外部依存ゼロ** | Protobuf フィールドコーデックを内蔵（NewLife.Core の SpanWriter/SpanReader 上に手書き実装）。Java や gRPC ランタイムは不要。 |
 | **マルチクラウド対応** | 統一インターフェース `ICloudProvider` と、Alibaba Cloud、Huawei Cloud、Tencent Cloud、Apache ACL のアダプターを内蔵。 |
 | **本番運用対応** | コンシュームリトライ、デッドレターキュー、トランザクションコールバック確認、順序消費、Pop 消費などのエンタープライズ機能を完備。 |
+| **イベントバス** | Core の `IEventBus` 契約に基づくイベントバスを内蔵：Producer/Consumer を介してプロセス間でイベントを発行・購読し、失敗時は自動でリトライ／デッドレター処理 |
 | **幅広いフレームワーク対応** | .NET Framework 4.5+ から .NET 10 まで。gRPC 機能は .NET Standard 2.1+ で利用可能。 |
 | **AOT フレンドリー** | net10.0 ターゲットは NativeAOT/トリミングに対応：フレームのエンコード/デコード、JSON シリアル化、メッセージ圧縮は実行時リフレクションに依存しません。リポジトリには AOT スモークテストと NuGet パッケージ消費側の AOT スモークテストを含み、CI は主要 RID マトリクス（win/linux/osx、musl、Loongson LA64）で AOT 公開と実行を検証します |
 | **実行時ローカライズ** | ログ、プロトコル解析例外、公開 API 例外、構成の説明は英語を原文とし、31 言語の単語リストを内蔵。`Localization.Culture` に従って自動翻訳し、英語にフォールバックします。接頭辞付きログは接頭辞を組み立てる前に翻訳され、接頭辞は単語リストの検索対象になりません |
@@ -54,7 +55,7 @@ dotnet add package NewLife.RocketMQ
 
 ```xml
 <!-- PackageReference -->
-<PackageReference Include="NewLife.RocketMQ" Version="3.0.*" />
+<PackageReference Include="NewLife.RocketMQ" Version="4.0.*" />
 ```
 
 ---
@@ -235,6 +236,36 @@ var grpcMsg = message.ToGrpcMessage();
 var ext = grpcMsg.ToMessageExt();   // MessageExt（すべてのシステムプロパティを含む）
 var msg = grpcMsg.ToMessage();      // Message（基本フィールド）
 ```
+
+---
+
+### イベントバス
+
+```csharp
+using NewLife.Messaging;
+using NewLife.RocketMQ;
+
+// イベントトピックにはドットを含められます。名前は RocketMQ の有効な名前に正規化されます（order.created -> order_created）
+using var bus = new RocketMqEventBus<OrderPaidEvent>("127.0.0.1:9876", "order.created", "order_service");
+
+// 購読：ハンドラーが例外を投げると再配信され、上限を超えるとデッドレターキューに入ります
+await bus.SubscribeAsync((OrderPaidEvent e, IEventContext ctx) =>
+{
+    Console.WriteLine($"注文支払い完了: {e.OrderId}");
+    return Task.CompletedTask;
+}, "billing");
+
+// 発行：Broker 経由で配信され、ローカルの購読者もコンシューマーグループ経由で受け取ります
+await bus.PublishAsync(new OrderPaidEvent { OrderId = 1001 });
+
+// イベントハブへの接続：ファクトリがトピックごとにバスを作成してキャッシュします
+var hub = new EventHub<OrderPaidEvent>
+{
+    Factory = new RocketMqEventBusFactory("127.0.0.1:9876"),
+};
+```
+
+> コンシューマーグループは既定で現在のノード識別子を使用するため、各ノードがすべてのイベントを受信します。「グループ全体で 1 回だけ処理」したい場合は、同じ clientId を渡して競合コンシューマーのセマンティクスに切り替えてください。バッチの一部が失敗するとバッチ全体が再配信されるため、ハンドラーは冪等に保つ必要があります。
 
 ---
 
@@ -469,6 +500,15 @@ MqBase（業務基底クラス）
 | 順序消費 | ✅ | キューロック（OrderConsume） |
 | Pop 消費 | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
 | 消費スロットリング | ✅ | MaxConcurrentConsume によるセマフォ制御 |
+
+### イベントバス
+
+| 機能 | 状態 | 説明 |
+|------|:----:|------|
+| Core IEventBus 契約 | ✅ | RocketMqEventBus&lt;TEvent&gt; / RocketMqEventContext |
+| プロセス間 Pub/Sub | ✅ | Producer が発行し、Consumer のコンシューマーグループが購読。失敗はリトライ／デッドレターへ |
+| イベントハブファクトリ | ✅ | RocketMqEventBusFactory が IEventBusFactory を実装し、EventHub.Factory に接続可能 |
+| 名前の正規化 | ✅ | MqEventBusNaming：不正文字をアンダースコアに変換し、127 文字で切り捨て |
 
 ### 管理と運用
 

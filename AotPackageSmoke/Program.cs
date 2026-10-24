@@ -150,7 +150,7 @@ Check("消息压缩·ZLIB 往返与上限", () =>
     }
     catch (InvalidDataException ex)
     {
-        caught = ex.Message.Contains("上限");
+        caught = ex.Message.Contains("limit");
     }
     Assert(caught, "超出解压上限未按预期拦截");
 });

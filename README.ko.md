@@ -35,6 +35,7 @@ NewLife.RocketMQ는 뉴라이프 팀이 .NET 생태계를 위해 개발한 **엔
 | **외부 의존성 제로** | 내장 Protobuf 필드 코덱(NewLife.Core의 SpanWriter/SpanReader 위에 직접 구현), Java나 gRPC 런타임 불필요 |
 | **멀티 클라우드 지원** | 통일된 `ICloudProvider` 인터페이스와 알리바바 클라우드·화웨이 클라우드·텐센트 클라우드·Apache ACL 내장 어댑터 |
 | **프로덕션 레디** | 소비 재시도, 데드 레터 큐, 트랜잭션 검사백, 순서 소비, Pop 소비 등 완전한 엔터프라이즈 기능 |
+| **이벤트 버스** | Core `IEventBus` 계약 기반의 내장 이벤트 버스: Producer/Consumer를 통해 프로세스 간에 이벤트를 발행·구독하며, 실패 시 자동 재시도/데드 레터 처리 |
 | **폭넓은 프레임워크 지원** | .NET Framework 4.5+부터 .NET 10까지; gRPC 기능은 .NET Standard 2.1+에서 사용 가능 |
 | **AOT 친화** | net10.0 타깃은 NativeAOT/트리밍을 지원: 프레임 인코딩/디코딩, JSON 직렬화, 메시지 압축이 런타임 리플렉션에 의존하지 않음. 저장소에 AOT 스모크 테스트와 NuGet 패키지 소비 AOT 스모크 테스트가 포함되며, CI가 주요 RID 매트릭스(win/linux/osx, musl 및 Loongson LA64)에서 AOT 게시와 실행을 검증 |
 | **런타임 현지화** | 로그, 프로토콜 파싱 예외, 공개 API 예외, 구성 설명이 영어를 원문으로 하며, 31개 언어 내장 단어 목록을 통해 `Localization.Culture`에 따라 자동 번역되고 영어로 폴백; 접두사가 붙은 로그는 접두사 조합 전에 번역되며 접두사는 단어 목록 조회에 참여하지 않음 |
@@ -54,7 +55,7 @@ dotnet add package NewLife.RocketMQ
 
 ```xml
 <!-- PackageReference -->
-<PackageReference Include="NewLife.RocketMQ" Version="3.0.*" />
+<PackageReference Include="NewLife.RocketMQ" Version="4.0.*" />
 ```
 
 ---
@@ -235,6 +236,36 @@ var grpcMsg = message.ToGrpcMessage();
 var ext = grpcMsg.ToMessageExt();   // MessageExt (모든 시스템 속성 포함)
 var msg = grpcMsg.ToMessage();      // Message (기본 필드)
 ```
+
+---
+
+### 이벤트 버스
+
+```csharp
+using NewLife.Messaging;
+using NewLife.RocketMQ;
+
+// 이벤트 토픽에는 점을 포함할 수 있으며, 이름은 RocketMQ 유효 이름으로 정규화됩니다(order.created -> order_created)
+using var bus = new RocketMqEventBus<OrderPaidEvent>("127.0.0.1:9876", "order.created", "order_service");
+
+// 구독: 처리기가 예외를 던지면 재전송되고, 한도를 넘으면 데드 레터 큐로 이동합니다
+await bus.SubscribeAsync((OrderPaidEvent e, IEventContext ctx) =>
+{
+    Console.WriteLine($"주문 결제 완료: {e.OrderId}");
+    return Task.CompletedTask;
+}, "billing");
+
+// 발행: Broker를 통해 전달되며, 로컬 구독자도 소비자 그룹을 통해 수신합니다
+await bus.PublishAsync(new OrderPaidEvent { OrderId = 1001 });
+
+// 이벤트 허브 연결: 팩토리가 토픽별로 버스를 생성하고 캐시합니다
+var hub = new EventHub<OrderPaidEvent>
+{
+    Factory = new RocketMqEventBusFactory("127.0.0.1:9876"),
+};
+```
+
+> 소비자 그룹은 기본적으로 현재 노드 식별자를 사용하므로 모든 노드가 각 이벤트를 받습니다. 동일한 clientId를 전달하면 경쟁 소비자 의미로 전환됩니다. 배치 일부가 실패하면 전체 배치가 재전송되므로 처리기는 멱등성을 유지해야 합니다.
 
 ---
 
@@ -469,6 +500,15 @@ MqBase (비즈니스 기본 클래스)
 | 순서 소비 | ✅ | 큐 잠금(OrderConsume) |
 | Pop 소비 | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
 | 소비 스로틀링 | ✅ | MaxConcurrentConsume 세마포어 제어 |
+
+### 이벤트 버스
+
+| 기능 | 상태 | 설명 |
+|------|:----:|------|
+| Core IEventBus 계약 | ✅ | RocketMqEventBus&lt;TEvent&gt; / RocketMqEventContext |
+| 프로세스 간 게시/구독 | ✅ | Producer가 발행하고 Consumer 소비자 그룹이 구독; 실패는 재시도/데드 레터로 |
+| 이벤트 허브 팩토리 | ✅ | RocketMqEventBusFactory가 IEventBusFactory를 구현하며 EventHub.Factory에 연결 |
+| 이름 정규화 | ✅ | MqEventBusNaming: 잘못된 문자를 밑줄로, 127자 절단 |
 
 ### 관리 및 운영
 

@@ -35,6 +35,7 @@ NewLife.RocketMQ ist ein **vollständig verwalteter RocketMQ-Client in Enterpris
 | **Keine externen Abhängigkeiten** | Eingebauter Protobuf-Feld-Codec (handgeschrieben auf SpanWriter/SpanReader von NewLife.Core), keine Java- oder gRPC-Laufzeit erforderlich |
 | **Multi-Cloud-Unterstützung** | Einheitliche `ICloudProvider`-Schnittstelle mit eingebauten Adaptern für Alibaba Cloud, Huawei Cloud, Tencent Cloud und Apache ACL |
 | **Produktionsreif** | Vollständige Enterprise-Funktionen: Consume-Retry, Dead-Letter-Queue, Transaktions-Checkback, geordnete Verarbeitung, Pop-Consumption und mehr |
+| **Event-Bus** | Eingebauter Event-Bus auf Basis des Core-Vertrags `IEventBus`: Ereignisse werden über Producer/Consumer prozessübergreifend veröffentlicht und abonniert, mit automatischem Retry und Dead-Letter-Behandlung |
 | **Breiteste Framework-Abdeckung** | Von .NET Framework 4.5+ bis .NET 10; gRPC-Funktionen sind ab .NET Standard 2.1+ verfügbar |
 | **AOT-freundlich** | Das Ziel net10.0 unterstützt NativeAOT/Trimming: Frame-Codierung/-Decodierung, JSON-Serialisierung und Nachrichtenkomprimierung benötigen keine Laufzeitreflexion. Das Repository enthält einen AOT-Smoke-Test sowie einen AOT-Smoke-Test für die Nutzung des NuGet-Pakets; CI validiert AOT-Publishing und -Ausführung auf einer RID-Matrix gängiger Plattformen (win/linux/osx, musl und Loongson LA64) |
 | **Laufzeit-Lokalisierung** | Logs, Ausnahmen der Protokollanalyse, Ausnahmen öffentlicher APIs und Konfigurationsbeschreibungen verwenden Englisch als Quelltext, mit eingebauten Wortlisten für 31 Sprachen, automatisch übersetzt gemäß `Localization.Culture` mit englischem Fallback; Logs mit Präfix werden vor dem Anhängen des Präfixes übersetzt, und das Präfix nimmt nicht an der Wortlistensuche teil |
@@ -54,7 +55,7 @@ dotnet add package NewLife.RocketMQ
 
 ```xml
 <!-- PackageReference -->
-<PackageReference Include="NewLife.RocketMQ" Version="3.0.*" />
+<PackageReference Include="NewLife.RocketMQ" Version="4.0.*" />
 ```
 
 ---
@@ -235,6 +236,36 @@ var grpcMsg = message.ToGrpcMessage();
 var ext = grpcMsg.ToMessageExt();   // MessageExt (enthält alle Systemeigenschaften)
 var msg = grpcMsg.ToMessage();      // Message (Basisfelder)
 ```
+
+---
+
+### Event-Bus
+
+```csharp
+using NewLife.Messaging;
+using NewLife.RocketMQ;
+
+// Ereignis-Topics dürfen Punkte enthalten; Namen werden auf gültige RocketMQ-Namen normalisiert (order.created -> order_created)
+using var bus = new RocketMqEventBus<OrderPaidEvent>("127.0.0.1:9876", "order.created", "order_service");
+
+// Abonnieren: Wirft der Handler eine Ausnahme, wird die Nachricht erneut zugestellt und landet schließlich in der Dead-Letter-Queue
+await bus.SubscribeAsync((OrderPaidEvent e, IEventContext ctx) =>
+{
+    Console.WriteLine($"Bestellung bezahlt: {e.OrderId}");
+    return Task.CompletedTask;
+}, "billing");
+
+// Veröffentlichen: Zustellung über den Broker; lokale Abonnenten erhalten sie ebenfalls über ihre Consumergruppe
+await bus.PublishAsync(new OrderPaidEvent { OrderId = 1001 });
+
+// An einen Event-Hub anbinden: Die Factory erstellt und cached einen Bus pro Topic
+var hub = new EventHub<OrderPaidEvent>
+{
+    Factory = new RocketMqEventBusFactory("127.0.0.1:9876"),
+};
+```
+
+> Die Consumergruppe verwendet standardmäßig die Identität des aktuellen Knotens, sodass jeder Knoten jedes Ereignis erhält. Übergib dieselbe clientId, um auf Competing-Consumer-Semantik umzuschalten. Halte Handler idempotent, da ein teilweiser Batch-Fehler den gesamten Batch erneut zustellt.
 
 ---
 
@@ -469,6 +500,15 @@ Siehe [Anforderungsdokument](Doc/需求文档.md), [Funktionsliste](Doc/功能�
 | Geordnete Verarbeitung | ✅ | Warteschlangensperre (OrderConsume) |
 | Pop-Consumption | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
 | Consume-Drosselung | ✅ | Semaphorsteuerung über MaxConcurrentConsume |
+
+### Event-Bus
+
+| Funktion | Status | Beschreibung |
+|---------|:------:|-------------|
+| Core-IEventBus-Vertrag | ✅ | RocketMqEventBus&lt;TEvent&gt; / RocketMqEventContext |
+| Prozessübergreifendes Pub/Sub | ✅ | Producer veröffentlicht, die Consumergruppe des Consumer abonniert; Fehler gehen in Retry/Dead-Letter |
+| Event-Hub-Factory | ✅ | RocketMqEventBusFactory implementiert IEventBusFactory und lässt sich an EventHub.Factory anbinden |
+| Namensnormalisierung | ✅ | MqEventBusNaming: ungültige Zeichen zu Unterstrichen, Kürzung auf 127 Zeichen |
 
 ### Verwaltung und Betrieb
 

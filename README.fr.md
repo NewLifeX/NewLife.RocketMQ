@@ -35,6 +35,7 @@ NewLife.RocketMQ est un **client RocketMQ de qualité entreprise, entièrement m
 | **Aucune dépendance externe** | Codec de champs Protobuf intégré (écrit à la main sur SpanWriter/SpanReader de NewLife.Core), aucune runtime Java ou gRPC requise |
 | **Multi-cloud** | Interface unifiée `ICloudProvider` avec adaptateurs intégrés pour Alibaba Cloud, Huawei Cloud, Tencent Cloud et Apache ACL |
 | **Prêt pour la production** | Fonctionnalités d'entreprise complètes : reprise de consommation, file de messages morts, vérification des transactions, consommation ordonnée, consommation Pop, etc. |
+| **Bus d'événements** | Bus d'événements intégré basé sur le contrat `IEventBus` de Core : les événements sont publiés et souscrits entre processus via Producer/Consumer, avec reprise et file de messages morts automatiques |
 | **Couverture de frameworks la plus large** | De .NET Framework 4.5+ à .NET 10 ; les fonctionnalités gRPC sont disponibles à partir de .NET Standard 2.1+ |
 | **Compatible AOT** | La cible net10.0 prend en charge NativeAOT/trimming : l'encodage/décodage des trames, la sérialisation JSON et la compression des messages ne reposent pas sur la réflexion d'exécution. Le dépôt contient un smoke test AOT ainsi qu'un smoke test AOT de consommation du paquet NuGet ; la CI valide la publication et l'exécution AOT sur une matrice de RID courants (win/linux/osx, musl et Loongson LA64) |
 | **Localisation à l'exécution** | Les journaux, les exceptions d'analyse de protocole, les exceptions des API publiques et les descriptions de configuration utilisent l'anglais comme texte source, avec des listes de mots intégrées pour 31 langues, traduites automatiquement selon `Localization.Culture` avec repli sur l'anglais ; les journaux préfixés sont traduits avant la composition du préfixe, et le préfixe ne participe pas à la recherche dans la liste de mots |
@@ -54,7 +55,7 @@ dotnet add package NewLife.RocketMQ
 
 ```xml
 <!-- PackageReference -->
-<PackageReference Include="NewLife.RocketMQ" Version="3.0.*" />
+<PackageReference Include="NewLife.RocketMQ" Version="4.0.*" />
 ```
 
 ---
@@ -235,6 +236,36 @@ var grpcMsg = message.ToGrpcMessage();
 var ext = grpcMsg.ToMessageExt();   // MessageExt (inclut toutes les propriétés système)
 var msg = grpcMsg.ToMessage();      // Message (champs de base)
 ```
+
+---
+
+### Bus d'événements
+
+```csharp
+using NewLife.Messaging;
+using NewLife.RocketMQ;
+
+// Les topics d'événements peuvent contenir des points ; les noms sont normalisés en noms RocketMQ valides (order.created -> order_created)
+using var bus = new RocketMqEventBus<OrderPaidEvent>("127.0.0.1:9876", "order.created", "order_service");
+
+// Abonnement : une exception du gestionnaire déclenche une nouvelle livraison, puis la file de messages morts
+await bus.SubscribeAsync((OrderPaidEvent e, IEventContext ctx) =>
+{
+    Console.WriteLine($"Commande payée : {e.OrderId}");
+    return Task.CompletedTask;
+}, "billing");
+
+// Publication : livrée via le Broker ; les abonnés locaux la reçoivent aussi via leur groupe de consommateurs
+await bus.PublishAsync(new OrderPaidEvent { OrderId = 1001 });
+
+// Branchement sur un hub d'événements : la fabrique crée et met en cache un bus par topic
+var hub = new EventHub<OrderPaidEvent>
+{
+    Factory = new RocketMqEventBusFactory("127.0.0.1:9876"),
+};
+```
+
+> Le groupe de consommateurs utilise par défaut l'identité du nœud courant, afin que chaque nœud reçoive chaque événement. Passez le même clientId pour passer à une sémantique de consommateurs concurrents. Gardez les gestionnaires idempotents, car l'échec partiel d'un lot entraîne la relivraison du lot complet.
 
 ---
 
@@ -469,6 +500,15 @@ Voir le [document de besoins](Doc/需求文档.md), la [liste des fonctionnalit�
 | Consommation ordonnée | ✅ | Verrouillage de file (OrderConsume) |
 | Consommation Pop | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
 | Limitation de consommation | ✅ | Contrôle par sémaphore MaxConcurrentConsume |
+
+### Bus d'événements
+
+| Fonctionnalité | État | Description |
+|---------|:------:|-------------|
+| Contrat Core IEventBus | ✅ | RocketMqEventBus&lt;TEvent&gt; / RocketMqEventContext |
+| Publication/abonnement inter-processus | ✅ | Producer publie, le groupe de consommateurs de Consumer s'abonne ; les échecs vont en reprise/file de messages morts |
+| Fabrique de hub d'événements | ✅ | RocketMqEventBusFactory implémente IEventBusFactory et se branche sur EventHub.Factory |
+| Normalisation des noms | ✅ | MqEventBusNaming : caractères invalides en soulignés, troncature à 127 caractères |
 
 ### Gestion et exploitation
 

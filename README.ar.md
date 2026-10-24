@@ -35,6 +35,7 @@ NewLife.RocketMQ هو **عميل RocketMQ مؤسسي مُدار بالكامل**
 | **صفر اعتماديات خارجية** | مرمّز حقول Protobuf مدمج (مكتوب يدويًا على SpanWriter/SpanReader في NewLife.Core)، دون الحاجة إلى Java أو بيئة تشغيل gRPC |
 | **دعم سحابات متعددة** | واجهة `ICloudProvider` موحّدة مع محوّلات مدمجة لـ Alibaba Cloud وHuawei Cloud وTencent Cloud وApache ACL |
 | **جاهز للإنتاج** | ميزات مؤسسية كاملة: إعادة محاولة الاستهلاك، وقائمة الرسائل الميتة، ومراجعة المعاملات، والاستهلاك المرتّب، واستهلاك Pop وغير ذلك |
+| **ناقل الأحداث** | ناقل أحداث مدمج قائم على عقد `IEventBus` من Core: تُنشر الأحداث وتُشترك بين العمليات عبر Producer/Consumer، مع إعادة محاولة وإرسال تلقائي إلى قائمة الرسائل الميتة |
 | **أوسع تغطية للأُطر** | من .NET Framework 4.5+ حتى .NET 10؛ وميزات gRPC متاحة على .NET Standard 2.1+ |
 | **ملائم لـ AOT** | هدف `net10.0` يدعم NativeAOT/trimming: ترميز الإطارات وفك ترميزها، وتسلسل JSON، وضغط الرسائل لا تعتمد على الانعكاس وقت التشغيل. يتضمّن المستودع اختبار دخان AOT واختبار دخان AOT لاستهلاك حزمة NuGet؛ ويتحقق CI من نشر AOT وتشغيله على مصفوفة RID رئيسية (win/linux/osx، وmusl، وLoongson LA64) |
 | **توطين وقت التشغيل** | السجلات، واستثناءات تحليل البروتوكول، واستثناءات واجهات API العامة، وأوصاف الإعدادات تستخدم الإنجليزية كنص مصدر، مع قوائم كلمات مدمجة لـ31 لغة تُترجَم تلقائيًا وفق `Localization.Culture` مع الرجوع إلى الإنجليزية؛ وتُترجَم السجلات ذات البادئة قبل تركيب البادئة، ولا تشارك البادئة في البحث داخل قائمة الكلمات |
@@ -54,7 +55,7 @@ dotnet add package NewLife.RocketMQ
 
 ```xml
 <!-- PackageReference -->
-<PackageReference Include="NewLife.RocketMQ" Version="3.0.*" />
+<PackageReference Include="NewLife.RocketMQ" Version="4.0.*" />
 ```
 
 ---
@@ -235,6 +236,36 @@ var grpcMsg = message.ToGrpcMessage();
 var ext = grpcMsg.ToMessageExt();   // MessageExt (يشمل جميع خصائص النظام)
 var msg = grpcMsg.ToMessage();      // Message (الحقول الأساسية)
 ```
+
+---
+
+### ناقل الأحداث
+
+```csharp
+using NewLife.Messaging;
+using NewLife.RocketMQ;
+
+// يمكن أن تحتوي مواضيع الأحداث على نقاط؛ وتُطبَّع الأسماء إلى أسماء RocketMQ صالحة (order.created -> order_created)
+using var bus = new RocketMqEventBus<OrderPaidEvent>("127.0.0.1:9876", "order.created", "order_service");
+
+// الاشتراك: استثناء المعالج يؤدي إلى إعادة التسليم ثم إلى قائمة الرسائل الميتة
+await bus.SubscribeAsync((OrderPaidEvent e, IEventContext ctx) =>
+{
+    Console.WriteLine($"تم دفع الطلب: {e.OrderId}");
+    return Task.CompletedTask;
+}, "billing");
+
+// النشر: يُسلَّم عبر Broker، ويتلقاه المشتركون المحليون أيضًا عبر مجموعة المستهلكين
+await bus.PublishAsync(new OrderPaidEvent { OrderId = 1001 });
+
+// الربط بمركز أحداث: تُنشئ المصنع ناقلًا لكل موضوع وتخزّنه مؤقتًا
+var hub = new EventHub<OrderPaidEvent>
+{
+    Factory = new RocketMqEventBusFactory("127.0.0.1:9876"),
+};
+```
+
+> تستخدم مجموعة المستهلكين هوية العقدة الحالية افتراضيًا، بحيث تتلقى كل عقدة كل حدث. مرّر نفس clientId للتحويل إلى دلالة المستهلكين المتنافسين. حافظ على كون المعالجات idempotent لأن فشل جزء من الدفعة يعيد تسليم الدفعة كاملة.
 
 ---
 
@@ -469,6 +500,15 @@ Cloud provider adapter layer
 | الاستهلاك المرتّب | ✅ | قفل القوائم (OrderConsume) |
 | استهلاك Pop | ✅ | Pop/Ack/BatchAck/ChangeInvisibleTime |
 | خفض معدّل الاستهلاك | ✅ | تحكم بإشارة MaxConcurrentConsume |
+
+### ناقل الأحداث
+
+| الميزة | الحالة | الوصف |
+|------|:----:|------|
+| عقد Core IEventBus | ✅ | RocketMqEventBus&lt;TEvent&gt; / RocketMqEventContext |
+| نشر/اشتراك بين العمليات | ✅ | ينشر Producer، وتشترك مجموعة مستهلكي Consumer؛ وتُوجَّه الإخفاقات إلى إعادة المحاولة/قائمة الرسائل الميتة |
+| مصنع مركز الأحداث | ✅ | يطبّق RocketMqEventBusFactory واجهة IEventBusFactory ويُربط بـ EventHub.Factory |
+| تطبيع الأسماء | ✅ | MqEventBusNaming: تحويل الأحرف غير الصالحة إلى شرطات سفلية وقصّ إلى 127 حرفًا |
 
 ### الإدارة والعمليات
 
