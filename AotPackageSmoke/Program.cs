@@ -8,6 +8,7 @@
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
@@ -54,8 +55,14 @@ MqAot.RegisterBodyType<SmokeDto>();
 Check("包资产·类型可用", () =>
 {
     // 打包后 lib/net10.0 资产与依赖声明必须可用，否则此处会以 TypeLoadException / FileNotFoundException 失败
-    Assert(typeof(Producer).Assembly == typeof(Message).Assembly, "生产者与协议类型应来自同一程序集");
-    Assert(typeof(Consumer).Assembly.GetName().Version!.Major == 3, $"版本异常：{typeof(Consumer).Assembly.GetName().Version}");
+    var asm = typeof(Producer).Assembly;
+    Assert(asm == typeof(Message).Assembly, "生产者与协议类型应来自同一程序集");
+
+    // 被消费包版本由构建属性注入：主版本需一致，既防误用缓存中的旧包，也避免主版本升级后写死断言失效
+    var expected = CustomAttributeExtensions.GetCustomAttributes<AssemblyMetadataAttribute>(typeof(SmokeDto).Assembly)
+        .FirstOrDefault(e => e.Key == "NewLifeRocketMQVersion")?.Value;
+    var major = asm.GetName().Version?.Major;
+    Assert(!expected.IsNullOrEmpty() && major == expected.Split('.')[0].ToInt(), $"版本异常：{asm.GetName().Version}，期望包版本 {expected}");
 });
 
 Check("帧编解码·整帧往返", () =>
