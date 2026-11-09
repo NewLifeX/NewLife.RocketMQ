@@ -7,6 +7,11 @@ on:
         - 'NewLife.RocketMQ/**'
   workflow_dispatch:
 
+# Trusted Publishing 需要 id-token: write
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   build-publish:
 
@@ -26,7 +31,13 @@ jobs:
     - name: Build
       run: |
         dotnet pack --version-suffix $(date "+%Y.%m%d-beta%H%M") -c Release -o out NewLife.RocketMQ/NewLife.RocketMQ.csproj
+    - name: NuGet login (OIDC)
+      id: nuget-login
+      continue-on-error: true
+      uses: NuGet/login@v1
+      with:
+        user: BigStone
     - name: Publish
       run: |
         # dotnet nuget push ./out/*.nupkg --skip-duplicate --source https://nuget.pkg.github.com/NewLifeX/index.json --api-key ${{ github.token }}
-        dotnet nuget push ./out/*.nupkg --skip-duplicate --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.nugetKey }}
+        dotnet nuget push ./out/*.nupkg --skip-duplicate --source https://api.nuget.org/v3/index.json --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY || secrets.nugetKey }}
