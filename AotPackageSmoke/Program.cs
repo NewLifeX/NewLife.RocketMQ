@@ -7,6 +7,7 @@
 
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -45,6 +46,11 @@ if (args.Contains("--probe"))
     Console.WriteLine($"PACKAGE AOT PROBE {Environment.Version} {Environment.ProcessId}");
     return 0;
 }
+
+// 用例中部分断言比对英文提示文本，固定界面语言避免在中文等非英文机器上被词表翻译干扰；
+// 不变全球化模式下没有 en-US 文化，GetCultureInfo 会抛异常，此时保持默认（英文源文兜底）。
+// 放在 --probe 之后，避免文化数据加载影响启动开销观测
+try { Localization.Culture = CultureInfo.GetCultureInfo("en-US"); } catch (CultureNotFoundException) { }
 
 Console.WriteLine($"NuGet 包消费冒烟启动，运行时版本 {Environment.Version}");
 Console.WriteLine($"程序集：{typeof(Message).Assembly.GetName().FullName}");

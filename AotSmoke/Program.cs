@@ -171,6 +171,11 @@ if (args.Contains("--bench"))
     return 0;
 }
 
+// 用例中部分断言比对英文提示文本，固定界面语言避免在中文等非英文机器上被词表翻译干扰；
+// 不变全球化模式下没有 en-US 文化，GetCultureInfo 会抛异常，此时保持默认（英文源文兜底）。
+// 放在 --probe / --bench 之后，避免文化数据加载影响启动开销基线
+try { Localization.Culture = CultureInfo.GetCultureInfo("en-US"); } catch (CultureNotFoundException) { }
+
 Console.WriteLine($"AOT 冒烟测试启动，运行时版本 {Environment.Version}");
 
 Check("帧编解码·整帧往返", () =>
