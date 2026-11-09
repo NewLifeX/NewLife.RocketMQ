@@ -705,6 +705,7 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '10.0.x'
-    # 词表一致性脚本看不到“译文是否真的能查到”，这里跑本地化用例补上运行时验证（无需 Broker）
+    # 词表一致性脚本看不到“译文是否真的能查到”，这里跑 I18n 命名空间下的全部用例补上运行时验证（无需 Broker）：
+    # LocalizationTests 校验译文/回退/带前缀日志，CultureRobustnessTests 校验跨文化协议格式化与逐语言逐词条命中
     - name: Localization tests
-      run: dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --filter "FullyQualifiedName~LocalizationTests"
+      run: dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --filter "FullyQualifiedName~XUnitTest.I18n"

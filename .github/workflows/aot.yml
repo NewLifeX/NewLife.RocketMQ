@@ -5,6 +5,7 @@ name: aot
 # 未设置（含空串）自动跳过——计算类用例（帧编解码/请求头/JSON/压缩/ACL/云厂商/双协议转换）恒跑。
 #   - win-x64 为阻断基线：启动本地 RocketMQ（NameServer+Broker+Proxy）后运行全量用例（含端到端与 gRPC 链路）
 #   - linux-x64 的端到端 AOT 由 test.yml 承担（那里已启动 RocketMQ），此处只跑计算类
+#   - aot-icu 以 InvariantGlobalization=false 发布 linux-x64，验证 AOT 下多语言译文真正命中（其余作业均为不变全球化，只能验证英文回退）
 #   - 其余平台为观察期（continue-on-error），连续稳定全绿后逐项去掉 experimental 转阻断
 # 发布步骤统一开启 IL2026/IL3050/IL2104 阻断与关闭单告警聚合，避免新增裁剪告警被摘要掩盖
 on:
@@ -115,6 +116,29 @@ jobs:
     - name: Stop RocketMQ (win-x64)
       if: always() && matrix.server
       run: dotnet run --file scripts/RocketMqSetup.cs -- --stop
+
+  # NativeAOT + ICU（阻断）：上面的矩阵统一 InvariantGlobalization=true，只能验证词表的英文回退；
+  # 这里保留 ICU 发布，验证裁剪+原生代码路径下译文真正命中（词表压缩表解压、按语言查表、格式化）。
+  # 不设 ROCKETMQ_* 环境变量，全部为计算类用例，无需 Broker。
+  aot-icu:
+    name: aot (linux-x64, icu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+    - name: Install NativeAOT Prerequisites
+      run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+    - name: Publish NativeAOT Smoke (InvariantGlobalization=false)
+      # %3B 为命令行分号转义；-p:InvariantGlobalization 覆盖工程内的 true
+      run: dotnet publish AotSmoke/AotSmoke.csproj -c Release -r linux-x64 -o AotSmoke/bin/aot-icu -p:InvariantGlobalization=false -p:TrimmerSingleWarn=false -p:WarningsAsErrors=IL2026%3BIL3050%3BIL2104
+    - name: Run NativeAOT Smoke (ICU)
+      # 多语言用例在保留 ICU 时校验译文命中，任一失败即非 0 退出码
+      run: ./AotSmoke/bin/aot-icu/AotSmoke
 
   # NativeAOT 冒烟（musl）：alpine 容器内原生发布运行。
   # 容器内 actions/setup-dotnet 不可用，改用 dotnet-install.sh；官方要求 alpine 3.15+ 且安装 clang/build-base/zlib-dev
