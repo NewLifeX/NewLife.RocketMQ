@@ -930,6 +930,10 @@ public class Producer : MqBase
     /// </summary>
     /// <param name="body"></param>
     /// <returns></returns>
+    /// <remarks>
+    /// 对象体不是基元类型时按运行时类型经 JSON 序列化为消息体。NativeAOT 裁剪后自定义类型的公开属性可能被移除，
+    /// 导致对象体被静默序列化为 <c>{}</c>；此时应在应用启动处调用 <see cref="MqAot.RegisterBodyType{T}()"/> 登记该类型。
+    /// </remarks>
     protected virtual Message CreateMessage(Object body)
     {
         if (body is null) throw new ArgumentNullException(nameof(body));
