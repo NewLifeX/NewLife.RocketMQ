@@ -24,9 +24,9 @@ jobs:
     timeout-minutes: 30
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.x
     - name: AOT Analyzer Check
@@ -73,9 +73,9 @@ jobs:
       ROCKETMQ_GRPC_PROXY: ${{ matrix.server && 'http://127.0.0.1:8081' || '' }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.x
     - name: Install NativeAOT Prerequisites (Linux)
@@ -83,7 +83,7 @@ jobs:
       run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
     - name: Setup Java (win-x64)
       if: matrix.server
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v6
       with:
         distribution: 'temurin'
         java-version: '17'
@@ -126,9 +126,9 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.x
     - name: Install NativeAOT Prerequisites
@@ -157,7 +157,7 @@ jobs:
             os: ubuntu-24.04-arm
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Publish & Run NativeAOT Smoke (alpine)
       run: |
         docker run --rm -v "$PWD:/src" -w /src alpine:3.20 sh -c '
@@ -183,10 +183,10 @@ jobs:
     continue-on-error: true     # 不作强制要求：即使冒烟失败也不阻断工作流
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup dotNET (host)
       # 宿主机 x64 SDK 用于发布探索步骤（JIT 冒烟使用龙芯 SDK）
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.x
     - name: Install QEMU (loong64 binfmt)

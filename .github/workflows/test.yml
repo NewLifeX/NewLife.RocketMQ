@@ -13,16 +13,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Setup Java
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v6
       with:
         distribution: 'temurin'
         java-version: '17'
 
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: |
           6.x
@@ -200,7 +200,7 @@ jobs:
 
     - name: Upload AOT baseline
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: aot-baseline
         path: /tmp/aot-baseline.json
@@ -225,14 +225,14 @@ jobs:
     continue-on-error: true     # 观察期：连续全绿后转阻断
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup Java
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v6
       with:
         distribution: 'temurin'
         java-version: '17'
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.x
     - name: Pre-download RocketMQ
@@ -264,7 +264,7 @@ jobs:
       run: dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release -v n --logger "trx;LogFileName=unit-win-x64.trx" --results-directory TestResults
     - name: Upload Test Results
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: test-results-unit-win-x64
         path: TestResults/*.trx
@@ -280,14 +280,14 @@ jobs:
     continue-on-error: true     # 观察期：连续全绿后转阻断
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup Java
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v6
       with:
         distribution: 'temurin'
         java-version: '17'
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.x
     - name: Download & Extract RocketMQ
@@ -406,7 +406,7 @@ jobs:
       run: dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release -v n --logger "trx;LogFileName=unit-linux-arm64.trx" --results-directory TestResults
     - name: Upload Test Results
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: test-results-unit-linux-arm64
         path: TestResults/*.trx
@@ -430,15 +430,15 @@ jobs:
     continue-on-error: true     # 观察期：连续全绿后转阻断
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup Java
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v6
       with:
         distribution: 'temurin'
         java-version: '17'
     - name: Setup dotNET (host)
       # 宿主 x64 SDK：用于预热构建与测试（LA64 测试使用龙芯 SDK）
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.x
     - name: Download & Extract RocketMQ
@@ -549,7 +549,7 @@ jobs:
         dotnet test XUnitTestRocketMQ/XUnitTest.csproj -c Release --filter "FullyQualifiedName~GrpcIntegrationTests" || true
         sleep 10
     - name: Set up QEMU (loong64)
-      uses: docker/setup-qemu-action@v3
+      uses: docker/setup-qemu-action@v4
       with:
         platforms: loong64
     - name: Download Loongson .NET SDK (linux-loongarch64)
@@ -667,7 +667,7 @@ jobs:
           '
     - name: Upload Test Results
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: test-results-unit-la64
         path: TestResults/*.trx
@@ -685,7 +685,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Check locales
       shell: pwsh
       run: |
@@ -702,7 +702,7 @@ jobs:
       shell: pwsh
       run: pwsh -File ./tools/readme/sync-readme-languages.ps1 -Check
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: '10.0.x'
     # 词表一致性脚本看不到“译文是否真的能查到”，这里跑 I18n 命名空间下的全部用例补上运行时验证（无需 Broker）：
