@@ -36,8 +36,8 @@ NewLife.RocketMQ는 뉴라이프 팀이 .NET 생태계를 위해 개발한 **엔
 | **멀티 클라우드 지원** | 통일된 `ICloudProvider` 인터페이스와 알리바바 클라우드·화웨이 클라우드·텐센트 클라우드·Apache ACL 내장 어댑터 |
 | **프로덕션 레디** | 소비 재시도, 데드 레터 큐, 트랜잭션 검사백, 순서 소비, Pop 소비 등 완전한 엔터프라이즈 기능 |
 | **이벤트 버스** | Core `IEventBus` 계약 기반의 내장 이벤트 버스: Producer/Consumer를 통해 프로세스 간에 이벤트를 발행·구독하며, 실패 시 자동 재시도/데드 레터 처리 |
-| **폭넓은 프레임워크 지원** | .NET Framework 4.5+부터 .NET 10까지; gRPC 기능은 .NET Standard 2.1+에서 사용 가능 |
-| **AOT 친화** | net10.0 타깃은 NativeAOT/트리밍을 지원: 프레임 인코딩/디코딩, JSON 직렬화, 메시지 압축이 런타임 리플렉션에 의존하지 않음. 저장소에 AOT 스모크 테스트와 NuGet 패키지 소비 AOT 스모크 테스트가 포함되며, CI가 주요 RID 매트릭스(win/linux/osx, musl 및 Loongson LA64)에서 AOT 게시와 실행을 검증 |
+| **폭넓은 프레임워크 지원** | .NET Framework 4.5+부터 .NET 11까지; gRPC 기능은 .NET Standard 2.1+에서 사용 가능 |
+| **AOT 친화** | net10.0/net11.0 타깃은 NativeAOT/트리밍을 지원: 프레임 인코딩/디코딩, JSON 직렬화, 메시지 압축이 런타임 리플렉션에 의존하지 않음. 저장소에 AOT 스모크 테스트와 NuGet 패키지 소비 AOT 스모크 테스트가 포함되며, CI가 주요 RID 매트릭스(win/linux/osx, musl 및 Loongson LA64)에서 AOT 게시와 실행을 검증 |
 | **런타임 현지화** | 로그, 프로토콜 파싱 예외, 공개 API 예외, 구성 설명이 영어를 원문으로 하며, 31개 언어 내장 단어 목록을 통해 `Localization.Culture`에 따라 자동 번역되고 영어로 폴백; 접두사가 붙은 로그는 접두사 조합 전에 번역되며 접두사는 단어 목록 조회에 참여하지 않음 |
 | **고성능** | NewLife.Net 고성능 네트워크 계층 기반: 연결 재사용, VIP 채널, 메시지 압축, 동시성 제어 |
 
@@ -415,7 +415,7 @@ var producer = new Producer
 
 ## NativeAOT 게시
 
-`net10.0` 타깃만 NativeAOT/트리밍을 지원합니다(이전 타깃 프레임워크는 트리밍 개념이 없어 동작이 동일합니다). 패키지에는 이미 소스 생성 멤버 접근자와 메타데이터 루트가 포함되어 있으므로 사용 시 별도 구성이 필요하지 않습니다:
+`net10.0/net11.0` 타깃만 NativeAOT/트리밍을 지원합니다(이전 타깃 프레임워크는 트리밍 개념이 없어 동작이 동일합니다). 패키지에는 이미 소스 생성 멤버 접근자와 메타데이터 루트가 포함되어 있으므로 사용 시 별도 구성이 필요하지 않습니다:
 
 ```xml
 <PropertyGroup>
@@ -438,7 +438,7 @@ MqAot.RegisterBodyType<MyOrder>();
 MqAot.RegisterBodyType<MyEvent>();
 ```
 
-`MqAot.RegisterBodyType<T>()`는 net10.0에서만 트리밍 보존 의미를 가지며 다른 타깃에서는 no-op이므로 멀티 타깃 프로젝트가 동일한 시작 코드를 공유할 수 있습니다. 라이브러리와 같은 방식(`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`)으로 자체 메타데이터 루트를 선언할 수도 있습니다.
+`MqAot.RegisterBodyType<T>()`는 net10.0/net11.0에서만 트리밍 보존 의미를 가지며 다른 타깃에서는 no-op이므로 멀티 타깃 프로젝트가 동일한 시작 코드를 공유할 수 있습니다. 라이브러리와 같은 방식(`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`)으로 자체 메타데이터 루트를 선언할 수도 있습니다.
 
 ---
 

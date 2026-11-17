@@ -22,11 +22,8 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: |
-          6.x
-          7.x
-          8.x
-          9.x
           10.x
+          11.x
     - name: Resolve version
       id: version
       # tag 发布时以 tag 为准（去掉 v 前缀），保证包版本与 tag 完全一致；

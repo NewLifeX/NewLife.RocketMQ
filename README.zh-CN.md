@@ -37,8 +37,8 @@ NewLife.RocketMQ 是新生命团队开发的**企业级纯托管 RocketMQ 客户
 | **多云适配** | 统一 `ICloudProvider` 接口，已内置阿里云/华为云/腾讯云/Apache ACL 四家适配器 |
 | **生产就绪** | 消费重试、死信队列、事务回查、顺序消费、Pop 消费等企业级特性完整支持 |
 | **事件总线** | 内置基于 Core `IEventBus` 契约的事件总线，事件主题经 Producer/Consumer 跨进程发布订阅，失败自动走重试/死信 |
-| **最广框架覆盖** | .NET Framework 4.5+ 到 .NET 10，gRPC 功能在 .NET Standard 2.1+ 可用 |
-| **AOT 友好** | net10.0 目标支持 NativeAOT/裁剪：帧编解码、JSON 序列化与消息压缩不依赖运行时反射，仓库内置 AOT 冒烟与 NuGet 包消费 AOT 冒烟；CI 以主流 RID 矩阵（win/linux/osx、musl 及龙芯 LA64）验证 AOT 发布与运行 |
+| **最广框架覆盖** | .NET Framework 4.5+ 到 .NET 11，gRPC 功能在 .NET Standard 2.1+ 可用 |
+| **AOT 友好** | net10.0/net11.0 目标支持 NativeAOT/裁剪：帧编解码、JSON 序列化与消息压缩不依赖运行时反射，仓库内置 AOT 冒烟与 NuGet 包消费 AOT 冒烟；CI 以主流 RID 矩阵（win/linux/osx、musl 及龙芯 LA64）验证 AOT 发布与运行 |
 | **运行时多语言** | 日志、协议解析异常、公开 API 异常与配置项描述以英文为源文，内置 31 种语言词表，按 `Localization.Culture` 自动翻译并回退英文；带前缀日志先翻译再拼前缀，前缀不参与词表查找 |
 | **高性能** | 基于 NewLife.Net 高性能网络层，连接复用、VIP 通道、消息压缩、并发控制 |
 
@@ -414,7 +414,7 @@ var producer = new Producer
 
 ## NativeAOT 发布
 
-仅 `net10.0` 目标支持 NativeAOT/裁剪（老目标框架无裁剪概念，行为不变）。包内已带源生成成员访问器与元数据根，接入时无需额外配置：
+仅 `net10.0/net11.0` 目标支持 NativeAOT/裁剪（老目标框架无裁剪概念，行为不变）。包内已带源生成成员访问器与元数据根，接入时无需额外配置：
 
 ```xml
 <PropertyGroup>
@@ -437,7 +437,7 @@ MqAot.RegisterBodyType<MyOrder>();
 MqAot.RegisterBodyType<MyEvent>();
 ```
 
-`MqAot.RegisterBodyType<T>()` 仅 net10.0 带裁剪保留语义，其余目标为空实现，多目标工程可共用同一份启动代码；也可按库内同套路自行声明元数据根（`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`）。
+`MqAot.RegisterBodyType<T>()` 仅 net10.0/net11.0 带裁剪保留语义，其余目标为空实现，多目标工程可共用同一份启动代码；也可按库内同套路自行声明元数据根（`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`）。
 
 ---
 

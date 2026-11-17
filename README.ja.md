@@ -36,8 +36,8 @@ NewLife.RocketMQ は、NewLife チームが .NET エコシステム向けに開�
 | **マルチクラウド対応** | 統一インターフェース `ICloudProvider` と、Alibaba Cloud、Huawei Cloud、Tencent Cloud、Apache ACL のアダプターを内蔵。 |
 | **本番運用対応** | コンシュームリトライ、デッドレターキュー、トランザクションコールバック確認、順序消費、Pop 消費などのエンタープライズ機能を完備。 |
 | **イベントバス** | Core の `IEventBus` 契約に基づくイベントバスを内蔵：Producer/Consumer を介してプロセス間でイベントを発行・購読し、失敗時は自動でリトライ／デッドレター処理 |
-| **幅広いフレームワーク対応** | .NET Framework 4.5+ から .NET 10 まで。gRPC 機能は .NET Standard 2.1+ で利用可能。 |
-| **AOT フレンドリー** | net10.0 ターゲットは NativeAOT/トリミングに対応：フレームのエンコード/デコード、JSON シリアル化、メッセージ圧縮は実行時リフレクションに依存しません。リポジトリには AOT スモークテストと NuGet パッケージ消費側の AOT スモークテストを含み、CI は主要 RID マトリクス（win/linux/osx、musl、Loongson LA64）で AOT 公開と実行を検証します |
+| **幅広いフレームワーク対応** | .NET Framework 4.5+ から .NET 11 まで。gRPC 機能は .NET Standard 2.1+ で利用可能。 |
+| **AOT フレンドリー** | net10.0/net11.0 ターゲットは NativeAOT/トリミングに対応：フレームのエンコード/デコード、JSON シリアル化、メッセージ圧縮は実行時リフレクションに依存しません。リポジトリには AOT スモークテストと NuGet パッケージ消費側の AOT スモークテストを含み、CI は主要 RID マトリクス（win/linux/osx、musl、Loongson LA64）で AOT 公開と実行を検証します |
 | **実行時ローカライズ** | ログ、プロトコル解析例外、公開 API 例外、構成の説明は英語を原文とし、31 言語の単語リストを内蔵。`Localization.Culture` に従って自動翻訳し、英語にフォールバックします。接頭辞付きログは接頭辞を組み立てる前に翻訳され、接頭辞は単語リストの検索対象になりません |
 | **高性能** | NewLife.Net の高性能ネットワーク層を基盤に、接続再利用、VIP チャネル、メッセージ圧縮、並行制御を実現。 |
 
@@ -415,7 +415,7 @@ var producer = new Producer
 
 ## NativeAOT 公開
 
-`net10.0` ターゲットのみが NativeAOT/トリミングに対応します（旧ターゲットフレームワークにはトリミングの概念がなく、動作は変わりません）。パッケージにはソース生成のメンバーアクセサーとメタデータルートが既に含まれているため、利用時に追加の構成は不要です：
+`net10.0/net11.0` ターゲットのみが NativeAOT/トリミングに対応します（旧ターゲットフレームワークにはトリミングの概念がなく、動作は変わりません）。パッケージにはソース生成のメンバーアクセサーとメタデータルートが既に含まれているため、利用時に追加の構成は不要です：
 
 ```xml
 <PropertyGroup>
@@ -438,7 +438,7 @@ MqAot.RegisterBodyType<MyOrder>();
 MqAot.RegisterBodyType<MyEvent>();
 ```
 
-`MqAot.RegisterBodyType<T>()` は net10.0 でのみトリミング保持のセマンティクスを持ち、他のターゲットでは何もしません。そのため、マルチターゲットのプロジェクトでも同じ起動コードを共有できます。ライブラリと同じパターン（`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`）で独自のメタデータルートを宣言することもできます。
+`MqAot.RegisterBodyType<T>()` は net10.0/net11.0 でのみトリミング保持のセマンティクスを持ち、他のターゲットでは何もしません。そのため、マルチターゲットのプロジェクトでも同じ起動コードを共有できます。ライブラリと同じパターン（`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`）で独自のメタデータルートを宣言することもできます。
 
 ---
 

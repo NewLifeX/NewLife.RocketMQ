@@ -36,8 +36,8 @@ NewLife.RocketMQ é um **cliente RocketMQ empresarial totalmente gerenciado** de
 | **Suporte a múltiplas nuvens** | Interface unificada `ICloudProvider` com adaptadores embutidos para Alibaba Cloud, Huawei Cloud, Tencent Cloud e Apache ACL |
 | **Pronto para produção** | Recursos empresariais completos: nova tentativa de consumo, fila de mensagens mortas, verificação de transações, consumo ordenado, consumo Pop e mais |
 | **Barramento de eventos** | Barramento de eventos integrado baseado no contrato `IEventBus` do Core: os eventos são publicados e assinados entre processos por meio de Producer/Consumer, com nova tentativa e fila de mensagens mortas automáticas |
-| **Maior cobertura de frameworks** | Do .NET Framework 4.5+ ao .NET 10; os recursos gRPC estão disponíveis a partir do .NET Standard 2.1 |
-| **Compatível com AOT** | O alvo net10.0 suporta NativeAOT/trimming: codificação/decodificação de quadros, serialização JSON e compactação de mensagens não dependem de reflexão em tempo de execução. O repositório inclui um teste de fumaça AOT e um teste de fumaça AOT de consumo do pacote NuGet; a CI valida a publicação e a execução AOT em uma matriz de RIDs mainstream (win/linux/osx, musl e Loongson LA64) |
+| **Maior cobertura de frameworks** | Do .NET Framework 4.5+ ao .NET 11; os recursos gRPC estão disponíveis a partir do .NET Standard 2.1 |
+| **Compatível com AOT** | O alvo net10.0/net11.0 suporta NativeAOT/trimming: codificação/decodificação de quadros, serialização JSON e compactação de mensagens não dependem de reflexão em tempo de execução. O repositório inclui um teste de fumaça AOT e um teste de fumaça AOT de consumo do pacote NuGet; a CI valida a publicação e a execução AOT em uma matriz de RIDs mainstream (win/linux/osx, musl e Loongson LA64) |
 | **Localização em tempo de execução** | Logs, exceções de análise de protocolo, exceções de API pública e descrições de configuração usam o inglês como texto de origem, com listas de palavras embutidas para 31 idiomas, traduzidas automaticamente conforme `Localization.Culture` com fallback para o inglês; logs com prefixo são traduzidos antes da composição do prefixo, e o prefixo não participa da busca na lista de palavras |
 | **Alto desempenho** | Construído sobre a camada de rede de alto desempenho NewLife.Net: reutilização de conexões, canal VIP, compactação de mensagens e controle de concorrência |
 
@@ -415,7 +415,7 @@ var producer = new Producer
 
 ## Publicação NativeAOT
 
-Apenas o alvo `net10.0` suporta NativeAOT/trimming (frameworks de destino mais antigos não têm conceito de trimming e se comportam sem alterações). O pacote já inclui acessadores de membros gerados em código-fonte e raízes de metadados, portanto nenhuma configuração extra é necessária ao consumi-lo:
+Apenas o alvo `net10.0/net11.0` suporta NativeAOT/trimming (frameworks de destino mais antigos não têm conceito de trimming e se comportam sem alterações). O pacote já inclui acessadores de membros gerados em código-fonte e raízes de metadados, portanto nenhuma configuração extra é necessária ao consumi-lo:
 
 ```xml
 <PropertyGroup>
@@ -438,7 +438,7 @@ MqAot.RegisterBodyType<MyOrder>();
 MqAot.RegisterBodyType<MyEvent>();
 ```
 
-`MqAot.RegisterBodyType<T>()` só tem semântica de preservação para trimming no net10.0; nos demais alvos é uma operação nula (no-op), portanto projetos multi-target podem compartilhar o mesmo código de inicialização. Você também pode declarar suas próprias raízes de metadados usando o mesmo padrão da biblioteca (`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`).
+`MqAot.RegisterBodyType<T>()` só tem semântica de preservação para trimming no net10.0/net11.0; nos demais alvos é uma operação nula (no-op), portanto projetos multi-target podem compartilhar o mesmo código de inicialização. Você também pode declarar suas próprias raízes de metadados usando o mesmo padrão da biblioteca (`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`).
 
 ---
 

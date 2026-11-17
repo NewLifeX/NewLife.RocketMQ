@@ -23,11 +23,8 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: |
-          6.x
-          7.x
-          8.x
-          9.x
           10.x
+          11.x
     - name: Build
       run: |
         dotnet pack --version-suffix $(date "+%Y.%m%d-beta%H%M") -c Release -o out NewLife.RocketMQ/NewLife.RocketMQ.csproj

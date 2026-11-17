@@ -36,8 +36,8 @@ NewLife.RocketMQ est un **client RocketMQ de qualité entreprise, entièrement m
 | **Multi-cloud** | Interface unifiée `ICloudProvider` avec adaptateurs intégrés pour Alibaba Cloud, Huawei Cloud, Tencent Cloud et Apache ACL |
 | **Prêt pour la production** | Fonctionnalités d'entreprise complètes : reprise de consommation, file de messages morts, vérification des transactions, consommation ordonnée, consommation Pop, etc. |
 | **Bus d'événements** | Bus d'événements intégré basé sur le contrat `IEventBus` de Core : les événements sont publiés et souscrits entre processus via Producer/Consumer, avec reprise et file de messages morts automatiques |
-| **Couverture de frameworks la plus large** | De .NET Framework 4.5+ à .NET 10 ; les fonctionnalités gRPC sont disponibles à partir de .NET Standard 2.1+ |
-| **Compatible AOT** | La cible net10.0 prend en charge NativeAOT/trimming : l'encodage/décodage des trames, la sérialisation JSON et la compression des messages ne reposent pas sur la réflexion d'exécution. Le dépôt contient un smoke test AOT ainsi qu'un smoke test AOT de consommation du paquet NuGet ; la CI valide la publication et l'exécution AOT sur une matrice de RID courants (win/linux/osx, musl et Loongson LA64) |
+| **Couverture de frameworks la plus large** | De .NET Framework 4.5+ à .NET 11 ; les fonctionnalités gRPC sont disponibles à partir de .NET Standard 2.1+ |
+| **Compatible AOT** | La cible net10.0/net11.0 prend en charge NativeAOT/trimming : l'encodage/décodage des trames, la sérialisation JSON et la compression des messages ne reposent pas sur la réflexion d'exécution. Le dépôt contient un smoke test AOT ainsi qu'un smoke test AOT de consommation du paquet NuGet ; la CI valide la publication et l'exécution AOT sur une matrice de RID courants (win/linux/osx, musl et Loongson LA64) |
 | **Localisation à l'exécution** | Les journaux, les exceptions d'analyse de protocole, les exceptions des API publiques et les descriptions de configuration utilisent l'anglais comme texte source, avec des listes de mots intégrées pour 31 langues, traduites automatiquement selon `Localization.Culture` avec repli sur l'anglais ; les journaux préfixés sont traduits avant la composition du préfixe, et le préfixe ne participe pas à la recherche dans la liste de mots |
 | **Hautes performances** | Basé sur la couche réseau hautes performances NewLife.Net : réutilisation des connexions, canal VIP, compression des messages et contrôle de concurrence |
 
@@ -415,7 +415,7 @@ var producer = new Producer
 
 ## Publication NativeAOT
 
-Seule la cible `net10.0` prend en charge NativeAOT/trimming (les frameworks cibles plus anciens n'ont pas la notion de trimming et se comportent à l'identique). Le paquet inclut déjà les accesseurs de membres générés à la compilation et les racines de métadonnées ; aucune configuration supplémentaire n'est donc nécessaire pour le consommer :
+Seule la cible `net10.0/net11.0` prend en charge NativeAOT/trimming (les frameworks cibles plus anciens n'ont pas la notion de trimming et se comportent à l'identique). Le paquet inclut déjà les accesseurs de membres générés à la compilation et les racines de métadonnées ; aucune configuration supplémentaire n'est donc nécessaire pour le consommer :
 
 ```xml
 <PropertyGroup>
@@ -438,7 +438,7 @@ MqAot.RegisterBodyType<MyOrder>();
 MqAot.RegisterBodyType<MyEvent>();
 ```
 
-`MqAot.RegisterBodyType<T>()` n'a une sémantique de préservation au trimming que sur net10.0 ; c'est une opération sans effet sur les autres cibles, les projets multi-cibles peuvent donc partager le même code de démarrage. Vous pouvez aussi déclarer vos propres racines de métadonnées selon le même modèle que la bibliothèque (`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`).
+`MqAot.RegisterBodyType<T>()` n'a une sémantique de préservation au trimming que sur net10.0/net11.0 ; c'est une opération sans effet sur les autres cibles, les projets multi-cibles peuvent donc partager le même code de démarrage. Vous pouvez aussi déclarer vos propres racines de métadonnées selon le même modèle que la bibliothèque (`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`).
 
 ---
 

@@ -28,10 +28,14 @@ jobs:
     - name: Setup dotNET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: 10.x
+        dotnet-version: |
+          10.x
+          11.x
     - name: AOT Analyzer Check
-      # 库自身 AOT/裁剪分析器告警（net10.0，当前 0 条）；-warnaserror 使新增告警阻断
+      # 库自身 AOT/裁剪分析器告警（net10.0/net11.0，当前 0 条）；-warnaserror 使新增告警阻断
       run: dotnet build NewLife.RocketMQ\NewLife.RocketMQ.csproj -f net10.0 -c Release -warnaserror -p:EnableSourceLink=false
+    - name: AOT Analyzer Check (net11)
+      run: dotnet build NewLife.RocketMQ\NewLife.RocketMQ.csproj -f net11.0 -c Release -warnaserror -p:EnableSourceLink=false
 
   aot:
     name: aot (${{ matrix.rid }})

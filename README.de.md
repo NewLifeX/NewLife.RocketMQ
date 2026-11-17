@@ -36,8 +36,8 @@ NewLife.RocketMQ ist ein **vollständig verwalteter RocketMQ-Client in Enterpris
 | **Multi-Cloud-Unterstützung** | Einheitliche `ICloudProvider`-Schnittstelle mit eingebauten Adaptern für Alibaba Cloud, Huawei Cloud, Tencent Cloud und Apache ACL |
 | **Produktionsreif** | Vollständige Enterprise-Funktionen: Consume-Retry, Dead-Letter-Queue, Transaktions-Checkback, geordnete Verarbeitung, Pop-Consumption und mehr |
 | **Event-Bus** | Eingebauter Event-Bus auf Basis des Core-Vertrags `IEventBus`: Ereignisse werden über Producer/Consumer prozessübergreifend veröffentlicht und abonniert, mit automatischem Retry und Dead-Letter-Behandlung |
-| **Breiteste Framework-Abdeckung** | Von .NET Framework 4.5+ bis .NET 10; gRPC-Funktionen sind ab .NET Standard 2.1+ verfügbar |
-| **AOT-freundlich** | Das Ziel net10.0 unterstützt NativeAOT/Trimming: Frame-Codierung/-Decodierung, JSON-Serialisierung und Nachrichtenkomprimierung benötigen keine Laufzeitreflexion. Das Repository enthält einen AOT-Smoke-Test sowie einen AOT-Smoke-Test für die Nutzung des NuGet-Pakets; CI validiert AOT-Publishing und -Ausführung auf einer RID-Matrix gängiger Plattformen (win/linux/osx, musl und Loongson LA64) |
+| **Breiteste Framework-Abdeckung** | Von .NET Framework 4.5+ bis .NET 11; gRPC-Funktionen sind ab .NET Standard 2.1+ verfügbar |
+| **AOT-freundlich** | Das Ziel net10.0/net11.0 unterstützt NativeAOT/Trimming: Frame-Codierung/-Decodierung, JSON-Serialisierung und Nachrichtenkomprimierung benötigen keine Laufzeitreflexion. Das Repository enthält einen AOT-Smoke-Test sowie einen AOT-Smoke-Test für die Nutzung des NuGet-Pakets; CI validiert AOT-Publishing und -Ausführung auf einer RID-Matrix gängiger Plattformen (win/linux/osx, musl und Loongson LA64) |
 | **Laufzeit-Lokalisierung** | Logs, Ausnahmen der Protokollanalyse, Ausnahmen öffentlicher APIs und Konfigurationsbeschreibungen verwenden Englisch als Quelltext, mit eingebauten Wortlisten für 31 Sprachen, automatisch übersetzt gemäß `Localization.Culture` mit englischem Fallback; Logs mit Präfix werden vor dem Anhängen des Präfixes übersetzt, und das Präfix nimmt nicht an der Wortlistensuche teil |
 | **Hohe Leistung** | Aufgebaut auf der Hochleistungs-Netzwerkschicht von NewLife.Net: Verbindungswiederverwendung, VIP-Kanal, Nachrichtenkomprimierung und Nebenläufigkeitskontrolle |
 
@@ -415,7 +415,7 @@ var producer = new Producer
 
 ## NativeAOT-Publishing
 
-Nur das Ziel `net10.0` unterstützt NativeAOT/Trimming (ältere Zielframeworks kennen kein Trimming und verhalten sich unverändert). Das Paket enthält bereits quellgenerierte Member-Accessoren und Metadaten-Roots, daher ist bei der Nutzung keine zusätzliche Konfiguration erforderlich:
+Nur das Ziel `net10.0/net11.0` unterstützt NativeAOT/Trimming (ältere Zielframeworks kennen kein Trimming und verhalten sich unverändert). Das Paket enthält bereits quellgenerierte Member-Accessoren und Metadaten-Roots, daher ist bei der Nutzung keine zusätzliche Konfiguration erforderlich:
 
 ```xml
 <PropertyGroup>
@@ -438,7 +438,7 @@ MqAot.RegisterBodyType<MyOrder>();
 MqAot.RegisterBodyType<MyEvent>();
 ```
 
-`MqAot.RegisterBodyType<T>()` hat nur auf net10.0 Trimming-Erhaltungssemantik; auf anderen Zielen ist es ein No-Op, sodass Multi-Target-Projekte denselben Startcode verwenden können. Sie können auch eigene Metadaten-Roots nach demselben Muster wie die Bibliothek deklarieren (`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`).
+`MqAot.RegisterBodyType<T>()` hat nur auf net10.0/net11.0 Trimming-Erhaltungssemantik; auf anderen Zielen ist es ein No-Op, sodass Multi-Target-Projekte denselben Startcode verwenden können. Sie können auch eigene Metadaten-Roots nach demselben Muster wie die Bibliothek deklarieren (`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`).
 
 ---
 

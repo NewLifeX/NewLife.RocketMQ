@@ -36,8 +36,8 @@ NewLife.RocketMQ es un **cliente RocketMQ empresarial, totalmente administrado**
 | **Soporte multicloud** | Interfaz unificada `ICloudProvider` con adaptadores integrados para Alibaba Cloud, Huawei Cloud, Tencent Cloud y Apache ACL |
 | **Listo para producción** | Funciones empresariales completas: reintento de consumo, cola de mensajes muertos, verificación de transacciones, consumo ordenado, consumo Pop y más |
 | **Bus de eventos** | Bus de eventos integrado basado en el contrato `IEventBus` de Core: los eventos se publican y suscriben entre procesos mediante Producer/Consumer, con reintento y envío a la cola de mensajes muertos automáticos |
-| **Máxima cobertura de frameworks** | Desde .NET Framework 4.5+ hasta .NET 10; las funciones gRPC están disponibles en .NET Standard 2.1+ |
-| **Compatible con AOT** | El destino net10.0 admite NativeAOT/recorte: la codificación y decodificación de tramas, la serialización JSON y la compresión de mensajes no dependen de reflexión en tiempo de ejecución. El repositorio incluye una prueba de humo AOT y una prueba de humo AOT de consumo del paquete NuGet; la CI valida la publicación y ejecución AOT en una matriz de RID principales (win/linux/osx, musl y Loongson LA64) |
+| **Máxima cobertura de frameworks** | Desde .NET Framework 4.5+ hasta .NET 11; las funciones gRPC están disponibles en .NET Standard 2.1+ |
+| **Compatible con AOT** | El destino net10.0/net11.0 admite NativeAOT/recorte: la codificación y decodificación de tramas, la serialización JSON y la compresión de mensajes no dependen de reflexión en tiempo de ejecución. El repositorio incluye una prueba de humo AOT y una prueba de humo AOT de consumo del paquete NuGet; la CI valida la publicación y ejecución AOT en una matriz de RID principales (win/linux/osx, musl y Loongson LA64) |
 | **Localización en tiempo de ejecución** | Los logs, las excepciones de análisis de protocolo, las excepciones de API pública y las descripciones de configuración usan el inglés como texto de origen, con listas de palabras integradas para 31 idiomas, traducidas automáticamente según `Localization.Culture` con retroceso al inglés; los logs con prefijo se traducen antes de componer el prefijo, y el prefijo no participa en la búsqueda en la lista de palabras |
 | **Alto rendimiento** | Basado en la capa de red de alto rendimiento NewLife.Net: reutilización de conexiones, canal VIP, compresión de mensajes y control de concurrencia |
 
@@ -415,7 +415,7 @@ var producer = new Producer
 
 ## Publicación NativeAOT
 
-Solo el destino `net10.0` admite NativeAOT/recorte (los frameworks de destino anteriores no tienen concepto de recorte y se comportan sin cambios). El paquete ya incluye accesores de miembros generados por código fuente y raíces de metadatos, por lo que no se requiere configuración adicional al consumirlo:
+Solo el destino `net10.0/net11.0` admite NativeAOT/recorte (los frameworks de destino anteriores no tienen concepto de recorte y se comportan sin cambios). El paquete ya incluye accesores de miembros generados por código fuente y raíces de metadatos, por lo que no se requiere configuración adicional al consumirlo:
 
 ```xml
 <PropertyGroup>
@@ -438,7 +438,7 @@ MqAot.RegisterBodyType<MyOrder>();
 MqAot.RegisterBodyType<MyEvent>();
 ```
 
-`MqAot.RegisterBodyType<T>()` solo tiene semántica de preservación frente al recorte en net10.0; es una operación nula en otros destinos, por lo que los proyectos multi-target pueden compartir el mismo código de arranque. También puede declarar sus propias raíces de metadatos con el mismo patrón que la biblioteca (`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`).
+`MqAot.RegisterBodyType<T>()` solo tiene semántica de preservación frente al recorte en net10.0/net11.0; es una operación nula en otros destinos, por lo que los proyectos multi-target pueden compartir el mismo código de arranque. También puede declarar sus propias raíces de metadatos con el mismo patrón que la biblioteca (`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`).
 
 ---
 

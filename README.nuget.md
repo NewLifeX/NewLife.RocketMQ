@@ -36,8 +36,8 @@ NewLife.RocketMQ is an **enterprise-grade, fully managed RocketMQ client** devel
 | **Multi-cloud support** | Unified `ICloudProvider` interface with built-in adapters for Alibaba Cloud, Huawei Cloud, Tencent Cloud and Apache ACL |
 | **Production ready** | Complete enterprise features: consume retry, dead-letter queue, transaction checkback, ordered consumption, Pop consumption and more |
 | **Event bus** | Built-in event bus based on the Core `IEventBus` contract: events are published and subscribed across processes through Producer/Consumer, with automatic retry/dead-letter handling |
-| **Broadest framework coverage** | From .NET Framework 4.5+ to .NET 10; gRPC features are available on .NET Standard 2.1+ |
-| **AOT friendly** | The net10.0 target supports NativeAOT/trimming: frame encoding/decoding, JSON serialization and message compression do not rely on runtime reflection. The repository includes an AOT smoke test and a NuGet package consumption AOT smoke test; CI validates AOT publishing and execution on a mainstream RID matrix (win/linux/osx, musl and Loongson LA64) |
+| **Broadest framework coverage** | From .NET Framework 4.5+ to .NET 11; gRPC features are available on .NET Standard 2.1+ |
+| **AOT friendly** | The net10.0/net11.0 targets support NativeAOT/trimming: frame encoding/decoding, JSON serialization and message compression do not rely on runtime reflection. The repository includes an AOT smoke test and a NuGet package consumption AOT smoke test; CI validates AOT publishing and execution on a mainstream RID matrix (win/linux/osx, musl and Loongson LA64) |
 | **Runtime localization** | Logs, protocol parsing exceptions, public API exceptions and configuration descriptions use English as the source text, with built-in word lists for 31 languages, translated automatically according to `Localization.Culture` with English fallback; prefixed logs are translated before the prefix is composed, and the prefix does not participate in word-list lookup |
 | **High performance** | Built on the NewLife.Net high-performance network layer: connection reuse, VIP channel, message compression and concurrency control |
 
@@ -413,7 +413,7 @@ var producer = new Producer
 
 ## NativeAOT Publishing
 
-Only the `net10.0` target supports NativeAOT/trimming (older target frameworks have no trimming concept and behave unchanged). The package already includes source-generated member accessors and metadata roots, so no extra configuration is required when consuming it:
+Only the `net10.0/net11.0` target supports NativeAOT/trimming (older target frameworks have no trimming concept and behave unchanged). The package already includes source-generated member accessors and metadata roots, so no extra configuration is required when consuming it:
 
 ```xml
 <PropertyGroup>
@@ -436,7 +436,7 @@ MqAot.RegisterBodyType<MyOrder>();
 MqAot.RegisterBodyType<MyEvent>();
 ```
 
-`MqAot.RegisterBodyType<T>()` only has trimming-preservation semantics on net10.0; it is a no-op on other targets, so multi-target projects can share the same startup code. You can also declare your own metadata roots using the same pattern as the library (`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`).
+`MqAot.RegisterBodyType<T>()` only has trimming-preservation semantics on net10.0/net11.0; it is a no-op on other targets, so multi-target projects can share the same startup code. You can also declare your own metadata roots using the same pattern as the library (`[DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MyOrder))]` + `[ModuleInitializer]`).
 
 ---
 
