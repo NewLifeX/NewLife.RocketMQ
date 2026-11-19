@@ -1,7 +1,6 @@
 # NewLife.RocketMQ - Enterprise-Grade Fully Managed RocketMQ Client
 
 ![GitHub top language](https://img.shields.io/github/languages/top/newlifex/newlife.rocketmq?logo=github)
-
 ![GitHub License](https://img.shields.io/github/license/NewLifeX/NewLife.RocketMQ?logo=github)
 ![NuGet Downloads](https://img.shields.io/nuget/dt/NewLife.RocketMQ?logo=nuget)
 ![NuGet](https://img.shields.io/nuget/v/NewLife.RocketMQ?logo=nuget)
